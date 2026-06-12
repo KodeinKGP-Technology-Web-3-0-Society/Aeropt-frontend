@@ -6,66 +6,17 @@
   },
   "dashboard": {
     "stats": [
-      {
-        "id": "proficiency",
-        "label": "Overall Proficiency",
-        "value": "64%",
-        "subtext": "across 18 attempted concepts"
-      },
-      {
-        "id": "weak_concepts",
-        "label": "Concepts Flagged Weak",
-        "value": "5",
-        "subtext": "need focused attention",
-        "list": ["Torque", "Constraint Motion", "Rolling with Slipping"]
-      },
-      {
-        "id": "streak",
-        "label": "Session Streak",
-        "value": "4",
-        "subtext": "days in a row"
-      }
+      { "id": "proficiency", "label": "Overall Proficiency", "value": "—", "subtext": "loading..." },
+      { "id": "weak_concepts", "label": "Concepts Flagged Weak", "value": "—", "subtext": "loading...", "list": [] },
+      { "id": "streak", "label": "Session Streak", "value": "0", "subtext": "days in a row" }
     ],
     "conceptHealth": {
       "title": "Physics — Concept Health",
       "tabs": ["Laws of Motion", "Work Energy & Power", "Rotational Motion"],
       "chapters": [
-        {
-          "name": "Laws of Motion",
-          "conceptCount": 13,
-          "overallScore": 72,
-          "concepts": [
-            { "name": "Newton's First Law", "score": 82, "attempts": 14, "tag": null },
-            { "name": "Free Body Diagram", "score": 71, "attempts": 11, "tag": null },
-            { "name": "Constraint Motion", "score": 34, "attempts": 6, "tag": "WEAK" },
-            { "name": "Pseudo Force", "score": 52, "attempts": 8, "tag": null },
-            { "name": "Friction", "score": 68, "attempts": 10, "tag": null },
-            { "name": "Newton's Third Law", "score": 58, "attempts": 9, "tag": null }
-          ]
-        },
-        {
-          "name": "Rotational Motion",
-          "conceptCount": 9,
-          "overallScore": 48,
-          "concepts": [
-            { "name": "Torque", "score": 32, "attempts": 18, "tag": "WEAK" },
-            { "name": "Rolling with Slipping", "score": 38, "attempts": 11, "tag": "WEAK" },
-            { "name": "Moment of Inertia", "score": 58, "attempts": 12, "tag": null },
-            { "name": "Angular Momentum", "score": 45, "attempts": 7, "tag": null },
-            { "name": "Fixed Axis Rotation", "score": 61, "attempts": 14, "tag": null }
-          ]
-        },
-        {
-          "name": "Work Energy & Power",
-          "conceptCount": 11,
-          "overallScore": 78,
-          "concepts": [
-            { "name": "Work-Energy Theorem", "score": 78, "attempts": 24, "tag": "STRONG" },
-            { "name": "Conservative Forces", "score": 80, "attempts": 15, "tag": null },
-            { "name": "Power", "score": 76, "attempts": 12, "tag": null },
-            { "name": "Potential Energy Curve", "score": 65, "attempts": 8, "tag": null }
-          ]
-        }
+        { "name": "Laws of Motion", "conceptCount": 0, "overallScore": 0, "concepts": [] },
+        { "name": "Work Energy & Power", "conceptCount": 0, "overallScore": 0, "concepts": [] },
+        { "name": "Rotational Motion", "conceptCount": 0, "overallScore": 0, "concepts": [] }
       ]
     }
   },
