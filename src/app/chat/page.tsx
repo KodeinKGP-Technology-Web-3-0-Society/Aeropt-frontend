@@ -1,5 +1,5 @@
-import StudySidebar from "@/components/StudySidebar";
+import ChatWorkspace from "@/components/ChatWorkspace";
 
 export default function ChatPage() {
-  return <StudySidebar />;
+  return <ChatWorkspace />;
 }
