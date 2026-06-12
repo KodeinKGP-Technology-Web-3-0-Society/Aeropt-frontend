@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
+import { useApp } from "@/components/AppContext";
 
 type SidebarUser = {
   name: string;
@@ -22,11 +23,6 @@ const navItems: NavItem[] = [
   { label: "Progress", href: "/progress", icon: ChartIcon },
   { label: "Settings", href: "/settings", icon: SettingsIcon },
 ];
-
-const fallbackUser: SidebarUser = {
-  name: "Arjun Mehta",
-  badge: "JEE Advanced",
-};
 
 function BrandIcon() {
   return (
@@ -85,48 +81,66 @@ function SettingsIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function SidebarUserCard({ user }: { user: SidebarUser }) {
+function SidebarUserCard({ user, onLogout }: { user: SidebarUser; onLogout: () => void }) {
   return (
-    <div className="flex items-center gap-2.5 px-1 pb-4">
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#58d36f] to-[#1c6f32]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#0b3317]" />
+    <div className="group flex items-center justify-between gap-2 px-1 pb-4 border-t border-[#1b1c2b]/50 pt-4 mt-2">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#58d36f] to-[#1c6f32] relative shadow-[0_0_12px_rgba(88,211,111,0.2)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#0b3317]" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-white tracking-wide">{user.name}</p>
+          <p className="mt-0.5 inline-flex rounded border border-[#3d3d91]/50 bg-[#11113a]/80 px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8584ff] uppercase tracking-wider">
+            {user.badge}
+          </p>
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-white">{user.name}</p>
-        <p className="mt-1 inline-flex rounded border border-[#3d3d91] bg-[#11113a] px-2 py-0.5 text-[9px] font-medium text-[#8584ff]">
-          {user.badge}
-        </p>
-      </div>
+      <button
+        onClick={onLogout}
+        title="Sign Out"
+        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-red-950/20 hover:text-red-400 text-slate-500 transition-all cursor-pointer"
+      >
+        <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="h-3.5 w-3.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+        </svg>
+      </button>
     </div>
   );
 }
 
-export default function StudySidebar({ user = fallbackUser }: { user?: SidebarUser }) {
+export default function StudySidebar() {
   const pathname = usePathname();
+  const { data, logout } = useApp();
+  const user = data.user;
 
   return (
-    <aside className="study-sidebar flex min-h-screen w-[204px] flex-col px-3 py-5 text-slate-100">
-      <div className="mb-8 flex items-center gap-2 px-1">
+    <aside className="study-sidebar flex min-h-screen w-[204px] flex-col px-3 py-5 text-slate-100 border-r border-[#15162a]/80 select-none flex-none">
+      <div className="mb-8 flex items-center gap-2.5 px-1.5">
         <BrandIcon />
-        <span className="text-base font-semibold tracking-normal text-white">Prepwise</span>
+        <span className="text-base font-bold tracking-tight text-white bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">Prepwise</span>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-1">
         {navItems.map((item) => (
           <Link
             key={item.label}
             href={item.href}
-            className={`sidebar-item ${pathname === item.href ? "sidebar-item-active" : ""}`}
+            className={`sidebar-item flex items-center gap-2.5 h-[34px] px-2.5 text-xs font-semibold rounded-lg border-l-2 transition-all cursor-pointer ${
+              pathname === item.href
+                ? "border-[#6258ff] bg-[#121126]/60 text-[#8584ff] shadow-[inset_0_1px_1px_rgba(98,88,255,0.08)]"
+                : "border-transparent text-slate-400 hover:bg-[#101021]/50 hover:text-slate-200"
+            }`}
           >
-            <item.icon className="h-[15px] w-[15px]" />
+            <item.icon className="h-[14px] w-[14px]" />
             <span>{item.label}</span>
           </Link>
         ))}
       </nav>
 
       <div className="mt-auto">
-        <SidebarUserCard user={user} />
+        <SidebarUserCard user={user} onLogout={logout} />
       </div>
     </aside>
   );
 }
+
