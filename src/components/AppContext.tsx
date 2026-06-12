@@ -16,6 +16,7 @@ export type DashboardStat = {
   value: string;
   subtext: string;
   list?: string[];
+  dots?: boolean[];
 };
 
 export type Concept = {

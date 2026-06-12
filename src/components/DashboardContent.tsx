@@ -1,17 +1,63 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp, Chapter, Concept } from "@/components/AppContext";
 
 export default function DashboardContent() {
   const router = useRouter();
-  const { data, setQuizActive } = useApp();
+  const { data, setData, setQuizActive } = useApp();
   const [activeTab, setActiveTab] = useState("Laws of Motion");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboard = useCallback(() => {
+    setLoading(true);
+    setError(null);
+
+    const base =
+      process.env.NEXT_PUBLIC_CHAT_API_BASE ||
+      "http://127.0.0.1:8000/api/v1/chat";
+    const url = base.replace(/\/chat\/?$/, "/analytics/dashboard/");
+
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("auth_token") ||
+      "";
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    fetch(url, { headers })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+        return res.json();
+      })
+      .then((resData) => {
+        setData((prev) => ({
+          ...prev,
+          dashboard: resData,
+        }));
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Dashboard fetch error:", err);
+        setError(err.message || "Failed to load dashboard");
+        setLoading(false);
+      });
+  }, [setData]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   const { stats, conceptHealth } = data.dashboard;
 
-  const currentChapter = conceptHealth.chapters.find((ch) => ch.name === activeTab) || conceptHealth.chapters[0];
+  const currentChapter =
+    conceptHealth.chapters.find((ch) => ch.name === activeTab) ||
+    conceptHealth.chapters[0];
 
   const handleStartSession = () => {
     // Navigate to chat and activate diagnostic quiz
@@ -28,6 +74,117 @@ export default function DashboardContent() {
     }
   };
 
+  // ── Loading Skeleton ─────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <div className="h-7 w-56 bg-[#1b1c2b] rounded-lg" />
+            <div className="h-4 w-72 bg-[#1b1c2b]/60 rounded mt-2" />
+          </div>
+          <div className="h-10 w-36 bg-[#1b1c2b] rounded-lg" />
+        </div>
+        {/* Stats cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-[#0d0e16] border border-[#1b1c2b] rounded-xl p-5 shadow-lg h-[120px]"
+            >
+              <div className="h-3 w-28 bg-[#1b1c2b] rounded mb-4" />
+              <div className="h-8 w-16 bg-[#1b1c2b] rounded mb-2" />
+              <div className="h-3 w-40 bg-[#1b1c2b]/60 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Concept health skeleton */}
+        <div className="bg-[#0d0e16] border border-[#1b1c2b] rounded-2xl p-6 shadow-xl">
+          <div className="flex justify-between items-center border-b border-[#1b1c2b] pb-4 mb-6">
+            <div>
+              <div className="h-4 w-48 bg-[#1b1c2b] rounded mb-2" />
+              <div className="h-3 w-64 bg-[#1b1c2b]/60 rounded" />
+            </div>
+            <div className="flex gap-2">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-8 w-28 bg-[#1b1c2b] rounded-md"
+                />
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="p-4 border border-[#1b1c2b] rounded-xl bg-[#080911]/50 h-[105px]"
+              >
+                <div className="h-4 w-32 bg-[#1b1c2b] rounded mb-4" />
+                <div className="flex justify-between items-end">
+                  <div className="h-3 w-16 bg-[#1b1c2b]/60 rounded" />
+                  <div className="h-3 w-10 bg-[#1b1c2b] rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error State ──────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen flex items-center justify-center">
+        <div className="bg-[#0d0e16] border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-950/40 flex items-center justify-center">
+            <svg
+              className="h-7 w-7 text-red-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-base font-bold text-white mb-2">
+            Failed to Load Dashboard
+          </h3>
+          <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+            {error}. Make sure the backend server is running.
+          </p>
+          <button
+            onClick={fetchDashboard}
+            className="inline-flex items-center gap-2 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-lg shadow-[0_4px_18px_rgba(98,88,255,0.25)] transition-all cursor-pointer active:scale-[0.98]"
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"
+              />
+            </svg>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Dashboard Content ────────────────────────────────────────────────
   return (
     <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen">
       {/* Header */}
@@ -106,7 +263,8 @@ export default function DashboardContent() {
             );
           }
 
-          // Streak Card
+          // Streak Card — 7 dots per the spec (one per day of the week)
+          const streakValue = parseInt(stat.value) || 0;
           return (
             <div
               key={stat.id}
@@ -121,18 +279,21 @@ export default function DashboardContent() {
                   </h2>
                   <p className="text-xs text-slate-500 font-medium">{stat.subtext}</p>
                 </div>
-                {/* Visual streak dots */}
-                <div className="flex gap-1 mt-1.5">
-                  {[1, 2, 3, 4, 5].map((day) => (
-                    <span
-                      key={day}
-                      className={`h-2 w-2 rounded-full ${
-                        day <= parseInt(stat.value)
-                          ? "bg-gradient-to-br from-orange-400 to-red-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]"
-                          : "bg-[#1b1c2b]"
-                      }`}
-                    />
-                  ))}
+                {/* Visual streak dots — 7 dots (one per day of the week) */}
+                <div className="flex gap-1.5 mt-1.5">
+                  {(stat.dots || [false, false, false, false, false, false, false]).map((active, idx) => {
+                    const isActive = stat.dots ? active : (idx + 1) <= streakValue;
+                    return (
+                      <span
+                        key={idx}
+                        className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
+                          isActive
+                            ? "bg-gradient-to-br from-orange-400 to-red-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]"
+                            : "bg-[#1b1c2b] border border-[#2a2b3d]"
+                        }`}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -168,80 +329,88 @@ export default function DashboardContent() {
         </div>
 
         {/* Active Chapter Details */}
-        <div className="mb-5 flex justify-between items-center bg-[#07080d]/50 p-4 border border-[#1b1c2b]/50 rounded-xl">
-          <div className="min-w-0">
-            <h4 className="text-sm font-bold text-white truncate">{currentChapter.name}</h4>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">{currentChapter.conceptCount} concepts inside</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chapter Proficiency</span>
-            <div className="flex items-center gap-1.5">
-              <span className={`text-base font-extrabold ${currentChapter.overallScore < 50 ? "text-red-400" : currentChapter.overallScore < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
-                {currentChapter.overallScore}%
-              </span>
-              <div className="w-16 bg-[#121126] h-1.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${currentChapter.overallScore < 50 ? "bg-red-400" : currentChapter.overallScore < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
-                  style={{ width: `${currentChapter.overallScore}%` }}
-                />
+        {currentChapter && (
+          <div className="mb-5 flex justify-between items-center bg-[#07080d]/50 p-4 border border-[#1b1c2b]/50 rounded-xl">
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-white truncate">{currentChapter.name}</h4>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">{currentChapter.conceptCount} concepts inside</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chapter Proficiency</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-base font-extrabold ${currentChapter.overallScore < 50 ? "text-red-400" : currentChapter.overallScore < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
+                  {currentChapter.overallScore}%
+                </span>
+                <div className="w-16 bg-[#121126] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${currentChapter.overallScore < 50 ? "bg-red-400" : currentChapter.overallScore < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
+                    style={{ width: `${currentChapter.overallScore}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Concept Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {currentChapter.concepts.map((concept) => {
-            const isWeak = concept.tag === "WEAK";
-            const isStrong = concept.tag === "STRONG";
-            return (
-              <div
-                key={concept.name}
-                onClick={() => handleConceptClick(concept)}
-                className={`p-4 border rounded-xl bg-[#080911]/50 hover:bg-[#101021]/30 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group ${
-                  isWeak
-                    ? "border-red-950/40 hover:border-red-900/60 shadow-[0_0_15px_rgba(239,68,68,0.03)]"
-                    : isStrong
-                    ? "border-emerald-950/40 hover:border-emerald-900/60"
-                    : "border-[#1b1c2b] hover:border-[#3d3d91]/50"
-                }`}
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <span className="text-xs font-bold text-slate-200 tracking-wide group-hover:text-white transition-colors truncate">
-                    {concept.name}
-                  </span>
-                  {isWeak && (
-                    <span className="text-[8px] font-extrabold text-red-400 border border-red-500/20 bg-red-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse flex-none">
-                      Weak
+        {currentChapter && currentChapter.concepts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {currentChapter.concepts.map((concept) => {
+              const isWeak = concept.tag === "WEAK";
+              const isStrong = concept.tag === "STRONG";
+              return (
+                <div
+                  key={concept.name}
+                  onClick={() => handleConceptClick(concept)}
+                  className={`p-4 border rounded-xl bg-[#080911]/50 hover:bg-[#101021]/30 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group ${
+                    isWeak
+                      ? "border-red-950/40 hover:border-red-900/60 shadow-[0_0_15px_rgba(239,68,68,0.03)]"
+                      : isStrong
+                      ? "border-emerald-950/40 hover:border-emerald-900/60"
+                      : "border-[#1b1c2b] hover:border-[#3d3d91]/50"
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-xs font-bold text-slate-200 tracking-wide group-hover:text-white transition-colors truncate">
+                      {concept.name}
                     </span>
-                  )}
-                  {isStrong && (
-                    <span className="text-[8px] font-extrabold text-emerald-400 border border-emerald-500/20 bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider flex-none">
-                      Strong
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex justify-between items-end mt-4">
-                  <div className="text-[10px] text-slate-500 font-semibold">
-                    {concept.attempts} attempts
+                    {isWeak && (
+                      <span className="text-[8px] font-extrabold text-red-400 border border-red-500/20 bg-red-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse flex-none">
+                        Weak
+                      </span>
+                    )}
+                    {isStrong && (
+                      <span className="text-[8px] font-extrabold text-emerald-400 border border-emerald-500/20 bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider flex-none">
+                        Strong
+                      </span>
+                    )}
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className={`text-xs font-extrabold ${concept.score < 50 ? "text-red-400" : concept.score < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
-                      {concept.score}%
-                    </span>
-                    <div className="w-12 bg-[#121126] h-1 rounded-full overflow-hidden mt-1">
-                      <div
-                        className={`h-full rounded-full ${concept.score < 50 ? "bg-red-400" : concept.score < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
-                        style={{ width: `${concept.score}%` }}
-                      />
+
+                  <div className="flex justify-between items-end mt-4">
+                    <div className="text-[10px] text-slate-500 font-semibold">
+                      {concept.attempts} attempts
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className={`text-xs font-extrabold ${concept.score < 50 ? "text-red-400" : concept.score < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
+                        {concept.score}%
+                      </span>
+                      <div className="w-12 bg-[#121126] h-1 rounded-full overflow-hidden mt-1">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${concept.score < 50 ? "bg-red-400" : concept.score < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
+                          style={{ width: `${concept.score}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-sm text-slate-500 font-medium">No concept data yet. Start a study session to begin tracking your progress.</p>
+          </div>
+        )}
       </div>
     </div>
   );
