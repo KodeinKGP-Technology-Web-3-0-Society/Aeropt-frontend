@@ -29,7 +29,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#05060c] px-4 font-sans text-slate-100 selection:bg-[#6258ff] selection:text-white relative overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50 px-4 font-sans dark:text-slate-100 text-slate-900 selection:bg-[#6258ff] selection:text-white relative overflow-hidden">
       {/* Background glow graphics */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#6258ff]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#1c6f32]/10 blur-[120px] pointer-events-none" />
@@ -50,23 +50,23 @@ export default function LoginScreen() {
                 />
               </svg>
             </span>
-            <span className="text-xl font-bold tracking-tight text-white">Prepwise</span>
+            <span className="text-xl font-bold tracking-tight dark:text-white text-slate-900">Prepwise</span>
           </div>
-          <p className="text-[13px] text-slate-400 font-medium tracking-wide">
+          <p className="text-[13px] dark:text-slate-400 text-slate-500 font-medium tracking-wide">
             {data.chat.conversation[1]?.gapDescription ? "Knows where you're stuck before you do." : "Knows where you're stuck before you do."}
           </p>
         </div>
 
         {/* Card Box */}
-        <div className="w-full bg-[#0d0e16]/80 border border-[#1b1c2b] rounded-2xl p-6.5 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+        <div className="w-full dark:bg-[#0d0e16] bg-white/80 border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6.5 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-xl">
           {/* Tabs */}
-          <div className="flex border-b border-[#1b1c2b] pb-4 mb-5">
+          <div className="flex border-b dark:border-[#1b1c2b] border-slate-200 pb-4 mb-5">
             <button
               onClick={() => setActiveTab("signin")}
               className={`flex-1 pb-2 text-[13px] font-semibold tracking-wide border-b-2 text-center transition-all ${
                 activeTab === "signin"
-                  ? "border-[#6258ff] text-white"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
+                  ? "border-[#6258ff] dark:text-white text-slate-900"
+                  : "border-transparent dark:text-slate-500 text-slate-500 dark:hover:text-slate-300 text-slate-700"
               }`}
             >
               Sign in
@@ -75,8 +75,8 @@ export default function LoginScreen() {
               onClick={() => setActiveTab("signup")}
               className={`flex-1 pb-2 text-[13px] font-semibold tracking-wide border-b-2 text-center transition-all ${
                 activeTab === "signup"
-                  ? "border-[#6258ff] text-white"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
+                  ? "border-[#6258ff] dark:text-white text-slate-900"
+                  : "border-transparent dark:text-slate-500 text-slate-500 dark:hover:text-slate-300 text-slate-700"
               }`}
             >
               Create account
@@ -92,7 +92,7 @@ export default function LoginScreen() {
 
             {/* Email field */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] font-semibold dark:text-slate-400 text-slate-500 uppercase tracking-wider mb-2">
                 Email
               </label>
               <input
@@ -100,13 +100,13 @@ export default function LoginScreen() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#07080d] border border-[#1b1c2b] focus:border-[#6258ff]/80 focus:ring-1 focus:ring-[#6258ff]/30 text-white placeholder-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all"
+                className="w-full dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 focus:ring-1 focus:ring-[#6258ff]/30 dark:text-white text-slate-900 placeholder-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all"
               />
             </div>
 
             {/* Password field */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              <label className="block text-[11px] font-semibold dark:text-slate-400 text-slate-500 uppercase tracking-wider mb-2">
                 Password
               </label>
               <input
@@ -114,7 +114,7 @@ export default function LoginScreen() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#07080d] border border-[#1b1c2b] focus:border-[#6258ff]/80 focus:ring-1 focus:ring-[#6258ff]/30 text-white placeholder-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all"
+                className="w-full dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 focus:ring-1 focus:ring-[#6258ff]/30 dark:text-white text-slate-900 placeholder-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all"
               />
             </div>
 
@@ -129,15 +129,15 @@ export default function LoginScreen() {
 
           {/* Divider */}
           <div className="flex items-center my-5">
-            <span className="flex-1 h-[1px] bg-[#1b1c2b]" />
-            <span className="px-3 text-[11px] font-medium text-slate-600 uppercase tracking-widest">or</span>
-            <span className="flex-1 h-[1px] bg-[#1b1c2b]" />
+            <span className="flex-1 h-[1px] dark:bg-[#1b1c2b] bg-slate-200" />
+            <span className="px-3 text-[11px] font-medium dark:text-slate-600 text-slate-400 uppercase tracking-widest">or</span>
+            <span className="flex-1 h-[1px] dark:bg-[#1b1c2b] bg-slate-200" />
           </div>
 
           {/* Google Button */}
           <button
             onClick={handleGoogleSignIn}
-            className="w-full bg-transparent hover:bg-white/[0.03] active:bg-white/[0.05] border border-[#212239] text-[13px] text-slate-200 font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2.5 transition-all"
+            className="w-full bg-transparent hover:bg-white/[0.03] active:bg-white/[0.05] border dark:border-[#212239] border-slate-300 text-[13px] dark:text-slate-200 text-slate-800 font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2.5 transition-all"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[15px] w-[15px]">
               <path
@@ -162,7 +162,7 @@ export default function LoginScreen() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-[10px] text-center text-slate-600 font-medium leading-relaxed tracking-wider uppercase">
+        <p className="mt-6 text-[10px] text-center dark:text-slate-600 text-slate-400 font-medium leading-relaxed tracking-wider uppercase">
           By continuing you agree to our <br className="sm:hidden" />
           <span className="text-[#6258ff] cursor-pointer hover:underline">Terms</span> &{" "}
           <span className="text-[#6258ff] cursor-pointer hover:underline">Privacy Policy</span>

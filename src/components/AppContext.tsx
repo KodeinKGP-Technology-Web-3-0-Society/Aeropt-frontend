@@ -36,7 +36,7 @@ export type Chapter = {
 export type ChatMessage = {
   id: string;
   sender: "user" | "bot";
-  text: string;
+  text?: string;
   isExplanation?: boolean;
   gapTitle?: string;
   gapDescription?: string;
@@ -141,6 +141,8 @@ type AppContextType = {
   setSelectedPracticeType: (type: string) => void;
   prioritizeWeak: boolean;
   setPrioritizeWeak: (val: boolean) => void;
+  appTheme: "light" | "dark";
+  setAppTheme: (theme: "light" | "dark") => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -159,13 +161,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedPracticeType, setSelectedPracticeType] = useState<string>("All");
   const [prioritizeWeak, setPrioritizeWeak] = useState<boolean>(false);
 
-  // Sync auth with localStorage on client load
+  const [appTheme, setAppTheme] = useState<"light" | "dark">("dark");
+
+  // Sync auth and theme with localStorage on client load
   useEffect(() => {
     const authStatus = localStorage.getItem("prepwise_auth");
     if (authStatus === "true") {
       setIsLoggedIn(true);
     }
+    const savedTheme = localStorage.getItem("prepwise_theme") as "light" | "dark" | null;
+    if (savedTheme) {
+      setAppTheme(savedTheme);
+    }
   }, []);
+
+  // Apply theme to DOM
+  useEffect(() => {
+    localStorage.setItem("prepwise_theme", appTheme);
+    document.documentElement.setAttribute("data-theme", appTheme);
+    if (appTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+    }
+  }, [appTheme]);
 
   const login = (email: string) => {
     setIsLoggedIn(true);
@@ -275,6 +296,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSelectedPracticeType,
         prioritizeWeak,
         setPrioritizeWeak,
+        appTheme,
+        setAppTheme,
       }}
     >
       {children}

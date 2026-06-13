@@ -71,8 +71,8 @@ export default function ProgressContent() {
     <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen">
       {/* Header */}
       <div className="mb-8 select-none">
-        <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-white">Progress</h1>
-        <p className="text-xs text-slate-400 font-medium mt-1">{subtitle}</p>
+        <h1 className="text-xl lg:text-2xl font-bold tracking-tight dark:text-white text-slate-900">Progress</h1>
+        <p className="text-xs dark:text-slate-400 text-slate-500 font-medium mt-1">{subtitle}</p>
       </div>
 
       {/* Progress Cards */}
@@ -80,11 +80,11 @@ export default function ProgressContent() {
         {stats.map((stat) => (
           <div
             key={stat.id}
-            className="bg-[#0d0e16] border border-[#1b1c2b] rounded-xl p-5 shadow-lg relative overflow-hidden"
+            className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
           >
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{stat.label}</span>
-            <h2 className="text-3xl font-extrabold text-white mt-2 mb-1">{stat.value}</h2>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">{stat.subtext}</p>
+            <span className="text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-wider">{stat.label}</span>
+            <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-1">{stat.value}</h2>
+            <p className="text-xs dark:text-slate-400 text-slate-500 font-medium mt-0.5">{stat.subtext}</p>
           </div>
         ))}
       </div>
@@ -92,19 +92,19 @@ export default function ProgressContent() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Proficiency over time Line Chart */}
-        <div className="bg-[#0d0e16] border border-[#1b1c2b] rounded-2xl p-5 shadow-lg lg:col-span-2 flex flex-col justify-between select-none">
+        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-5 shadow-lg lg:col-span-2 flex flex-col justify-between select-none">
           <div className="mb-4">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Proficiency Over Time</h3>
+            <h3 className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-widest">Proficiency Over Time</h3>
             <div className="flex flex-wrap gap-4 mt-2">
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-300 font-semibold">
+              <div className="flex items-center gap-1.5 text-[10px] dark:text-slate-300 text-slate-700 font-semibold">
                 <span className="h-1.5 w-4 bg-[#6258ff] rounded-full inline-block" />
                 Laws of Motion
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-300 font-semibold">
+              <div className="flex items-center gap-1.5 text-[10px] dark:text-slate-300 text-slate-700 font-semibold">
                 <span className="h-1.5 w-4 bg-[#eab308] rounded-full inline-block" />
                 Work-Energy
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-300 font-semibold">
+              <div className="flex items-center gap-1.5 text-[10px] dark:text-slate-300 text-slate-700 font-semibold">
                 <span className="h-1.5 w-4 bg-[#ef4444] rounded-full inline-block" />
                 Rotational Motion
               </div>
@@ -204,9 +204,9 @@ export default function ProgressContent() {
         </div>
 
         {/* Mistakes Distribution Bar list */}
-        <div className="bg-[#0d0e16] border border-[#1b1c2b] rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
           <div>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+            <h3 className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-widest mb-4">
               Where your mistakes are coming from
             </h3>
             <div className="space-y-4">
@@ -220,12 +220,12 @@ export default function ProgressContent() {
                 return (
                   <div key={mistake.type} className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-semibold select-none">
-                      <span className="text-slate-300">{mistake.type}</span>
-                      <span className="text-slate-500">
-                        <strong className="text-white font-bold">{mistake.count}</strong> · {mistake.percentage}%
+                      <span className="dark:text-slate-300 text-slate-700">{mistake.type}</span>
+                      <span className="dark:text-slate-500 text-slate-500">
+                        <strong className="dark:text-white text-slate-900 font-bold">{mistake.count}</strong> · {mistake.percentage}%
                       </span>
                     </div>
-                    <div className="w-full bg-[#111124] h-2 rounded-full overflow-hidden border border-[#212239]">
+                    <div className="w-full dark:bg-[#111124] bg-slate-100 h-2 rounded-full overflow-hidden border dark:border-[#212239] border-slate-300">
                       <div
                         className={`h-full rounded-full ${barColor}`}
                         style={{ width: `${mistake.percentage}%` }}
@@ -236,16 +236,16 @@ export default function ProgressContent() {
               })}
             </div>
           </div>
-          <div className="text-[10px] text-slate-500 font-semibold mt-4 text-center select-none uppercase tracking-wider leading-relaxed">
+          <div className="text-[10px] dark:text-slate-500 text-slate-500 font-semibold mt-4 text-center select-none uppercase tracking-wider leading-relaxed">
             Data compiled from last 147 questions
           </div>
         </div>
       </div>
 
       {/* Concept Breakdown Table Section */}
-      <div className="bg-[#0d0e16] border border-[#1b1c2b] rounded-2xl p-5 shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#1b1c2b] mb-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest select-none">
+      <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-5 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b dark:border-[#1b1c2b] border-slate-200 mb-4">
+          <h3 className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-widest select-none">
             Concept Breakdown
           </h3>
           <input
@@ -253,7 +253,7 @@ export default function ProgressContent() {
             placeholder="Search concepts or chapters..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-[#07080d] border border-[#1b1c2b] focus:border-[#6258ff]/80 text-xs text-white placeholder-slate-600 rounded-lg px-3 py-1.5 outline-none transition-colors w-full sm:w-[220px]"
+            className="dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 text-xs dark:text-white text-slate-900 placeholder-slate-600 rounded-lg px-3 py-1.5 outline-none transition-colors w-full sm:w-[220px]"
           />
         </div>
 
@@ -261,40 +261,40 @@ export default function ProgressContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
-              <tr className="border-b border-[#1b1c2b] text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
+              <tr className="border-b dark:border-[#1b1c2b] border-slate-200 text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-wider select-none">
                 <th
                   onClick={() => handleSort("concept")}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors"
                 >
                   Concept {sortKey === "concept" && (sortOrder === "asc" ? "▲" : "▼")}
                 </th>
                 <th
                   onClick={() => handleSort("chapter")}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors"
                 >
                   Chapter {sortKey === "chapter" && (sortOrder === "asc" ? "▲" : "▼")}
                 </th>
                 <th
                   onClick={() => handleSort("score")}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors text-right"
                 >
                   Score {sortKey === "score" && (sortOrder === "asc" ? "▲" : "▼")}
                 </th>
                 <th
                   onClick={() => handleSort("attempts")}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors text-right"
                 >
                   Attempts {sortKey === "attempts" && (sortOrder === "asc" ? "▲" : "▼")}
                 </th>
                 <th
                   onClick={() => handleSort("accuracy")}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors text-right"
                 >
                   Accuracy {sortKey === "accuracy" && (sortOrder === "asc" ? "▲" : "▼")}
                 </th>
                 <th
                   onClick={() => handleSort("lastAttempted")}
-                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors"
                 >
                   Last Attempted {sortKey === "lastAttempted" && (sortOrder === "asc" ? "▲" : "▼")}
                 </th>
@@ -304,9 +304,9 @@ export default function ProgressContent() {
             <tbody className="divide-y divide-[#1b1c2b]/50 text-xs">
               {sortedRows.length > 0 ? (
                 sortedRows.map((row) => (
-                  <tr key={row.concept} className="hover:bg-[#101021]/30 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-white tracking-wide">{row.concept}</td>
-                    <td className="py-3.5 px-4 text-slate-400 font-semibold">{row.chapter === "Work Energy" ? "Work Energy & Power" : row.chapter}</td>
+                  <tr key={row.concept} className="dark:hover:bg-[#101021] bg-slate-100/30 transition-colors">
+                    <td className="py-3.5 px-4 font-bold dark:text-white text-slate-900 tracking-wide">{row.concept}</td>
+                    <td className="py-3.5 px-4 dark:text-slate-400 text-slate-500 font-semibold">{row.chapter === "Work Energy" ? "Work Energy & Power" : row.chapter}</td>
                     <td className="py-3.5 px-4 text-right">
                       <span className={`font-extrabold ${
                         row.score < 50 ? "text-red-400" : row.score < 75 ? "text-yellow-400" : "text-emerald-400"
@@ -314,9 +314,9 @@ export default function ProgressContent() {
                         {row.score}%
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right text-slate-400 font-semibold">{row.attempts}</td>
-                    <td className="py-3.5 px-4 text-right text-slate-300 font-bold">{row.accuracy}%</td>
-                    <td className="py-3.5 px-4 text-slate-400 font-semibold">{row.lastAttempted}</td>
+                    <td className="py-3.5 px-4 text-right dark:text-slate-400 text-slate-500 font-semibold">{row.attempts}</td>
+                    <td className="py-3.5 px-4 text-right dark:text-slate-300 text-slate-700 font-bold">{row.accuracy}%</td>
+                    <td className="py-3.5 px-4 dark:text-slate-400 text-slate-500 font-semibold">{row.lastAttempted}</td>
                     <td className="py-3.5 px-4 text-center select-none">
                       {row.trend === "up" && (
                         <span className="text-emerald-400 font-bold border border-emerald-500/10 bg-emerald-950/20 px-1.5 py-0.5 rounded text-[10px]">
@@ -338,7 +338,7 @@ export default function ProgressContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-6 text-slate-500">
+                  <td colSpan={7} className="text-center py-6 dark:text-slate-500 text-slate-500">
                     No matching concepts found
                   </td>
                 </tr>

@@ -81,36 +81,36 @@ export default function DashboardContent() {
         {/* Header skeleton */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <div className="h-7 w-56 bg-[#1b1c2b] rounded-lg" />
-            <div className="h-4 w-72 bg-[#1b1c2b]/60 rounded mt-2" />
+            <div className="h-7 w-56 dark:bg-[#1b1c2b] bg-slate-200 rounded-lg" />
+            <div className="h-4 w-72 dark:bg-[#1b1c2b] bg-slate-200/60 rounded mt-2" />
           </div>
-          <div className="h-10 w-36 bg-[#1b1c2b] rounded-lg" />
+          <div className="h-10 w-36 dark:bg-[#1b1c2b] bg-slate-200 rounded-lg" />
         </div>
         {/* Stats cards skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-[#0d0e16] border border-[#1b1c2b] rounded-xl p-5 shadow-lg h-[120px]"
+              className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg h-[120px]"
             >
-              <div className="h-3 w-28 bg-[#1b1c2b] rounded mb-4" />
-              <div className="h-8 w-16 bg-[#1b1c2b] rounded mb-2" />
-              <div className="h-3 w-40 bg-[#1b1c2b]/60 rounded" />
+              <div className="h-3 w-28 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-4" />
+              <div className="h-8 w-16 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-2" />
+              <div className="h-3 w-40 dark:bg-[#1b1c2b] bg-slate-200/60 rounded" />
             </div>
           ))}
         </div>
         {/* Concept health skeleton */}
-        <div className="bg-[#0d0e16] border border-[#1b1c2b] rounded-2xl p-6 shadow-xl">
-          <div className="flex justify-between items-center border-b border-[#1b1c2b] pb-4 mb-6">
+        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-xl">
+          <div className="flex justify-between items-center border-b dark:border-[#1b1c2b] border-slate-200 pb-4 mb-6">
             <div>
-              <div className="h-4 w-48 bg-[#1b1c2b] rounded mb-2" />
-              <div className="h-3 w-64 bg-[#1b1c2b]/60 rounded" />
+              <div className="h-4 w-48 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-2" />
+              <div className="h-3 w-64 dark:bg-[#1b1c2b] bg-slate-200/60 rounded" />
             </div>
             <div className="flex gap-2">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-8 w-28 bg-[#1b1c2b] rounded-md"
+                  className="h-8 w-28 dark:bg-[#1b1c2b] bg-slate-200 rounded-md"
                 />
               ))}
             </div>
@@ -119,12 +119,12 @@ export default function DashboardContent() {
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
-                className="p-4 border border-[#1b1c2b] rounded-xl bg-[#080911]/50 h-[105px]"
+                className="p-4 border dark:border-[#1b1c2b] border-slate-200 rounded-xl dark:bg-[#080911]/50 bg-slate-50 h-[105px]"
               >
-                <div className="h-4 w-32 bg-[#1b1c2b] rounded mb-4" />
+                <div className="h-4 w-32 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-4" />
                 <div className="flex justify-between items-end">
-                  <div className="h-3 w-16 bg-[#1b1c2b]/60 rounded" />
-                  <div className="h-3 w-10 bg-[#1b1c2b] rounded" />
+                  <div className="h-3 w-16 dark:bg-[#1b1c2b] bg-slate-200/60 rounded" />
+                  <div className="h-3 w-10 dark:bg-[#1b1c2b] bg-slate-200 rounded" />
                 </div>
               </div>
             ))}
@@ -138,7 +138,7 @@ export default function DashboardContent() {
   if (error) {
     return (
       <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen flex items-center justify-center">
-        <div className="bg-[#0d0e16] border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
+        <div className="dark:bg-[#0d0e16] bg-white border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-950/40 flex items-center justify-center">
             <svg
               className="h-7 w-7 text-red-400"
@@ -154,10 +154,10 @@ export default function DashboardContent() {
               />
             </svg>
           </div>
-          <h3 className="text-base font-bold text-white mb-2">
+          <h3 className="text-base font-bold dark:text-white text-slate-900 mb-2">
             Failed to Load Dashboard
           </h3>
-          <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+          <p className="text-xs dark:text-slate-400 text-slate-500 mb-5 leading-relaxed">
             {error}. Make sure the backend server is running.
           </p>
           <button
@@ -190,10 +190,10 @@ export default function DashboardContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-white select-none">
+          <h1 className="text-xl lg:text-2xl font-bold tracking-tight dark:text-white text-slate-900 select-none">
             Good morning, {data.user.name.split(" ")[0]}
           </h1>
-          <p className="text-xs text-slate-400 font-medium mt-1">
+          <p className="text-xs dark:text-slate-400 text-slate-500 font-medium mt-1">
             Let's cover your prerequisite gaps today.
           </p>
         </div>
@@ -222,15 +222,15 @@ export default function DashboardContent() {
             return (
               <div
                 key={stat.id}
-                className="bg-[#0d0e16] border border-[#1b1c2b] rounded-xl p-5 shadow-lg relative overflow-hidden"
+                className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
-                    <h2 className="text-3xl font-extrabold text-white mt-2 mb-1">{stat.value}</h2>
-                    <p className="text-xs text-slate-500 font-medium">{stat.subtext}</p>
+                    <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{stat.label}</span>
+                    <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-1">{stat.value}</h2>
+                    <p className="text-xs dark:text-slate-500 text-slate-500 font-medium">{stat.subtext}</p>
                   </div>
-                  <div className="h-14 w-14 rounded-full border-4 border-[#121126] border-t-[#6258ff] flex items-center justify-center text-[11px] font-bold text-white shadow-[0_0_15px_rgba(98,88,255,0.15)]">
+                  <div className="h-14 w-14 rounded-full border-4 border-[#121126] border-t-[#6258ff] flex items-center justify-center text-[11px] font-bold dark:text-white text-slate-900 shadow-[0_0_15px_rgba(98,88,255,0.15)]">
                     {stat.value}
                   </div>
                 </div>
@@ -242,11 +242,11 @@ export default function DashboardContent() {
             return (
               <div
                 key={stat.id}
-                className="bg-[#0d0e16] border border-[#1b1c2b] rounded-xl p-5 shadow-lg relative overflow-hidden"
+                className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
               >
                 <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
-                  <h2 className="text-3xl font-extrabold text-white mt-2 mb-2">{stat.value}</h2>
+                  <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{stat.label}</span>
+                  <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-2">{stat.value}</h2>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {stat.list?.map((concept) => (
                       <span
@@ -268,16 +268,16 @@ export default function DashboardContent() {
           return (
             <div
               key={stat.id}
-              className="bg-[#0d0e16] border border-[#1b1c2b] rounded-xl p-5 shadow-lg relative overflow-hidden"
+              className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
-                  <h2 className="text-3xl font-extrabold text-white mt-2 mb-1 flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{stat.label}</span>
+                  <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-1 flex items-center gap-1.5">
                     {stat.value}
                     <span className="text-orange-500 animate-pulse text-2xl">🔥</span>
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">{stat.subtext}</p>
+                  <p className="text-xs dark:text-slate-500 text-slate-500 font-medium">{stat.subtext}</p>
                 </div>
                 {/* Visual streak dots — 7 dots (one per day of the week) */}
                 <div className="flex gap-1.5 mt-1.5">
@@ -289,7 +289,7 @@ export default function DashboardContent() {
                         className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
                           isActive
                             ? "bg-gradient-to-br from-orange-400 to-red-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]"
-                            : "bg-[#1b1c2b] border border-[#2a2b3d]"
+                            : "dark:bg-[#1b1c2b] bg-slate-200 border border-[#2a2b3d]"
                         }`}
                       />
                     );
@@ -302,24 +302,24 @@ export default function DashboardContent() {
       </div>
 
       {/* Physics Concept Health */}
-      <div className="bg-[#0d0e16] border border-[#1b1c2b] rounded-2xl p-6 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#1b1c2b] pb-4 mb-6 gap-3">
+      <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b dark:border-[#1b1c2b] border-slate-200 pb-4 mb-6 gap-3">
           <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">{conceptHealth.title}</h3>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-1 font-medium">
+            <h3 className="text-sm font-bold dark:text-white text-slate-900 uppercase tracking-wider">{conceptHealth.title}</h3>
+            <div className="flex items-center gap-1.5 text-[11px] dark:text-slate-400 text-slate-500 mt-1 font-medium">
               <span>Chapters:</span>
-              <span className="text-slate-300 font-semibold">{conceptHealth.tabs.join(" · ")}</span>
+              <span className="dark:text-slate-300 text-slate-700 font-semibold">{conceptHealth.tabs.join(" · ")}</span>
             </div>
           </div>
-          <div className="flex bg-[#07080d] p-1 border border-[#1b1c2b] rounded-lg">
+          <div className="flex dark:bg-[#07080d] bg-white p-1 border dark:border-[#1b1c2b] border-slate-200 rounded-lg">
             {conceptHealth.tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   activeTab === tab
-                    ? "bg-[#121126] border border-[#3d3d91]/50 text-[#8584ff]"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "dark:bg-[#121126] bg-slate-100 border dark:border-[#3d3d91] border-indigo-200/50 text-[#8584ff]"
+                    : "dark:text-slate-400 text-slate-500 dark:hover:text-slate-200 hover:text-slate-700"
                 }`}
               >
                 {tab}
@@ -330,18 +330,18 @@ export default function DashboardContent() {
 
         {/* Active Chapter Details */}
         {currentChapter && (
-          <div className="mb-5 flex justify-between items-center bg-[#07080d]/50 p-4 border border-[#1b1c2b]/50 rounded-xl">
+          <div className="mb-5 flex justify-between items-center dark:bg-[#07080d] bg-white/50 p-4 border dark:border-[#1b1c2b] border-slate-200/50 rounded-xl">
             <div className="min-w-0">
-              <h4 className="text-sm font-bold text-white truncate">{currentChapter.name}</h4>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">{currentChapter.conceptCount} concepts inside</p>
+              <h4 className="text-sm font-bold dark:text-white text-slate-900 truncate">{currentChapter.name}</h4>
+              <p className="text-xs dark:text-slate-500 text-slate-500 font-medium mt-0.5">{currentChapter.conceptCount} concepts inside</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chapter Proficiency</span>
+              <span className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">Chapter Proficiency</span>
               <div className="flex items-center gap-1.5">
                 <span className={`text-base font-extrabold ${currentChapter.overallScore < 50 ? "text-red-400" : currentChapter.overallScore < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
                   {currentChapter.overallScore}%
                 </span>
-                <div className="w-16 bg-[#121126] h-1.5 rounded-full overflow-hidden">
+                <div className="w-16 dark:bg-[#121126] bg-slate-100 h-1.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${currentChapter.overallScore < 50 ? "bg-red-400" : currentChapter.overallScore < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
                     style={{ width: `${currentChapter.overallScore}%` }}
@@ -362,16 +362,16 @@ export default function DashboardContent() {
                 <div
                   key={concept.name}
                   onClick={() => handleConceptClick(concept)}
-                  className={`p-4 border rounded-xl bg-[#080911]/50 hover:bg-[#101021]/30 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group ${
+                  className={`p-4 border rounded-xl dark:bg-[#080911]/50 bg-white dark:hover:bg-[#101021] hover:bg-slate-50 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group ${
                     isWeak
                       ? "border-red-950/40 hover:border-red-900/60 shadow-[0_0_15px_rgba(239,68,68,0.03)]"
                       : isStrong
                       ? "border-emerald-950/40 hover:border-emerald-900/60"
-                      : "border-[#1b1c2b] hover:border-[#3d3d91]/50"
+                      : "dark:border-[#1b1c2b] border-slate-200 dark:hover:border-[#3d3d91] hover:border-indigo-200"
                   }`}
                 >
                   <div className="flex justify-between items-start gap-2">
-                    <span className="text-xs font-bold text-slate-200 tracking-wide group-hover:text-white transition-colors truncate">
+                    <span className="text-xs font-bold dark:text-slate-200 text-slate-700 tracking-wide dark:group-hover:text-white group-hover:text-slate-900 transition-colors truncate">
                       {concept.name}
                     </span>
                     {isWeak && (
@@ -387,14 +387,14 @@ export default function DashboardContent() {
                   </div>
 
                   <div className="flex justify-between items-end mt-4">
-                    <div className="text-[10px] text-slate-500 font-semibold">
+                    <div className="text-[10px] dark:text-slate-500 text-slate-500 font-semibold">
                       {concept.attempts} attempts
                     </div>
                     <div className="flex flex-col items-end">
                       <span className={`text-xs font-extrabold ${concept.score < 50 ? "text-red-400" : concept.score < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
                         {concept.score}%
                       </span>
-                      <div className="w-12 bg-[#121126] h-1 rounded-full overflow-hidden mt-1">
+                      <div className="w-12 dark:bg-[#121126] bg-slate-100 h-1 rounded-full overflow-hidden mt-1">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${concept.score < 50 ? "bg-red-400" : concept.score < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
                           style={{ width: `${concept.score}%` }}
@@ -408,7 +408,7 @@ export default function DashboardContent() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-sm text-slate-500 font-medium">No concept data yet. Start a study session to begin tracking your progress.</p>
+            <p className="text-sm dark:text-slate-500 text-slate-500 font-medium">No concept data yet. Start a study session to begin tracking your progress.</p>
           </div>
         )}
       </div>
