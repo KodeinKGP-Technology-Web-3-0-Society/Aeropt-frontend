@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import StudySidebar from "@/components/StudySidebar";
+import { getAgentApiBase, getSupabaseUserId } from "@/lib/auth";
 
 type PrerequisiteNode = {
   concept: string;
@@ -18,51 +19,32 @@ type StructuredResponse = {
   prerequisite_chain: PrerequisiteNode[];
 };
 
-type ConceptSnapshot = {
-  concept_name: string;
-  score_at_time: number;
-  trend: "up" | "down" | "flat" | string;
-  is_prerequisite: boolean;
-  updated_at?: string;
-};
-
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   structured_response?: StructuredResponse | null;
-  tokens_used?: number | null;
-  latency_ms?: number | null;
-  created_at?: string;
-  concept_snapshots?: ConceptSnapshot[];
 };
 
 type Session = {
   id: string;
   title: string;
-  subject: string;
-  active_chapters: string[];
-  started_at: string;
-  ended_at: string | null;
-  is_active: boolean;
 };
 
-type SessionDetail = Session & {
-  messages: Message[];
+type AgentChatResponse = {
+  session_id: string;
+  response?: string | null;
+  follow_up_suggestions?: Array<string | { text?: string; label?: string; suggestion?: string }> | null;
+  awaiting_graded_response?: boolean;
+  error?: string | null;
 };
 
-type PaginatedResponse<T> = {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-};
-
-const backendBaseUrl = (process.env.NEXT_PUBLIC_CHAT_API_BASE ?? "http://127.0.0.1:8000/api/v1/chat").replace(/\/+$/, "");
+const agentBaseUrl = getAgentApiBase();
+const SESSION_STORAGE_KEY = "agent_active_session_id";
 
 const fallbackPrompts = [
-  "What if the force was applied at a 30 degree angle instead?",
-  "How does torque relate to moment of inertia?",
+  "Explain torque and moment of inertia",
+  "Give me a practice question on Newton's 2nd law",
 ];
 
 function ArrowUpIcon() {
@@ -99,91 +81,6 @@ function TypingIndicator() {
   );
 }
 
-function scoreColor(color: string) {
-  const lowered = color.toLowerCase();
-  if (lowered === "red") return "#ff3f52";
-  if (lowered === "orange") return "#ffa20d";
-  if (lowered === "green") return "#12c48b";
-  if (lowered === "yellow") return "#f6d32d";
-  if (lowered.startsWith("#")) return color;
-  return "#8a8ca0";
-}
-
-function conceptTrendMark(trend: string) {
-  if (trend === "up") return "up";
-  if (trend === "down") return "down";
-  return "flat";
-}
-
-function ConceptPanel({
-  collapsed,
-  onToggle,
-  concepts,
-  prerequisiteChain,
-}: {
-  collapsed: boolean;
-  onToggle: () => void;
-  concepts: ConceptSnapshot[];
-  prerequisiteChain: PrerequisiteNode[];
-}) {
-  return (
-    <aside className={`concept-panel ${collapsed ? "concept-panel-collapsed" : ""}`}>
-      <button type="button" className="concept-toggle" onClick={onToggle} aria-label="Toggle concepts panel">
-        {collapsed ? <PanelIcon /> : <XIcon />}
-      </button>
-
-      {!collapsed && (
-        <div className="concept-content">
-          <h2>Concepts in this response</h2>
-
-          <div className="concept-cards">
-            {concepts.length === 0 && <p className="concept-empty">No concepts yet.</p>}
-            {concepts.map((concept) => (
-              <div className="concept-card" key={concept.concept_name}>
-                <div className="concept-card-top">
-                  <span>{concept.concept_name}</span>
-                  {concept.is_prerequisite && <strong style={{ background: "#ff9f0a" }} />}
-                </div>
-                <div className="concept-progress">
-                  <span style={{ width: `${concept.score_at_time}%`, background: scoreColor(concept.trend) }} />
-                </div>
-                <p>{concept.score_at_time}%</p>
-              </div>
-            ))}
-          </div>
-
-          <h3>Your state on these concepts</h3>
-          <div className="mini-metrics">
-            {concepts.map((concept) => (
-              <div className="mini-metric" key={`metric-${concept.concept_name}`}>
-                <span>{concept.concept_name}</span>
-                <div>
-                  <i style={{ width: `${concept.score_at_time}%`, background: scoreColor(concept.trend) }} />
-                </div>
-                <b>{conceptTrendMark(concept.trend)}</b>
-              </div>
-            ))}
-          </div>
-
-          <h3>Prerequisite chain</h3>
-          <div className="chain-list">
-            {prerequisiteChain.length === 0 && <p className="concept-empty">No prerequisite chain yet.</p>}
-            {prerequisiteChain.map((item) => (
-              <div className="chain-item" key={item.concept}>
-                <span style={{ background: scoreColor(item.color) }} />
-                <p>
-                  {item.concept} ({item.score}%)
-                </p>
-                <b style={{ background: scoreColor(item.color) }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </aside>
-  );
-}
-
 function AssistantResponse({ message }: { message: Message }) {
   const structured = message.structured_response;
 
@@ -193,37 +90,72 @@ function AssistantResponse({ message }: { message: Message }) {
 
   return (
     <article className="lesson-response">
-      <section className="lesson-gap">
-        <h3>FILLING A GAP FIRST</h3>
-        <p>{structured.filling_gap || message.content}</p>
-      </section>
+      {structured.filling_gap && (
+        <section className="lesson-gap">
+          <h3>FILLING A GAP FIRST</h3>
+          <p>{structured.filling_gap}</p>
+        </section>
+      )}
 
-      <section className="lesson-solution">
-        <div className="solution-rule">
-          <span>SOLUTION</span>
-        </div>
-        {(structured.solution_steps ?? []).map((line, index) => (
+      {structured.solution_steps.length > 0 && (
+        <section className="lesson-solution">
+          <div className="solution-rule">
+            <span>SOLUTION</span>
+          </div>
+          {structured.solution_steps.map((line, index) => (
             <div className="solution-step" key={`${index}-${line}`}>
               <span>{index + 1}</span>
               <p>{line}</p>
             </div>
           ))}
-      </section>
+        </section>
+      )}
 
       {structured.insight && <div className="lesson-note">{structured.insight}</div>}
+      {!structured.filling_gap && !structured.solution_steps.length && (
+        <div className="assistant-plain">{message.content}</div>
+      )}
     </article>
   );
+}
+
+function normalizeSuggestions(
+  suggestions: AgentChatResponse["follow_up_suggestions"],
+): string[] {
+  if (!suggestions) return [];
+  return suggestions
+    .map((item) => {
+      if (typeof item === "string") return item;
+      return item.text || item.label || item.suggestion || "";
+    })
+    .filter(Boolean);
+}
+
+function buildAssistantMessage(response: AgentChatResponse): Message {
+  const text = response.response?.trim() || "I could not generate a response.";
+  const tryNext = normalizeSuggestions(response.follow_up_suggestions);
+
+  return {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    content: text,
+    structured_response: {
+      filling_gap: "",
+      solution_steps: [],
+      insight: "",
+      try_next: tryNext,
+      concepts_mentioned: [],
+      prerequisite_chain: [],
+    },
+  };
 }
 
 export default function ChatWorkspace() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [concepts, setConcepts] = useState<ConceptSnapshot[]>([]);
   const [input, setInput] = useState("");
   const [isReplying, setIsReplying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [error, setError] = useState("");
@@ -245,120 +177,61 @@ export default function ChatWorkspace() {
     return fallbackPrompts;
   }, [latestAssistant]);
 
-  const prerequisiteChain = latestAssistant?.structured_response?.prerequisite_chain ?? [];
-
-  function getAuthHeaders() {
-    if (typeof window === "undefined") return {};
-    const token =
-      localStorage.getItem("access_token") ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("auth_token") ||
-      "";
-
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
-  }
-
-  async function parseResponseError(response: Response) {
-    try {
-      const data = (await response.json()) as { detail?: string; error?: string; message?: string };
-      return data.detail ?? data.error ?? data.message ?? `Request failed (${response.status}).`;
-    } catch {
-      return `Request failed (${response.status}).`;
-    }
-  }
-
-  async function apiRequest<T>(pathOrUrl: string, init?: RequestInit) {
-    const isAbsolute = /^https?:\/\//i.test(pathOrUrl);
-    const headers = new Headers(init?.headers);
-    if (init?.body && !(init.body instanceof FormData)) {
-      headers.set("Content-Type", "application/json");
-    }
-    const authHeaders = getAuthHeaders();
-    if (authHeaders.Authorization) {
-      headers.set("Authorization", authHeaders.Authorization);
+  async function sendAgentMessage(query: string, sessionId: string | null) {
+    const userId = getSupabaseUserId();
+    if (!userId) {
+      throw new Error("Missing Supabase user link. Sign out and sign in again.");
     }
 
-    let response: Response;
-    try {
-      response = await fetch(isAbsolute ? pathOrUrl : `${backendBaseUrl}${pathOrUrl}`, {
-        credentials: "include",
-        ...init,
-        headers,
-      });
-    } catch {
-      throw new Error(
-        `Unable to reach chat backend at ${backendBaseUrl}. Check backend server, CORS, and NEXT_PUBLIC_CHAT_API_BASE.`,
-      );
-    }
+    const response = await fetch(`${agentBaseUrl}/api/v1/chat/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        session_id: sessionId,
+        query,
+      }),
+    });
 
     if (!response.ok) {
-      const message = await parseResponseError(response);
-      throw new Error(message);
+      const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+      throw new Error(data.detail || data.error || `Agent request failed (${response.status}).`);
     }
 
-    if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    return (await response.json()) as AgentChatResponse;
   }
 
-  async function fetchAllPages<T>(path: string) {
-    const items: T[] = [];
-    let nextUrl: string | null = `${backendBaseUrl}${path}`;
-
-    while (nextUrl) {
-      const pageData: PaginatedResponse<T> = await apiRequest<PaginatedResponse<T>>(nextUrl);
-      items.push(...pageData.results);
-      nextUrl = pageData.next;
-    }
-    return items;
-  }
-
-  async function loadSession(sessionId: string) {
-    setError("");
-    const detail = await apiRequest<SessionDetail>(`/sessions/${sessionId}/`);
-    const paginatedMessages = await fetchAllPages<Message>(`/sessions/${sessionId}/messages/`);
-    const conceptsResponse = await apiRequest<ConceptSnapshot[]>(`/sessions/${sessionId}/concepts/`);
-
+  function registerSession(sessionId: string, title?: string) {
     setActiveSessionId(sessionId);
-    setMessages(paginatedMessages.length > 0 ? paginatedMessages : (detail.messages ?? []));
-    setConcepts(conceptsResponse ?? []);
-    setSessions((current) => current.map((session) => (session.id === detail.id ? { ...session, ...detail } : session)));
+    localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+    setSessions((current) => {
+      if (current.some((session) => session.id === sessionId)) return current;
+      return [{ id: sessionId, title: title || `Session ${current.length + 1}` }, ...current];
+    });
   }
 
-  async function createSession() {
-    setIsCreatingSession(true);
+  function createSession() {
+    setActiveSessionId(null);
+    setMessages([]);
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     setError("");
-    try {
-      const created = await apiRequest<Session>("/sessions/", {
-        method: "POST",
-        body: JSON.stringify({
-          title: `Session ${new Date().toLocaleString()}`,
-          subject: "Physics",
-          active_chapters: [],
-        }),
-      });
-      setSessions((current) => [created, ...current]);
-      setActiveSessionId(created.id);
-      setMessages([]);
-      setConcepts([]);
-      return created.id;
-    } finally {
-      setIsCreatingSession(false);
-    }
-  }
-
-  async function ensureSessionId() {
-    if (activeSessionId) return activeSessionId;
-    return createSession();
   }
 
   async function endSession() {
     if (!activeSessionId || isEndingSession) return;
+    const userId = getSupabaseUserId();
+    if (!userId) return;
+
     setIsEndingSession(true);
     setError("");
     try {
-      const ended = await apiRequest<Session>(`/sessions/${activeSessionId}/end/`, { method: "PATCH" });
-      setSessions((current) => current.map((session) => (session.id === ended.id ? ended : session)));
+      await fetch(`${agentBaseUrl}/api/v1/chat/end-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, session_id: activeSessionId }),
+      });
+      setActiveSessionId(null);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to end this session.");
     } finally {
@@ -369,9 +242,6 @@ export default function ChatWorkspace() {
   async function submitMessage(value: string) {
     const trimmed = value.trim();
     if (!trimmed || isReplying) return;
-
-    const sessionId = await ensureSessionId();
-    if (!sessionId) return;
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -385,13 +255,14 @@ export default function ChatWorkspace() {
     setMessages((current) => [...current, userMessage]);
 
     try {
-      const assistantMessage = await apiRequest<Message>(`/sessions/${sessionId}/messages/`, {
-        method: "POST",
-        body: JSON.stringify({ content: trimmed }),
-      });
+      const agentResponse = await sendAgentMessage(trimmed, activeSessionId);
+      if (agentResponse.error) {
+        throw new Error(agentResponse.error);
+      }
+
+      registerSession(agentResponse.session_id);
+      const assistantMessage = buildAssistantMessage(agentResponse);
       setMessages((current) => [...current, assistantMessage]);
-      const updatedConcepts = await apiRequest<ConceptSnapshot[]>(`/sessions/${sessionId}/concepts/`);
-      setConcepts(updatedConcepts);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
       setMessages((current) => current.filter((message) => message.id !== userMessage.id));
@@ -406,33 +277,11 @@ export default function ChatWorkspace() {
   }
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function bootstrap() {
-      setIsLoading(true);
-      setError("");
-      try {
-        const allSessions = await fetchAllPages<Session>("/sessions/");
-        if (!isMounted) return;
-        setSessions(allSessions);
-
-        if (allSessions.length > 0) {
-          await loadSession(allSessions[0].id);
-        }
-      } catch (caught) {
-        if (isMounted) {
-          setError(caught instanceof Error ? caught.message : "Unable to load sessions.");
-        }
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
+    const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (savedSessionId) {
+      setActiveSessionId(savedSessionId);
+      setSessions([{ id: savedSessionId, title: "Current session" }]);
     }
-
-    void bootstrap();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   return (
@@ -441,12 +290,17 @@ export default function ChatWorkspace() {
 
       <section className="chat-main">
         <header className="chat-header">
-          <h1>{activeSession?.title ?? "Session"}</h1>
+          <h1>{activeSession?.title ?? "Study Session"}</h1>
           <div className="header-actions">
-            <button type="button" className="header-action-button" onClick={() => void createSession()} disabled={isCreatingSession}>
-              {isCreatingSession ? "Creating..." : "New chat"}
+            <button type="button" className="header-action-button" onClick={createSession}>
+              New chat
             </button>
-            <button type="button" className="end-session" onClick={() => void endSession()} disabled={!activeSessionId || isEndingSession}>
+            <button
+              type="button"
+              className="end-session"
+              onClick={() => void endSession()}
+              disabled={!activeSessionId || isEndingSession}
+            >
               {isEndingSession ? "Ending..." : "End Session"}
             </button>
           </div>
@@ -459,15 +313,18 @@ export default function ChatWorkspace() {
                 key={session.id}
                 type="button"
                 className={`session-pill ${session.id === activeSessionId ? "session-pill-active" : ""}`}
-                onClick={() => void loadSession(session.id)}
+                onClick={() => setActiveSessionId(session.id)}
               >
                 {session.title}
               </button>
             ))}
           </div>
 
-          {isLoading && <p className="chat-error">Loading sessions...</p>}
-          {!isLoading && sessions.length === 0 && <p className="chat-error">No sessions yet. Start a new chat.</p>}
+          {messages.length === 0 && (
+            <p className="chat-error">
+              Ask a doubt, request practice, or say &quot;quiz me on torque&quot; to start.
+            </p>
+          )}
 
           {messages.map((message) =>
             message.role === "user" ? (
@@ -508,16 +365,28 @@ export default function ChatWorkspace() {
           <button type="submit" disabled={isReplying || !input.trim()} aria-label="Send message">
             <ArrowUpIcon />
           </button>
-          <p>KaTeX supported - type $F = ma$ for inline math</p>
+          <p>Powered by JEE Tutor Agent — grade practice answers with 1 (correct) or 0 (wrong)</p>
         </form>
       </section>
 
-      <ConceptPanel
-        collapsed={panelCollapsed}
-        onToggle={() => setPanelCollapsed((current) => !current)}
-        concepts={concepts}
-        prerequisiteChain={prerequisiteChain}
-      />
+      <aside className={`concept-panel ${panelCollapsed ? "concept-panel-collapsed" : ""}`}>
+        <button
+          type="button"
+          className="concept-toggle"
+          onClick={() => setPanelCollapsed((current) => !current)}
+          aria-label="Toggle concepts panel"
+        >
+          {panelCollapsed ? <PanelIcon /> : <XIcon />}
+        </button>
+        {!panelCollapsed && (
+          <div className="concept-content">
+            <h2>Live proficiency</h2>
+            <p className="concept-empty">
+              Concept scores update in Supabase as you study. Check the dashboard for your full concept health.
+            </p>
+          </div>
+        )}
+      </aside>
     </main>
   );
 }

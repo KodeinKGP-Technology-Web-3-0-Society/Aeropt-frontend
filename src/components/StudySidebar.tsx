@@ -81,7 +81,7 @@ function SettingsIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function SidebarUserCard({ user, onLogout }: { user: SidebarUser; onLogout: () => void }) {
+function SidebarUserCard({ user, onLogout }: { user: SidebarUser; onLogout: () => void | Promise<void> }) {
   return (
     <div className="group flex items-center justify-between gap-2 px-1 pb-4 border-t dark:border-[#1b1c2b] border-slate-200/50 pt-4 mt-2">
       <div className="flex items-center gap-2.5 min-w-0">
@@ -96,7 +96,7 @@ function SidebarUserCard({ user, onLogout }: { user: SidebarUser; onLogout: () =
         </div>
       </div>
       <button
-        onClick={onLogout}
+        onClick={() => void onLogout()}
         title="Sign Out"
         className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-red-950/20 hover:text-red-400 dark:text-slate-500 text-slate-500 transition-all cursor-pointer"
       >

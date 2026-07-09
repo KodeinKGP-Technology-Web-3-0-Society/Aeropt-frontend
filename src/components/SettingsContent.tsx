@@ -153,7 +153,7 @@ export default function SettingsContent() {
           <h3 className="text-xs font-bold text-red-400 uppercase tracking-widest">Danger Zone</h3>
           <p className="text-xs dark:text-slate-400 text-slate-500 font-medium">Log out from your current learning session on this device.</p>
           <button
-            onClick={logout}
+            onClick={() => void logout()}
             className="bg-transparent hover:bg-red-950/25 border border-red-900/50 hover:border-red-600 text-xs font-bold text-red-400 uppercase tracking-wider px-5 py-2.5 rounded-lg transition-all cursor-pointer"
           >
             Sign Out Account

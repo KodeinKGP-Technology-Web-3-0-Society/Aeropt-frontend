@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp, Chapter, Concept } from "@/components/AppContext";
+import { apiRequest, getApiBaseUrl } from "@/lib/auth";
 
 export default function DashboardContent() {
   const router = useRouter();
@@ -15,26 +16,9 @@ export default function DashboardContent() {
     setLoading(true);
     setError(null);
 
-    const base =
-      process.env.NEXT_PUBLIC_CHAT_API_BASE ||
-      "http://127.0.0.1:8000/api/v1/chat";
-    const url = base.replace(/\/chat\/?$/, "/analytics/dashboard/");
+    const url = `${getApiBaseUrl()}/analytics/dashboard/`;
 
-    const token =
-      localStorage.getItem("access_token") ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("auth_token") ||
-      "";
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    fetch(url, { headers })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-        return res.json();
-      })
+    apiRequest<typeof data.dashboard>(url)
       .then((resData) => {
         setData((prev) => ({
           ...prev,

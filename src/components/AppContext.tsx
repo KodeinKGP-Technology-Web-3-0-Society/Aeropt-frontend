@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import appDataJson from "@/data/appData.json";
+import * as auth from "@/lib/auth";
 
 // Types derived from JSON schema
 export type User = {
@@ -119,8 +120,10 @@ export type AppDataState = {
 
 type AppContextType = {
   isLoggedIn: boolean;
-  login: (email: string) => void;
-  logout: () => void;
+  authLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, fullName?: string) => Promise<void>;
+  logout: () => Promise<void>;
   data: AppDataState;
   setData: React.Dispatch<React.SetStateAction<AppDataState>>;
   // Chat page states
@@ -149,6 +152,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [data, setData] = useState<AppDataState>(appDataJson as AppDataState);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(data.chat.conversation);
   const [quizActive, setQuizActive] = useState<boolean>(false);
@@ -163,12 +167,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [appTheme, setAppTheme] = useState<"light" | "dark">("dark");
 
-  // Sync auth and theme with localStorage on client load
+  // Restore auth state from stored JWT on client load
   useEffect(() => {
-    const authStatus = localStorage.getItem("prepwise_auth");
-    if (authStatus === "true") {
-      setIsLoggedIn(true);
-    }
+    const restore = async () => {
+      const loggedIn = auth.isAuthenticated();
+      setIsLoggedIn(loggedIn);
+      if (loggedIn && !auth.getSupabaseUserId()) {
+        try {
+          const profile = await auth.apiRequest<{
+            full_name?: string;
+            email?: string;
+            supabase_user_id?: string;
+          }>(`${auth.getApiBaseUrl()}/auth/me/`);
+          if (profile.supabase_user_id) {
+            auth.storeSupabaseUserId(profile.supabase_user_id);
+          }
+          if (profile.email || profile.full_name) {
+            setData((prev) => ({
+              ...prev,
+              user: {
+                ...prev.user,
+                email: profile.email || prev.user.email,
+                name: profile.full_name || prev.user.name,
+              },
+            }));
+          }
+        } catch {
+          // Ignore — user can re-login if chat link is missing.
+        }
+      }
+      setAuthLoading(false);
+    };
+    void restore();
     const savedTheme = localStorage.getItem("prepwise_theme") as "light" | "dark" | null;
     if (savedTheme) {
       setAppTheme(savedTheme);
@@ -188,10 +218,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [appTheme]);
 
-  const login = (email: string) => {
+  const login = useCallback(async (email: string, password: string) => {
+    await auth.login(email, password);
     setIsLoggedIn(true);
-    localStorage.setItem("prepwise_auth", "true");
-    // Update user email in our state if desired
     setData((prev) => ({
       ...prev,
       user: {
@@ -199,12 +228,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         email: email || prev.user.email,
       },
     }));
-  };
+  }, []);
 
-  const logout = () => {
+  const register = useCallback(async (email: string, password: string, fullName = "") => {
+    await auth.register(email, password, fullName);
+    setIsLoggedIn(true);
+    setData((prev) => ({
+      ...prev,
+      user: {
+        ...prev.user,
+        email: email || prev.user.email,
+        name: fullName || prev.user.name,
+      },
+    }));
+  }, []);
+
+  const logout = useCallback(async () => {
+    await auth.logout();
     setIsLoggedIn(false);
-    localStorage.removeItem("prepwise_auth");
-  };
+  }, []);
 
   const addChatMessage = (text: string) => {
     const userMsg: ChatMessage = {
@@ -276,7 +318,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         isLoggedIn,
+        authLoading,
         login,
+        register,
         logout,
         data,
         setData,
