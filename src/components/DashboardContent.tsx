@@ -4,6 +4,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp, Chapter, Concept } from "@/components/AppContext";
 import { apiRequest, getApiBaseUrl } from "@/lib/auth";
+import {
+  LearningPath,
+  buildContinueChatUrl,
+  fetchRoadmap,
+} from "@/lib/roadmap";
+import { fetchReadiness, fetchSandboxQueue, type SandboxAction } from "@/lib/sandbox";
+import SandboxCardDeck from "@/components/SandboxCardDeck";
 
 export default function DashboardContent() {
   const router = useRouter();
@@ -11,6 +18,9 @@ export default function DashboardContent() {
   const [activeTab, setActiveTab] = useState("Laws of Motion");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roadmap, setRoadmap] = useState<LearningPath | null>(null);
+  const [sandboxQueue, setSandboxQueue] = useState<SandboxAction[]>([]);
+  const [readiness, setReadiness] = useState<number | null>(null);
 
   const fetchDashboard = useCallback(() => {
     setLoading(true);
@@ -18,12 +28,20 @@ export default function DashboardContent() {
 
     const url = `${getApiBaseUrl()}/analytics/dashboard/`;
 
-    apiRequest<typeof data.dashboard>(url)
-      .then((resData) => {
+    Promise.all([
+      apiRequest<typeof data.dashboard>(url),
+      fetchRoadmap().catch(() => null),
+      fetchSandboxQueue().catch(() => ({ queue: [], count: 0 })),
+      fetchReadiness().catch(() => null),
+    ])
+      .then(([resData, roadmapData, queueData, readinessData]) => {
         setData((prev) => ({
           ...prev,
           dashboard: resData,
         }));
+        setRoadmap(roadmapData);
+        setSandboxQueue(queueData.queue || []);
+        setReadiness(readinessData?.overall ?? null);
         setLoading(false);
       })
       .catch((err) => {
@@ -42,6 +60,19 @@ export default function DashboardContent() {
   const currentChapter =
     conceptHealth.chapters.find((ch) => ch.name === activeTab) ||
     conceptHealth.chapters[0];
+
+  const currentNode = roadmap?.current_node ?? null;
+  const upcomingNodes = roadmap?.nodes.filter(
+    (n) => n.status === "pending" && n.sequence_index > (currentNode?.sequence_index ?? -1)
+  ).slice(0, 2) ?? [];
+
+  const handleContinueLearning = () => {
+    if (currentNode) {
+      router.push(buildContinueChatUrl(currentNode));
+      return;
+    }
+    handleStartSession();
+  };
 
   const handleStartSession = () => {
     // Navigate to chat and activate diagnostic quiz
@@ -178,26 +209,61 @@ export default function DashboardContent() {
             Good morning, {data.user.name.split(" ")[0]}
           </h1>
           <p className="text-xs dark:text-slate-400 text-slate-500 font-medium mt-1">
-            Let's cover your prerequisite gaps today.
+            {currentNode
+              ? `Up next: ${currentNode.concept_name} (${currentNode.chapter})`
+              : "Let's cover your prerequisite gaps today."}
+            {readiness !== null ? ` · Readiness ${readiness}%` : ""}
           </p>
         </div>
-        <button
-          onClick={handleStartSession}
-          className="inline-flex items-center justify-center gap-2 bg-[#6258ff] hover:bg-[#5045ff] active:scale-[0.98] text-white font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-lg shadow-[0_4px_18px_rgba(98,88,255,0.25)] transition-all cursor-pointer"
-        >
-          <svg
-            aria-hidden="true"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            className="h-3.5 w-3.5"
+        <div className="flex gap-2">
+          <button
+            onClick={() => router.push("/roadmap")}
+            className="inline-flex items-center justify-center gap-2 border dark:border-[#1b1c2b] border-slate-200 dark:text-slate-300 text-slate-600 hover:border-[#6258ff]/40 font-semibold text-xs tracking-wider uppercase px-4 py-2.5 rounded-lg transition-all cursor-pointer"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-          </svg>
-          Start Session
-        </button>
+            View roadmap
+          </button>
+          <button
+            onClick={handleContinueLearning}
+            className="inline-flex items-center justify-center gap-2 bg-[#6258ff] hover:bg-[#5045ff] active:scale-[0.98] text-white font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-lg shadow-[0_4px_18px_rgba(98,88,255,0.25)] transition-all cursor-pointer"
+          >
+            <svg
+              aria-hidden="true"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="h-3.5 w-3.5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+            </svg>
+            {currentNode ? "Continue learning" : "Start Session"}
+          </button>
+        </div>
       </div>
+
+      <SandboxCardDeck queue={sandboxQueue} loading={loading} />
+
+      {currentNode && (
+        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#6258ff]/30 border-indigo-200 rounded-xl p-5 shadow-lg mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold text-[#8584ff] uppercase tracking-wider">Sandbox position</p>
+              <h2 className="text-base font-bold dark:text-white text-slate-900 mt-1">{currentNode.concept_name}</h2>
+              <p className="text-xs dark:text-slate-500 text-slate-500 mt-0.5">
+                {currentNode.chapter} · {currentNode.node_type} · {currentNode.estimated_minutes} min
+                {roadmap ? ` · ${roadmap.progress_pct}% path complete` : ""}
+              </p>
+            </div>
+            {upcomingNodes.length > 0 && (
+              <div className="text-xs dark:text-slate-400 text-slate-500">
+                Then: {upcomingNodes.map((n) => n.concept_name).join(" → ")}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Stats Cards */}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import appDataJson from "@/data/appData.json";
 import * as auth from "@/lib/auth";
+import * as onboardingApi from "@/lib/onboarding";
 
 // Types derived from JSON schema
 export type User = {
@@ -121,6 +122,9 @@ export type AppDataState = {
 type AppContextType = {
   isLoggedIn: boolean;
   authLoading: boolean;
+  onboardingCompleted: boolean;
+  onboardingLoading: boolean;
+  refreshOnboardingStatus: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -153,6 +157,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true);
+  const [onboardingLoading, setOnboardingLoading] = useState<boolean>(false);
   const [data, setData] = useState<AppDataState>(appDataJson as AppDataState);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(data.chat.conversation);
   const [quizActive, setQuizActive] = useState<boolean>(false);
@@ -167,34 +173,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [appTheme, setAppTheme] = useState<"light" | "dark">("dark");
 
+  const refreshOnboardingStatus = useCallback(async () => {
+    if (!auth.isAuthenticated()) {
+      setOnboardingCompleted(true);
+      return;
+    }
+    setOnboardingLoading(true);
+    try {
+      const me = await onboardingApi.fetchMe();
+      setOnboardingCompleted(me.onboarding_completed);
+      if (me.supabase_user_id) {
+        auth.storeSupabaseUserId(me.supabase_user_id);
+      }
+      if (me.email || me.full_name) {
+        setData((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            email: me.email || prev.user.email,
+            name: me.full_name || prev.user.name,
+          },
+        }));
+      }
+    } catch {
+      setOnboardingCompleted(false);
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }, []);
+
   // Restore auth state from stored JWT on client load
   useEffect(() => {
     const restore = async () => {
       const loggedIn = auth.isAuthenticated();
       setIsLoggedIn(loggedIn);
-      if (loggedIn && !auth.getSupabaseUserId()) {
-        try {
-          const profile = await auth.apiRequest<{
-            full_name?: string;
-            email?: string;
-            supabase_user_id?: string;
-          }>(`${auth.getApiBaseUrl()}/auth/me/`);
-          if (profile.supabase_user_id) {
-            auth.storeSupabaseUserId(profile.supabase_user_id);
-          }
-          if (profile.email || profile.full_name) {
-            setData((prev) => ({
-              ...prev,
-              user: {
-                ...prev.user,
-                email: profile.email || prev.user.email,
-                name: profile.full_name || prev.user.name,
-              },
-            }));
-          }
-        } catch {
-          // Ignore — user can re-login if chat link is missing.
-        }
+      if (loggedIn) {
+        await refreshOnboardingStatus();
       }
       setAuthLoading(false);
     };
@@ -203,7 +217,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (savedTheme) {
       setAppTheme(savedTheme);
     }
-  }, []);
+  }, [refreshOnboardingStatus]);
 
   // Apply theme to DOM
   useEffect(() => {
@@ -228,7 +242,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         email: email || prev.user.email,
       },
     }));
-  }, []);
+    await refreshOnboardingStatus();
+  }, [refreshOnboardingStatus]);
 
   const register = useCallback(async (email: string, password: string, fullName = "") => {
     await auth.register(email, password, fullName);
@@ -241,11 +256,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         name: fullName || prev.user.name,
       },
     }));
-  }, []);
+    await refreshOnboardingStatus();
+  }, [refreshOnboardingStatus]);
 
   const logout = useCallback(async () => {
     await auth.logout();
     setIsLoggedIn(false);
+    setOnboardingCompleted(true);
   }, []);
 
   const addChatMessage = (text: string) => {
@@ -319,6 +336,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoggedIn,
         authLoading,
+        onboardingCompleted,
+        onboardingLoading,
+        refreshOnboardingStatus,
         login,
         register,
         logout,

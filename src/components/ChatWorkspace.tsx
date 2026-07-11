@@ -1,8 +1,27 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import StudySidebar from "@/components/StudySidebar";
-import { getAgentApiBase, getSupabaseUserId } from "@/lib/auth";
+import {
+  CollapsibleScoreSummary,
+  FlashcardDeck,
+  GradingButtons,
+  QuizAssessmentNotice,
+  StudyStepBar,
+} from "@/components/StudySessionCards";
+import { AgentChatResponse, PlacementContext, sendChatMessage } from "@/lib/agent";
+import { getSupabaseUserId } from "@/lib/auth";
+import { getAgentApiBase } from "@/lib/auth";
+import type { FlashcardItem } from "@/lib/agent";
+import * as onboarding from "@/lib/onboarding";
+import {
+  fetchRoadmap,
+  stagePrompt,
+  updateRoadmapProgress,
+  type PathNode,
+  type StudyStage,
+} from "@/lib/roadmap";
 
 type PrerequisiteNode = {
   concept: string;
@@ -24,19 +43,12 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   structured_response?: StructuredResponse | null;
+  agent?: AgentChatResponse | null;
 };
 
 type Session = {
   id: string;
   title: string;
-};
-
-type AgentChatResponse = {
-  session_id: string;
-  response?: string | null;
-  follow_up_suggestions?: Array<string | { text?: string; label?: string; suggestion?: string }> | null;
-  awaiting_graded_response?: boolean;
-  error?: string | null;
 };
 
 const agentBaseUrl = getAgentApiBase();
@@ -81,11 +93,73 @@ function TypingIndicator() {
   );
 }
 
-function AssistantResponse({ message }: { message: Message }) {
+type AgentChatResponseLegacy = AgentChatResponse;
+
+function AssistantExtras({
+  agent,
+  onGrade,
+  onPickCard,
+  gradingDisabled,
+  suppressPicker,
+}: {
+  agent?: AgentChatResponse | null;
+  onGrade: (outcome: "correct" | "incorrect") => void;
+  onPickCard: (card: FlashcardItem) => void;
+  gradingDisabled?: boolean;
+  suppressPicker?: boolean;
+}) {
+  if (!agent) return null;
+  const showFlashcards =
+    agent.flashcards &&
+    !(suppressPicker && agent.flashcards.mode === "picker");
+  return (
+    <>
+      {agent.grading_ui && (
+        <GradingButtons gradingUi={agent.grading_ui} disabled={gradingDisabled} onGrade={onGrade} />
+      )}
+      {showFlashcards && (
+        <FlashcardDeck
+          cards={agent.flashcards!.cards}
+          mode={agent.flashcards!.mode}
+          onSelect={agent.flashcards!.mode === "picker" ? onPickCard : undefined}
+        />
+      )}
+      {agent.score_summary && <CollapsibleScoreSummary summary={agent.score_summary} />}
+      {agent.quiz_assessment?.require_end_assessment && (
+        <QuizAssessmentNotice batchSize={agent.quiz_assessment.batch_size} />
+      )}
+    </>
+  );
+}
+
+function AssistantResponse({
+  message,
+  onGrade,
+  onPickCard,
+  gradingDisabled,
+  suppressPicker,
+}: {
+  message: Message;
+  onGrade: (outcome: "correct" | "incorrect") => void;
+  onPickCard: (card: FlashcardItem) => void;
+  gradingDisabled?: boolean;
+  suppressPicker?: boolean;
+}) {
   const structured = message.structured_response;
 
   if (!structured) {
-    return <article className="lesson-response assistant-plain">{message.content}</article>;
+    return (
+      <article className="lesson-response assistant-plain">
+        {message.content}
+        <AssistantExtras
+          agent={message.agent}
+          onGrade={onGrade}
+          onPickCard={onPickCard}
+          gradingDisabled={gradingDisabled}
+          suppressPicker={suppressPicker}
+        />
+      </article>
+    );
   }
 
   return (
@@ -115,23 +189,31 @@ function AssistantResponse({ message }: { message: Message }) {
       {!structured.filling_gap && !structured.solution_steps.length && (
         <div className="assistant-plain">{message.content}</div>
       )}
+      <AssistantExtras
+        agent={message.agent}
+        onGrade={onGrade}
+        onPickCard={onPickCard}
+        gradingDisabled={gradingDisabled}
+        suppressPicker={suppressPicker}
+      />
     </article>
   );
 }
 
 function normalizeSuggestions(
-  suggestions: AgentChatResponse["follow_up_suggestions"],
+  suggestions: AgentChatResponseLegacy["follow_up_suggestions"],
 ): string[] {
   if (!suggestions) return [];
   return suggestions
     .map((item) => {
       if (typeof item === "string") return item;
-      return item.text || item.label || item.suggestion || "";
+      const preview = (item as { preview?: string }).preview;
+      return preview || (item as { text?: string }).text || "";
     })
     .filter(Boolean);
 }
 
-function buildAssistantMessage(response: AgentChatResponse): Message {
+function buildAssistantMessage(response: AgentChatResponseLegacy): Message {
   const text = response.response?.trim() || "I could not generate a response.";
   const tryNext = normalizeSuggestions(response.follow_up_suggestions);
 
@@ -139,6 +221,7 @@ function buildAssistantMessage(response: AgentChatResponse): Message {
     id: crypto.randomUUID(),
     role: "assistant",
     content: text,
+    agent: response,
     structured_response: {
       filling_gap: "",
       solution_steps: [],
@@ -151,6 +234,12 @@ function buildAssistantMessage(response: AgentChatResponse): Message {
 }
 
 export default function ChatWorkspace() {
+  const searchParams = useSearchParams();
+  const roadmapConceptId = searchParams.get("concept_id");
+  const roadmapNodeId = searchParams.get("node_id");
+  const roadmapPrompt = searchParams.get("prompt");
+  const initialStage = (searchParams.get("stage") as StudyStage | null) ?? "theory";
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -158,8 +247,87 @@ export default function ChatWorkspace() {
   const [isReplying, setIsReplying] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
+  const [awaitingGrade, setAwaitingGrade] = useState(false);
   const [error, setError] = useState("");
+  const [placementContext, setPlacementContext] = useState<PlacementContext>({});
+  const [roadmapNode, setRoadmapNode] = useState<PathNode | null>(null);
+  const [contentSequence, setContentSequence] = useState<string[]>([]);
+  const [currentStageIndex, setCurrentStageIndex] = useState(0);
+  const [conceptComplete, setConceptComplete] = useState(false);
+  const [lastProficiencyPct, setLastProficiencyPct] = useState<number | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const progressMarkedRef = useRef(false);
+
+  const isRoadmapSession = Boolean(roadmapNodeId && contentSequence.length > 0);
+
+  useEffect(() => {
+    if (!roadmapNodeId) return;
+    const loadNode = async () => {
+      try {
+        const roadmap = await fetchRoadmap();
+        const node = roadmap.nodes.find((item) => item.id === roadmapNodeId) ?? null;
+        if (!node) return;
+        setRoadmapNode(node);
+        const sequence = node.content_sequence?.length
+          ? node.content_sequence
+          : ["theory", "example", "practice", "pyq"];
+        setContentSequence(sequence);
+        const stageIndex = Math.max(0, sequence.indexOf(initialStage));
+        setCurrentStageIndex(stageIndex >= 0 ? stageIndex : 0);
+        if (!progressMarkedRef.current && node.status !== "completed") {
+          progressMarkedRef.current = true;
+          await updateRoadmapProgress({ node_id: node.id, status: "in_progress" });
+        }
+        if (node.status === "completed") {
+          setConceptComplete(true);
+        }
+      } catch {
+        setContentSequence(["theory", "example", "practice", "pyq"]);
+      }
+    };
+    void loadNode();
+  }, [roadmapNodeId, initialStage]);
+
+  const completeConcept = useCallback(async (proficiencyPct?: number | null) => {
+    if (!roadmapNodeId || conceptComplete) return;
+    try {
+      await updateRoadmapProgress({
+        node_id: roadmapNodeId,
+        status: "completed",
+        proficiency_pct: proficiencyPct ?? lastProficiencyPct ?? undefined,
+      });
+      setConceptComplete(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update roadmap progress.");
+    }
+  }, [roadmapNodeId, conceptComplete, lastProficiencyPct]);
+
+  useEffect(() => {
+    const loadPlacement = async () => {
+      try {
+        const me = await onboarding.fetchMe();
+        const placement = me.placement;
+        const baseline = (placement?.diagnostic_baseline || {}) as {
+          chapter_scores?: Record<string, number>;
+        };
+        const chapterScores = baseline.chapter_scores || {};
+        const focusChapters = Object.entries(chapterScores)
+          .filter(([, score]) => score < 0.45)
+          .map(([chapter]) => chapter)
+          .slice(0, 3);
+        setPlacementContext({
+          journeyType: placement?.journey_type ?? null,
+          focusChapters:
+            focusChapters.length > 0
+              ? focusChapters
+              : (placement?.covered_chapters || []).slice(0, 2),
+        });
+      } catch {
+        setPlacementContext({});
+      }
+    };
+    void loadPlacement();
+  }, []);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
@@ -177,28 +345,35 @@ export default function ChatWorkspace() {
     return fallbackPrompts;
   }, [latestAssistant]);
 
-  async function sendAgentMessage(query: string, sessionId: string | null) {
+  async function sendAgentMessage(
+    query: string,
+    sessionId: string | null,
+    options?: {
+      conceptId?: string | null;
+      nodeId?: string | null;
+      studyStage?: StudyStage | null;
+      gradedOutcome?: "correct" | "incorrect";
+    },
+  ) {
     const userId = getSupabaseUserId();
     if (!userId) {
       throw new Error("Missing Supabase user link. Sign out and sign in again.");
     }
 
-    const response = await fetch(`${agentBaseUrl}/api/v1/chat/message`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: userId,
-        session_id: sessionId,
-        query,
-      }),
+    const stage =
+      options?.studyStage ??
+      (isRoadmapSession ? (contentSequence[currentStageIndex] as StudyStage) : null);
+
+    return sendChatMessage({
+      userId,
+      sessionId,
+      query,
+      roadmapConceptId: options?.conceptId ?? roadmapConceptId,
+      roadmapNodeId: options?.nodeId ?? roadmapNodeId,
+      studyStage: stage,
+      gradedOutcome: options?.gradedOutcome,
+      placement: placementContext,
     });
-
-    if (!response.ok) {
-      const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
-      throw new Error(data.detail || data.error || `Agent request failed (${response.status}).`);
-    }
-
-    return (await response.json()) as AgentChatResponse;
   }
 
   function registerSession(sessionId: string, title?: string) {
@@ -239,36 +414,86 @@ export default function ChatWorkspace() {
     }
   }
 
-  async function submitMessage(value: string) {
-    const trimmed = value.trim();
-    if (!trimmed || isReplying) return;
+  async function handleAgentResponse(agentResponse: AgentChatResponse) {
+    if (agentResponse.error) {
+      throw new Error(agentResponse.error);
+    }
+    registerSession(agentResponse.session_id);
+    setAwaitingGrade(Boolean(agentResponse.grading_ui?.show_correct_incorrect));
+    if (typeof agentResponse.proficiency_pct === "number") {
+      setLastProficiencyPct(agentResponse.proficiency_pct);
+    }
+    const assistantMessage = buildAssistantMessage(agentResponse);
+    setMessages((current) => [...current, assistantMessage]);
+    return agentResponse;
+  }
 
+  async function submitGrade(outcome: "correct" | "incorrect") {
+    setAwaitingGrade(false);
+    const agentResponse = await submitMessage(outcome === "correct" ? "1" : "0", outcome);
+    if (!agentResponse || !isRoadmapSession) return;
+
+    const currentStage = contentSequence[currentStageIndex];
+    if (!currentStage || !["practice", "pyq"].includes(currentStage)) return;
+
+    if (currentStageIndex >= contentSequence.length - 1) {
+      await completeConcept(agentResponse.proficiency_pct ?? lastProficiencyPct);
+    } else {
+      setCurrentStageIndex((index) => index + 1);
+    }
+  }
+
+  async function advanceStudyStage(nextStage: StudyStage) {
+    if (!roadmapNode) return;
+    const nextIndex = contentSequence.indexOf(nextStage);
+    if (nextIndex >= 0) {
+      setCurrentStageIndex(nextIndex);
+    }
+    await submitMessage(stagePrompt(roadmapNode.concept_name, nextStage), undefined, nextStage);
+  }
+
+  async function submitMessage(
+    value: string,
+    gradedOutcome?: "correct" | "incorrect",
+    studyStage?: StudyStage,
+  ): Promise<AgentChatResponse | null> {
+    const trimmed = value.trim();
+    const isGradeTap = Boolean(gradedOutcome);
+    if ((!trimmed && !isGradeTap) || isReplying) return null;
+
+    const display = isGradeTap ? (gradedOutcome === "correct" ? "Correct" : "Incorrect") : trimmed;
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: trimmed,
+      content: display,
     };
 
-    setInput("");
+    if (!isGradeTap) setInput("");
     setError("");
     setIsReplying(true);
     setMessages((current) => [...current, userMessage]);
 
     try {
-      const agentResponse = await sendAgentMessage(trimmed, activeSessionId);
-      if (agentResponse.error) {
-        throw new Error(agentResponse.error);
-      }
-
-      registerSession(agentResponse.session_id);
-      const assistantMessage = buildAssistantMessage(agentResponse);
-      setMessages((current) => [...current, assistantMessage]);
+      const agentResponse = await sendAgentMessage(isGradeTap ? "1" : trimmed, activeSessionId, {
+        gradedOutcome,
+        studyStage,
+      });
+      return await handleAgentResponse(agentResponse);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
       setMessages((current) => current.filter((message) => message.id !== userMessage.id));
+      return null;
     } finally {
       setIsReplying(false);
     }
+  }
+
+  async function submitPickerCard(card: FlashcardItem) {
+    if (card.content_id) {
+      await submitMessage(`Follow up: select content_id=${card.content_id}`);
+      return;
+    }
+    await submitMessage(`Follow up: ${card.front.slice(0, 80)}`);
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -283,6 +508,11 @@ export default function ChatWorkspace() {
       setSessions([{ id: savedSessionId, title: "Current session" }]);
     }
   }, []);
+
+  useEffect(() => {
+    if (!roadmapPrompt || messages.length > 0 || isReplying) return;
+    void submitMessage(roadmapPrompt);
+  }, [roadmapPrompt, messages.length, isReplying]);
 
   return (
     <main className="chat-page">
@@ -332,20 +562,42 @@ export default function ChatWorkspace() {
                 {message.content}
               </div>
             ) : (
-              <AssistantResponse key={message.id} message={message} />
+              <AssistantResponse
+                key={message.id}
+                message={message}
+                onGrade={(outcome) => void submitGrade(outcome)}
+                onPickCard={(card) => void submitPickerCard(card)}
+                gradingDisabled={isReplying}
+                suppressPicker={isRoadmapSession}
+              />
             ),
           )}
 
           {isReplying && <TypingIndicator />}
           {error && <p className="chat-error">{error}</p>}
 
+          {isRoadmapSession && roadmapNode && (
+            <StudyStepBar
+              stages={contentSequence}
+              currentStageIndex={currentStageIndex}
+              conceptName={roadmapNode.concept_name}
+              loading={isReplying}
+              conceptComplete={conceptComplete}
+              onAdvance={(stage) => void advanceStudyStage(stage)}
+            />
+          )}
+
           <div className="quick-prompts">
-            <span>Try next</span>
-            {quickPrompts.map((prompt) => (
-              <button key={prompt} type="button" onClick={() => void submitMessage(prompt)}>
-                {prompt} {"->"}
-              </button>
-            ))}
+            {!awaitingGrade && !isRoadmapSession && (
+              <>
+                <span>Try next</span>
+                {quickPrompts.map((prompt) => (
+                  <button key={prompt} type="button" onClick={() => void submitMessage(prompt)}>
+                    {prompt} {"->"}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
 
@@ -365,7 +617,7 @@ export default function ChatWorkspace() {
           <button type="submit" disabled={isReplying || !input.trim()} aria-label="Send message">
             <ArrowUpIcon />
           </button>
-          <p>Powered by JEE Tutor Agent — grade practice answers with 1 (correct) or 0 (wrong)</p>
+          <p>Use the Correct / Incorrect buttons after practice questions when they appear.</p>
         </form>
       </section>
 

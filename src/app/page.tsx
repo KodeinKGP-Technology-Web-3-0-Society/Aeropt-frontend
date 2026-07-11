@@ -6,16 +6,16 @@ import { useApp } from "@/components/AppContext";
 import LoginScreen from "@/components/LoginScreen";
 
 export default function Home() {
-  const { isLoggedIn, authLoading } = useApp();
+  const { isLoggedIn, authLoading, onboardingCompleted, onboardingLoading } = useApp();
   const router = useRouter();
 
   useEffect(() => {
-    if (!authLoading && isLoggedIn) {
-      router.replace("/dashboard");
+    if (!authLoading && !onboardingLoading && isLoggedIn) {
+      router.replace(onboardingCompleted ? "/dashboard" : "/onboarding");
     }
-  }, [authLoading, isLoggedIn, router]);
+  }, [authLoading, onboardingLoading, isLoggedIn, onboardingCompleted, router]);
 
-  if (authLoading) {
+  if (authLoading || (isLoggedIn && onboardingLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50">
         <p className="text-sm dark:text-slate-400 text-slate-500">Loading...</p>

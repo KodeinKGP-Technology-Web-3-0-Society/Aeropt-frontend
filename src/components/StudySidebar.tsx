@@ -18,6 +18,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: HomeIcon },
+  { label: "Roadmap", href: "/roadmap", icon: MapIcon },
   { label: "Study Session", href: "/chat", icon: ChatIcon },
   { label: "Practice", href: "/pratice", icon: LayersIcon },
   { label: "Progress", href: "/progress", icon: ChartIcon },
@@ -45,6 +46,14 @@ function HomeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
       <path d="m4 11 8-7 8 7v8.5a.5.5 0 0 1-.5.5H15v-5H9v5H4.5a.5.5 0 0 1-.5-.5V11Z" />
+    </svg>
+  );
+}
+
+function MapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
+      <path d="M3 6.5 9 4.5l6 2 6-2v13l-6 2-6-2-6 2V6.5Zm6-1.3v13m6-11v13" />
     </svg>
   );
 }
