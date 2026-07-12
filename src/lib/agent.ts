@@ -62,6 +62,60 @@ export type PlacementContext = {
   focusChapters?: string[];
 };
 
+export type ChatSessionSummary = {
+  session_id: string;
+  interaction_count: number;
+  updated_at?: string | null;
+  preview?: string | null;
+};
+
+export type ChatTurnItem = {
+  turn_id: string;
+  role: string;
+  content: string;
+  turn_index: number;
+  agent_used?: string | null;
+};
+
+export type ChatSessionDetail = {
+  session_id: string;
+  interaction_count: number;
+  turns: ChatTurnItem[];
+};
+
+function sessionApiError(response: Response, data: { detail?: string; error?: string }) {
+  return data.detail || data.error || `Agent request failed (${response.status}).`;
+}
+
+export async function fetchChatSessions(
+  userId: string,
+  limit = 20,
+): Promise<ChatSessionSummary[]> {
+  const params = new URLSearchParams({ user_id: userId, limit: String(limit) });
+  const response = await fetch(`${getAgentApiBase()}/api/v1/chat/sessions?${params}`);
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+    throw new Error(sessionApiError(response, data));
+  }
+  const payload = (await response.json()) as { sessions: ChatSessionSummary[] };
+  return payload.sessions ?? [];
+}
+
+export async function fetchChatSessionDetail(
+  userId: string,
+  sessionId: string,
+): Promise<ChatSessionDetail> {
+  const params = new URLSearchParams({ user_id: userId });
+  const response = await fetch(
+    `${getAgentApiBase()}/api/v1/chat/sessions/${sessionId}?${params}`,
+  );
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+    throw new Error(sessionApiError(response, data));
+  }
+  return (await response.json()) as ChatSessionDetail;
+}
+
 export async function sendChatMessage(payload: {
   userId: string;
   sessionId: string | null;

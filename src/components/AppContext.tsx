@@ -105,7 +105,7 @@ export type AppDataState = {
     mistakesDistribution: { type: string; count: number; percentage: number }[];
     proficiencyOverTime: {
       dates: string[];
-      chapters: { name: string; data: number[] }[];
+      chapters: { name: string; data: number[]; color?: string }[];
     };
     conceptBreakdownTable: {
       concept: string;

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import MarkdownMath from "@/components/MarkdownMath";
 import type { FlashcardItem, GradingUIPayload } from "@/lib/agent";
 import type { StudyStage } from "@/lib/roadmap";
 
@@ -152,7 +153,9 @@ function FlipCard({
           <span className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff]">
             {cardTypeBadge(card.card_type, false)}
           </span>
-          <p className="mt-2 text-sm dark:text-slate-200 text-slate-800 whitespace-pre-wrap">{card.front}</p>
+          <div className="mt-2 text-sm dark:text-slate-200 text-slate-800">
+            <MarkdownMath content={card.front} className="markdown-math markdown-math--card" />
+          </div>
           {card.hint && (
             <p className="text-[10px] dark:text-slate-500 text-slate-500 mt-3">Hint: {card.hint}</p>
           )}
@@ -162,7 +165,9 @@ function FlipCard({
           <span className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff]">
             {cardTypeBadge(card.card_type, true)}
           </span>
-          <p className="mt-2 text-sm dark:text-slate-200 text-slate-800 whitespace-pre-wrap">{card.back}</p>
+          <div className="mt-2 text-sm dark:text-slate-200 text-slate-800">
+            <MarkdownMath content={card.back} className="markdown-math markdown-math--card" />
+          </div>
           <p className="text-[9px] dark:text-slate-600 text-slate-400 mt-4">Tap to flip back</p>
         </div>
       </div>
@@ -273,8 +278,8 @@ export function CollapsibleScoreSummary({ summary }: { summary: string }) {
         {open ? "Hide" : "Show"} score summary
       </button>
       {open && (
-        <div className="px-4 py-3 text-sm dark:text-slate-300 text-slate-700 whitespace-pre-wrap border-t dark:border-[#1b1c2b] border-slate-200">
-          {summary}
+        <div className="px-4 py-3 text-sm dark:text-slate-300 text-slate-700 border-t dark:border-[#1b1c2b] border-slate-200">
+          <MarkdownMath content={summary} />
         </div>
       )}
     </div>

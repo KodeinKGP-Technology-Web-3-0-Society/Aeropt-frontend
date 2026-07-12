@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import MarkdownMath from "@/components/MarkdownMath";
 import StudySidebar from "@/components/StudySidebar";
 import {
   CollapsibleScoreSummary,
@@ -10,7 +11,7 @@ import {
   QuizAssessmentNotice,
   StudyStepBar,
 } from "@/components/StudySessionCards";
-import { AgentChatResponse, PlacementContext, sendChatMessage } from "@/lib/agent";
+import { AgentChatResponse, PlacementContext, sendChatMessage, fetchChatSessions, fetchChatSessionDetail, type ChatTurnItem } from "@/lib/agent";
 import { getSupabaseUserId } from "@/lib/auth";
 import { getAgentApiBase } from "@/lib/auth";
 import type { FlashcardItem } from "@/lib/agent";
@@ -58,6 +59,40 @@ const fallbackPrompts = [
   "Explain torque and moment of inertia",
   "Give me a practice question on Newton's 2nd law",
 ];
+
+function formatSessionTitle(
+  preview: string | null | undefined,
+  updatedAt: string | null | undefined,
+  index: number,
+): string {
+  if (preview?.trim()) {
+    const trimmed = preview.trim();
+    return trimmed.length > 48 ? `${trimmed.slice(0, 47)}…` : trimmed;
+  }
+  if (updatedAt) {
+    const date = new Date(updatedAt);
+    if (!Number.isNaN(date.getTime())) {
+      return `Session · ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+    }
+  }
+  return `Session ${index + 1}`;
+}
+
+function turnsToMessages(turns: ChatTurnItem[], sessionId: string): Message[] {
+  return turns.map((turn) => ({
+    id: turn.turn_id || `turn-${turn.turn_index}`,
+    role: turn.role === "user" ? "user" : "assistant",
+    content: turn.content,
+    agent:
+      turn.role === "user"
+        ? null
+        : {
+            session_id: sessionId,
+            response: turn.content,
+            agent_used: turn.agent_used ?? null,
+          },
+  }));
+}
 
 function ArrowUpIcon() {
   return (
@@ -150,7 +185,7 @@ function AssistantResponse({
   if (!structured) {
     return (
       <article className="lesson-response assistant-plain">
-        {message.content}
+        <MarkdownMath content={message.content} />
         <AssistantExtras
           agent={message.agent}
           onGrade={onGrade}
@@ -167,7 +202,7 @@ function AssistantResponse({
       {structured.filling_gap && (
         <section className="lesson-gap">
           <h3>FILLING A GAP FIRST</h3>
-          <p>{structured.filling_gap}</p>
+          <MarkdownMath content={structured.filling_gap} />
         </section>
       )}
 
@@ -179,15 +214,21 @@ function AssistantResponse({
           {structured.solution_steps.map((line, index) => (
             <div className="solution-step" key={`${index}-${line}`}>
               <span>{index + 1}</span>
-              <p>{line}</p>
+              <MarkdownMath content={line} />
             </div>
           ))}
         </section>
       )}
 
-      {structured.insight && <div className="lesson-note">{structured.insight}</div>}
+      {structured.insight && (
+        <div className="lesson-note">
+          <MarkdownMath content={structured.insight} />
+        </div>
+      )}
       {!structured.filling_gap && !structured.solution_steps.length && (
-        <div className="assistant-plain">{message.content}</div>
+        <div className="assistant-plain">
+          <MarkdownMath content={message.content} />
+        </div>
       )}
       <AssistantExtras
         agent={message.agent}
@@ -246,6 +287,8 @@ export default function ChatWorkspace() {
   const [input, setInput] = useState("");
   const [isReplying, setIsReplying] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const [sessionsReady, setSessionsReady] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [awaitingGrade, setAwaitingGrade] = useState(false);
   const [error, setError] = useState("");
@@ -385,6 +428,31 @@ export default function ChatWorkspace() {
     });
   }
 
+  const loadSessionHistory = useCallback(async (sessionId: string) => {
+    const userId = getSupabaseUserId();
+    if (!userId) return;
+
+    setIsLoadingSession(true);
+    setError("");
+    try {
+      const detail = await fetchChatSessionDetail(userId, sessionId);
+      setMessages(turnsToMessages(detail.turns, sessionId));
+      setActiveSessionId(sessionId);
+      localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+      setAwaitingGrade(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load session history.");
+    } finally {
+      setIsLoadingSession(false);
+    }
+  }, []);
+
+  async function selectSession(sessionId: string) {
+    if (sessionId === activeSessionId || isReplying || isLoadingSession) return;
+    setMessages([]);
+    await loadSessionHistory(sessionId);
+  }
+
   function createSession() {
     setActiveSessionId(null);
     setMessages([]);
@@ -502,17 +570,61 @@ export default function ChatWorkspace() {
   }
 
   useEffect(() => {
-    const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (savedSessionId) {
-      setActiveSessionId(savedSessionId);
-      setSessions([{ id: savedSessionId, title: "Current session" }]);
-    }
-  }, []);
+    const bootstrapSessions = async () => {
+      const userId = getSupabaseUserId();
+      if (!userId) {
+        setSessionsReady(true);
+        return;
+      }
+
+      try {
+        const list = await fetchChatSessions(userId);
+        const mapped: Session[] = list.map((session, index) => ({
+          id: session.session_id,
+          title: formatSessionTitle(session.preview, session.updated_at, index),
+        }));
+        setSessions(mapped);
+
+        const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+        const targetId =
+          savedSessionId && mapped.some((session) => session.id === savedSessionId)
+            ? savedSessionId
+            : mapped[0]?.id ?? null;
+
+        if (targetId) {
+          await loadSessionHistory(targetId);
+        }
+      } catch (caught) {
+        const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (savedSessionId) {
+          setActiveSessionId(savedSessionId);
+          setSessions([{ id: savedSessionId, title: "Current session" }]);
+          try {
+            await loadSessionHistory(savedSessionId);
+          } catch {
+            setError(
+              caught instanceof Error ? caught.message : "Could not load your previous sessions.",
+            );
+          }
+        } else {
+          setError(
+            caught instanceof Error ? caught.message : "Could not load your previous sessions.",
+          );
+        }
+      } finally {
+        setSessionsReady(true);
+      }
+    };
+
+    void bootstrapSessions();
+  }, [loadSessionHistory]);
 
   useEffect(() => {
-    if (!roadmapPrompt || messages.length > 0 || isReplying) return;
+    if (!sessionsReady || !roadmapPrompt || messages.length > 0 || isReplying || isLoadingSession) {
+      return;
+    }
     void submitMessage(roadmapPrompt);
-  }, [roadmapPrompt, messages.length, isReplying]);
+  }, [roadmapPrompt, messages.length, isReplying, isLoadingSession, sessionsReady]);
 
   return (
     <main className="chat-page">
@@ -543,14 +655,18 @@ export default function ChatWorkspace() {
                 key={session.id}
                 type="button"
                 className={`session-pill ${session.id === activeSessionId ? "session-pill-active" : ""}`}
-                onClick={() => setActiveSessionId(session.id)}
+                onClick={() => void selectSession(session.id)}
               >
                 {session.title}
               </button>
             ))}
           </div>
 
-          {messages.length === 0 && (
+          {isLoadingSession && messages.length === 0 && (
+            <p className="chat-error">Loading your last session…</p>
+          )}
+
+          {!isLoadingSession && messages.length === 0 && (
             <p className="chat-error">
               Ask a doubt, request practice, or say &quot;quiz me on torque&quot; to start.
             </p>
@@ -617,7 +733,7 @@ export default function ChatWorkspace() {
           <button type="submit" disabled={isReplying || !input.trim()} aria-label="Send message">
             <ArrowUpIcon />
           </button>
-          <p>Use the Correct / Incorrect buttons after practice questions when they appear.</p>
+          <p>After practice questions, use the Correct / Incorrect buttons to self-grade.</p>
         </form>
       </section>
 
