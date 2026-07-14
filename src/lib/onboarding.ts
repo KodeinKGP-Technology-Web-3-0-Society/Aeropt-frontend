@@ -95,6 +95,9 @@ export type DiagnosticQuestion = {
   chapter: string;
   question_text: string;
   content_id: string;
+  image_url?: string;
+  solution_text?: string;
+  solution_image_url?: string;
 };
 
 export type OnboardingState = {

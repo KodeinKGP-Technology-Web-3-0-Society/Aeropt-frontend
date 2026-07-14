@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppContext";
 import * as onboarding from "@/lib/onboarding";
+import MarkdownMath from "@/components/MarkdownMath";
 import type {
   ChapterMeta,
   CoverageDepth,
@@ -44,7 +45,7 @@ const JOURNEY_OPTIONS: { id: JourneyType; title: string; subtitle: string }[] = 
   {
     id: "revision_dropper",
     title: "I'm revising for the exam",
-    subtitle: "Done the syllabus once — focus on weak areas.",
+    subtitle: "Done the syllabus once. Focus on weak areas.",
   },
 ];
 
@@ -97,18 +98,14 @@ function buildDiagnosticBaseline(
   };
 }
 
-function canSkipStep(step: number): boolean {
-  return step === 5 || step === 6 || step === 7;
-}
-
 function StepDots({ step }: { step: number }) {
   return (
-    <div className="flex items-center justify-center gap-1.5 mb-6">
+    <div className="flex items-center justify-center gap-2 mb-8">
       {Array.from({ length: TOTAL_STEPS }, (_, i) => (
         <span
           key={i}
-          className={`h-1.5 rounded-full transition-all ${
-            i + 1 === step ? "w-6 bg-[#6258ff]" : i + 1 < step ? "w-1.5 bg-[#6258ff]/50" : "w-1.5 bg-slate-600/40"
+          className={`h-2 rounded-full transition-all duration-300 ${
+            i + 1 === step ? "w-8 bg-[#006bff]" : i + 1 < step ? "w-2 bg-[#006bff]/50" : "w-2 bg-[#d4e0ed]"
           }`}
         />
       ))}
@@ -136,20 +133,20 @@ function SlideCard({
   loading?: boolean;
 }) {
   return (
-    <div className="w-full max-w-lg mx-auto">
-      <div className="dark:bg-[#0d0e16] bg-white/90 border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-        <h2 className="text-xl font-bold dark:text-white text-slate-900 mb-1">{title}</h2>
+    <div className="w-full max-w-[640px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-white border border-[#d4e0ed] rounded-[24px] p-8 shadow-[0_8px_30px_rgb(0,107,255,0.05)]">
+        <h2 className="text-[38px] leading-tight font-bold text-[#0b3558] mb-3">{title}</h2>
         {subtitle && (
-          <p className="text-sm dark:text-slate-400 text-slate-500 mb-5">{subtitle}</p>
+          <p className="text-base text-[#476788] mb-8">{subtitle}</p>
         )}
-        <div className="mb-6">{children}</div>
-        <div className="flex gap-3">
+        <div className="mb-10 space-y-4">{children}</div>
+        <div className="flex gap-4">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
               disabled={loading}
-              className="flex-1 py-2.5 rounded-lg border dark:border-[#1b1c2b] border-slate-200 text-sm font-medium dark:text-slate-300 text-slate-600 disabled:opacity-50"
+              className="flex-1 py-3.5 rounded-lg border border-[#d4e0ed] bg-white text-base font-medium text-[#0b3558] disabled:opacity-50 hover:bg-[#f8f9fb] transition-colors"
             >
               Back
             </button>
@@ -158,7 +155,7 @@ function SlideCard({
             type="button"
             disabled={nextDisabled || loading}
             onClick={onNext}
-            className="flex-1 py-2.5 rounded-lg bg-[#6258ff] hover:bg-[#5045ff] disabled:opacity-50 text-white text-sm font-semibold"
+            className="flex-1 py-3.5 rounded-lg bg-[#006bff] hover:bg-[#0058d1] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm"
           >
             {loading ? "Setting up..." : nextLabel}
           </button>
@@ -186,6 +183,7 @@ export default function OnboardingFlow() {
   const [diagnosticAnswers, setDiagnosticAnswers] = useState<LocalDiagnosticAnswer[]>([]);
   const [probedConceptScores, setProbedConceptScores] = useState<Record<string, number>>({});
   const [completedDiagQuestions, setCompletedDiagQuestions] = useState<DiagnosticQuestion[]>([]);
+  const [showAnswer, setShowAnswer] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -239,8 +237,7 @@ export default function OnboardingFlow() {
   }, [loading, step, state.journey_type, state.covered_chapters, state.self_assessed_coverage]);
 
   const skipCoverageSteps = state.journey_type === "fresh_start";
-  const skipDiagnosticStep =
-    state.journey_type !== "fresh_start" && state.covered_chapters.length > 0;
+  const skipDiagnosticStep = false;
 
   const goToStep = (nextStep: number) => {
     setError("");
@@ -267,14 +264,6 @@ export default function OnboardingFlow() {
     if (prev === 7 && skipDiagnosticStep) prev = 6;
     if (prev === 8 && skipDiagnosticStep) prev = 6;
     goToStep(Math.max(1, prev));
-  };
-
-  const skipStep = () => {
-    if (step === 7) {
-      setDiagQuestions([]);
-      setDiagIndex(0);
-    }
-    goNext();
   };
 
   const finishOnboarding = async () => {
@@ -325,7 +314,7 @@ export default function OnboardingFlow() {
       router.replace("/dashboard");
       void result;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not enter sandbox");
+      setError(caught instanceof Error ? caught.message : "Could not enter classroom");
     } finally {
       setSaving(false);
     }
@@ -334,7 +323,7 @@ export default function OnboardingFlow() {
   const startDiagnostic = async () => {
     const supabaseId = auth.getSupabaseUserId();
     if (!supabaseId) {
-      setError("Profile link not ready — refresh and try again.");
+      setError("Profile link not ready. Refresh and try again.");
       return;
     }
     setDiagLoading(true);
@@ -355,6 +344,7 @@ export default function OnboardingFlow() {
       const data = await onboarding.startDiagnostic(supabaseId, { probes: plan.probes });
       setDiagQuestions(data.questions);
       setDiagIndex(0);
+      setShowAnswer(false);
       setDiagnosticAnswers([]);
       setProbedConceptScores({});
     } catch (caught) {
@@ -398,8 +388,10 @@ export default function OnboardingFlow() {
         setState((prev) => ({ ...prev, diagnostic_baseline: baseline }));
         setDiagQuestions([]);
         setDiagIndex(0);
+        setShowAnswer(false);
       } else {
         setDiagIndex(nextIndex);
+        setShowAnswer(false);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not record answer");
@@ -426,7 +418,7 @@ export default function OnboardingFlow() {
       state.journey_type === "fresh_start"
         ? `${chapters.reduce((sum, ch) => sum + ch.concept_count, 0) || 33} concepts ready to learn`
         : state.covered_chapters.length > 0
-          ? `${state.covered_chapters.length} chapter${state.covered_chapters.length === 1 ? "" : "s"} marked — starting from your gaps`
+          ? `${state.covered_chapters.length} chapter${state.covered_chapters.length === 1 ? "" : "s"} marked. Starting from your gaps.`
           : "Your path starts from chapter one",
       `Daily rhythm: ${state.daily_goal_minutes} min · ${state.preferred_depth} depth`,
     ];
@@ -462,34 +454,22 @@ export default function OnboardingFlow() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50">
-        <p className="text-sm dark:text-slate-400 text-slate-500">Setting up your classroom...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f9fb]">
+        <p className="text-base text-[#476788]">Setting up your classroom...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen dark:bg-[#05060c] bg-slate-50 px-4 py-8 font-sans dark:text-slate-100 text-slate-900">
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#6258ff]/10 blur-[120px] pointer-events-none" />
-      <div className="max-w-lg mx-auto relative">
-        <div className="flex items-center justify-between mb-6 min-h-[32px]">
-          {canSkipStep(step) ? (
-            <button
-              type="button"
-              onClick={skipStep}
-              disabled={saving}
-              className="text-sm font-medium dark:text-slate-400 text-slate-500 hover:dark:text-slate-200 hover:text-slate-800 disabled:opacity-50"
-            >
-              Skip
-            </button>
-          ) : (
-            <span className="w-10" />
-          )}
+    <div className="h-screen overflow-y-auto bg-[#f8f9fb] px-4 py-12 md:py-16 font-sans text-[#0b3558]">
+      <div className="max-w-[640px] mx-auto relative">
+        <div className="flex items-center justify-between mb-10 min-h-[32px]">
+          <span className="w-10" />
           <div className="text-center">
-            <p className="text-[11px] uppercase tracking-widest dark:text-slate-500 text-slate-400 font-semibold">
-              Enter the Sandbox
+            <p className="text-[14px] uppercase tracking-widest text-[#006bff] font-semibold">
+              Enter the Classroom
             </p>
-            <p className="text-xs dark:text-slate-500 text-slate-400 mt-0.5">
+            <p className="text-sm text-[#476788] mt-1">
               Step {step} of {TOTAL_STEPS}
             </p>
           </div>
@@ -497,7 +477,7 @@ export default function OnboardingFlow() {
         </div>
 
         {error && (
-          <div className="mb-4 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg p-2.5 text-center">
+          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 text-center">
             {error}
           </div>
         )}
@@ -512,14 +492,14 @@ export default function OnboardingFlow() {
                   key={opt.id}
                   type="button"
                   onClick={() => setState((s) => ({ ...s, journey_type: opt.id }))}
-                  className={`w-full text-left p-4 rounded-xl border transition-all ${
+                  className={`w-full text-left p-5 rounded-xl border transition-all duration-200 ${
                     state.journey_type === opt.id
-                      ? "border-[#6258ff] bg-[#6258ff]/10"
-                      : "dark:border-[#1b1c2b] border-slate-200 dark:hover:border-slate-600"
+                      ? "border-[#006bff] bg-[#006bff]/5 shadow-[0_2px_12px_rgb(0,107,255,0.08)]"
+                      : "border-[#d4e0ed] bg-white hover:border-[#0b3558]/30"
                   }`}
                 >
-                  <p className="font-semibold text-sm">{opt.title}</p>
-                  <p className="text-xs dark:text-slate-400 text-slate-500 mt-1">{opt.subtitle}</p>
+                  <p className="font-semibold text-[18px] text-[#0b3558]">{opt.title}</p>
+                  <p className="text-base text-[#476788] mt-1">{opt.subtitle}</p>
                 </button>
               ))}
             </div>
@@ -535,19 +515,19 @@ export default function OnboardingFlow() {
           >
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-500">
+                <label className="text-[14px] font-medium text-[#0b3558] block mb-2">
                   Exam
                 </label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-3">
                   {(["JEE_MAINS", "JEE_ADVANCED", "BOTH"] as const).map((exam) => (
                     <button
                       key={exam}
                       type="button"
                       onClick={() => setState((s) => ({ ...s, target_exam: exam }))}
-                      className={`py-2 rounded-lg text-xs font-medium border ${
+                      className={`py-3 rounded-lg text-[15px] font-medium border transition-colors ${
                         state.target_exam === exam
-                          ? "border-[#6258ff] bg-[#6258ff]/15"
-                          : "dark:border-[#1b1c2b] border-slate-200"
+                          ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
+                          : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
                       }`}
                     >
                       {exam === "BOTH" ? "Both" : exam === "JEE_MAINS" ? "Main" : "Advanced"}
@@ -556,19 +536,19 @@ export default function OnboardingFlow() {
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-500">
+                <label className="text-[14px] font-medium text-[#0b3558] block mb-2">
                   Class
                 </label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-3">
                   {(["CLASS_11", "CLASS_12", "DROPPER"] as const).map((grade) => (
                     <button
                       key={grade}
                       type="button"
                       onClick={() => setState((s) => ({ ...s, grade_level: grade }))}
-                      className={`py-2 rounded-lg text-xs font-medium border ${
+                      className={`py-3 rounded-lg text-[15px] font-medium border transition-colors ${
                         state.grade_level === grade
-                          ? "border-[#6258ff] bg-[#6258ff]/15"
-                          : "dark:border-[#1b1c2b] border-slate-200"
+                          ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
+                          : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
                       }`}
                     >
                       {grade === "DROPPER" ? "Dropper" : grade.replace("CLASS_", "Class ")}
@@ -577,7 +557,7 @@ export default function OnboardingFlow() {
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-500">
+                <label className="text-[14px] font-medium text-[#0b3558] block mb-2">
                   Target year
                 </label>
                 <input
@@ -586,7 +566,7 @@ export default function OnboardingFlow() {
                   onChange={(e) =>
                     setState((s) => ({ ...s, target_year: Number(e.target.value) || s.target_year }))
                   }
-                  className="w-full mt-2 dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full bg-white border border-[#d4e0ed] rounded-lg px-4 py-3 text-[15px] text-[#0b3558] focus:border-[#006bff] focus:ring-1 focus:ring-[#006bff] outline-none transition-all"
                 />
               </div>
             </div>
@@ -600,14 +580,14 @@ export default function OnboardingFlow() {
             onBack={goBack}
             onNext={goNext}
           >
-            <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
               {chapters.map((ch) => {
                 const checked = state.covered_chapters.includes(ch.name);
                 return (
                   <label
                     key={ch.name}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
-                      checked ? "border-[#6258ff]/60 bg-[#6258ff]/8" : "dark:border-[#1b1c2b] border-slate-200"
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+                      checked ? "border-[#006bff] bg-[#006bff]/5" : "border-[#d4e0ed] bg-white hover:border-[#0b3558]/30"
                     }`}
                   >
                     <input
@@ -621,11 +601,11 @@ export default function OnboardingFlow() {
                             : [...s.covered_chapters, ch.name],
                         }))
                       }
-                      className="accent-[#6258ff]"
+                      className="accent-[#006bff] w-4 h-4"
                     />
-                    <span className="text-sm flex-1">{ch.name}</span>
+                    <span className="text-base text-[#0b3558] flex-1">{ch.name}</span>
                     {ch.concept_count > 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full dark:bg-slate-800 bg-slate-100 dark:text-slate-400 text-slate-500">
+                      <span className="text-[12px] font-medium px-2.5 py-1 rounded-full bg-slate-100 text-[#476788]">
                         {ch.concept_count} concepts
                       </span>
                     )}
@@ -644,11 +624,11 @@ export default function OnboardingFlow() {
             onNext={goNext}
             nextDisabled={state.covered_chapters.length === 0}
           >
-            <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-6 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
               {state.covered_chapters.map((ch) => (
                 <div key={ch}>
-                  <p className="text-sm font-medium mb-2">{ch}</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <p className="text-base font-medium text-[#0b3558] mb-3">{ch}</p>
+                  <div className="grid grid-cols-3 gap-3">
                     {(["barely", "moderate", "strong"] as CoverageDepth[]).map((depth) => (
                       <button
                         key={depth}
@@ -662,10 +642,10 @@ export default function OnboardingFlow() {
                             },
                           }))
                         }
-                        className={`py-1.5 rounded-lg text-xs capitalize border ${
+                        className={`py-2 rounded-lg text-sm font-medium capitalize border transition-colors ${
                           state.self_assessed_coverage[ch] === depth
-                            ? "border-[#6258ff] bg-[#6258ff]/15"
-                            : "dark:border-[#1b1c2b] border-slate-200"
+                            ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
+                            : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
                         }`}
                       >
                         {depth}
@@ -680,7 +660,7 @@ export default function OnboardingFlow() {
 
         {step === 5 && (
           <SlideCard title="Where do you study from?" onBack={goBack} onNext={goNext}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {(
                 [
                   ["school", "School"],
@@ -693,10 +673,10 @@ export default function OnboardingFlow() {
                   key={id}
                   type="button"
                   onClick={() => setState((s) => ({ ...s, learning_source: id }))}
-                  className={`py-3 rounded-xl text-sm font-medium border ${
+                  className={`py-4 rounded-xl text-base font-medium border transition-colors ${
                     state.learning_source === id
-                      ? "border-[#6258ff] bg-[#6258ff]/15"
-                      : "dark:border-[#1b1c2b] border-slate-200"
+                      ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
+                      : "border-[#d4e0ed] bg-white text-[#0b3558] hover:border-[#0b3558]/30"
                   }`}
                 >
                   {label}
@@ -713,10 +693,10 @@ export default function OnboardingFlow() {
             onBack={goBack}
             onNext={goNext}
           >
-            <div className="space-y-5">
+            <div className="space-y-8">
               <div>
-                <label className="text-sm font-medium">
-                  Daily study goal: {state.daily_goal_minutes} min
+                <label className="text-base font-medium text-[#0b3558] block mb-4">
+                  Daily study goal: <span className="text-[#006bff] font-bold">{state.daily_goal_minutes === 120 ? "120+" : state.daily_goal_minutes} min</span>
                 </label>
                 <input
                   type="range"
@@ -727,23 +707,23 @@ export default function OnboardingFlow() {
                   onChange={(e) =>
                     setState((s) => ({ ...s, daily_goal_minutes: Number(e.target.value) }))
                   }
-                  className="w-full mt-3 accent-[#6258ff]"
+                  className="w-full accent-[#006bff]"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-500">
+                <label className="text-[14px] font-medium text-[#0b3558] block mb-3">
                   Preferred depth
                 </label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-3">
                   {(["quick", "standard", "deep"] as const).map((depth) => (
                     <button
                       key={depth}
                       type="button"
                       onClick={() => setState((s) => ({ ...s, preferred_depth: depth }))}
-                      className={`py-2 rounded-lg text-xs capitalize border ${
+                      className={`py-3 rounded-lg text-[15px] font-medium capitalize border transition-colors ${
                         state.preferred_depth === depth
-                          ? "border-[#6258ff] bg-[#6258ff]/15"
-                          : "dark:border-[#1b1c2b] border-slate-200"
+                          ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
+                          : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
                       }`}
                     >
                       {depth}
@@ -760,17 +740,17 @@ export default function OnboardingFlow() {
             title="Quick diagnostic"
             subtitle={
               state.journey_type === "fresh_start"
-                ? "Optional — quick check on your first chapters (~2 min)."
+                ? "Optional. Quick check on your first chapters (~2 min)."
                 : state.journey_type === "revision_dropper"
                   ? "One question per weak chapter to calibrate your sprint."
-                  : "One question per covered chapter — ~2–3 min."
+                  : "One question per covered chapter (~2–3 min)."
             }
             onBack={goBack}
             onNext={goNext}
             nextLabel="Continue"
           >
             {placementPlan && placementPlan.total_probes > 0 && diagQuestions.length === 0 && diagnosticAnswers.length === 0 && (
-              <p className="text-xs dark:text-slate-400 text-slate-500 mb-3">
+              <p className="text-sm text-[#476788] mb-4">
                 {placementPlan.total_probes} chapter probe{placementPlan.total_probes === 1 ? "" : "s"} · ~
                 {placementPlan.estimated_minutes} min
               </p>
@@ -780,26 +760,71 @@ export default function OnboardingFlow() {
                 type="button"
                 onClick={() => void startDiagnostic()}
                 disabled={diagLoading || (placementPlan?.total_probes ?? 1) === 0}
-                className="w-full py-3 rounded-xl bg-[#6258ff]/20 border border-[#6258ff]/40 text-sm font-semibold disabled:opacity-50"
+                className="w-full py-4 rounded-xl bg-[#006bff]/5 border border-[#006bff]/30 text-base text-[#006bff] font-semibold disabled:opacity-50 hover:bg-[#006bff]/10 transition-colors"
               >
                 {diagLoading ? "Loading questions..." : "Start diagnostic"}
               </button>
             )}
             {diagQuestions.length > 0 && (
-              <div className="space-y-4">
-                <p className="text-xs dark:text-slate-400 text-slate-500">
-                  Chapter {diagIndex + 1} of {diagQuestions.length} · {diagQuestions[diagIndex]?.chapter}
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-medium text-[#476788] mb-1">
+                    Chapter {diagIndex + 1} of {diagQuestions.length} · {diagQuestions[diagIndex]?.chapter}
+                  </p>
+                  <p className="text-xs text-[#006bff] font-semibold">
+                    {diagQuestions[diagIndex]?.concept_name}
+                  </p>
+                </div>
+                <p className="text-base text-[#0b3558] leading-relaxed p-4 bg-[#f8f9fb] border border-[#d4e0ed] rounded-lg">
+                  {diagQuestions[diagIndex]?.question_text}
                 </p>
-                <p className="text-[11px] dark:text-slate-500 text-slate-400">
-                  {diagQuestions[diagIndex]?.concept_name}
-                </p>
-                <p className="text-sm leading-relaxed">{diagQuestions[diagIndex]?.question_text}</p>
-                <div className="grid grid-cols-2 gap-3">
+                {diagQuestions[diagIndex]?.image_url && (
+                  <div className="mt-2 mb-4 flex justify-center bg-white p-4 rounded-lg border border-[#d4e0ed]">
+                    <img
+                      src={diagQuestions[diagIndex].image_url}
+                      alt="Question diagram"
+                      className="max-w-full h-auto max-h-[250px] object-contain rounded"
+                    />
+                  </div>
+                )}
+
+                {showAnswer ? (
+                  <div className="mt-4 mb-6 p-4 rounded-lg bg-indigo-50/30 border border-indigo-100">
+                    <p className="text-sm font-semibold text-indigo-800 mb-2">Solution</p>
+                    {diagQuestions[diagIndex]?.solution_text && (
+                      <div className="text-sm text-[#0b3558] mb-3 whitespace-pre-wrap">
+                        <MarkdownMath content={diagQuestions[diagIndex].solution_text!} />
+                      </div>
+                    )}
+                    {diagQuestions[diagIndex]?.solution_image_url && (
+                      <div className="flex justify-center bg-white p-3 rounded border border-indigo-100 mt-2">
+                        <img
+                          src={diagQuestions[diagIndex].solution_image_url!}
+                          alt="Solution diagram"
+                          className="max-w-full h-auto max-h-[200px] object-contain rounded"
+                        />
+                      </div>
+                    )}
+                    {!diagQuestions[diagIndex]?.solution_text && !diagQuestions[diagIndex]?.solution_image_url && (
+                      <p className="text-sm text-slate-500 italic">No solution provided for this question.</p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAnswer(true)}
+                    className="w-full py-3 mb-6 rounded-lg bg-[#f8f9fb] text-[#006bff] border border-[#006bff]/20 font-medium text-sm hover:bg-[#006bff]/5 transition-colors"
+                  >
+                    Show Answer
+                  </button>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
                     onClick={() => void gradeDiagnostic(true)}
                     disabled={diagGrading}
-                    className="py-2.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-sm disabled:opacity-50"
+                    className="py-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-base hover:bg-emerald-100 transition-colors disabled:opacity-50"
                   >
                     Got it right
                   </button>
@@ -807,7 +832,7 @@ export default function OnboardingFlow() {
                     type="button"
                     onClick={() => void gradeDiagnostic(false)}
                     disabled={diagGrading}
-                    className="py-2.5 rounded-lg bg-red-600/20 border border-red-500/40 text-sm disabled:opacity-50"
+                    className="py-3 rounded-lg bg-red-50 text-red-700 border border-red-200 font-medium text-base hover:bg-red-100 transition-colors disabled:opacity-50"
                   >
                     Got it wrong
                   </button>
@@ -815,8 +840,8 @@ export default function OnboardingFlow() {
               </div>
             )}
             {diagQuestions.length === 0 && diagnosticAnswers.length > 0 && (
-              <p className="text-sm text-emerald-400">
-                Diagnostic complete — {diagnosticAnswers.length} chapter
+              <p className="text-base font-medium text-emerald-600 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                Diagnostic complete. {diagnosticAnswers.length} chapter
                 {diagnosticAnswers.length === 1 ? "" : "s"} probed.
               </p>
             )}
@@ -825,18 +850,18 @@ export default function OnboardingFlow() {
 
         {step === 8 && (
           <SlideCard
-            title="Your Sandbox"
-            subtitle="Here's your starting state — your classroom is ready."
+            title="Your Classroom"
+            subtitle="Here's your starting state. Your classroom is ready."
             onBack={goBack}
             onNext={() => void finishOnboarding()}
-            nextLabel="Enter Sandbox"
+            nextLabel="Enter Classroom"
             loading={saving}
           >
             <div className="space-y-3">
               {revealCards.map((line, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-xl dark:bg-[#07080d] bg-slate-50 border dark:border-[#1b1c2b] border-slate-200 text-sm"
+                  className="p-4 rounded-xl bg-[#f8f9fb] border border-[#d4e0ed] text-base text-[#0b3558] font-medium"
                 >
                   {line}
                 </div>

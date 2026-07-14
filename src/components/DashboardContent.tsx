@@ -247,7 +247,7 @@ export default function DashboardContent() {
         <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#6258ff]/30 border-indigo-200 rounded-xl p-5 shadow-lg mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-bold text-[#8584ff] uppercase tracking-wider">Sandbox position</p>
+              <p className="text-[10px] font-bold text-[#8584ff] uppercase tracking-wider">Classroom position</p>
               <h2 className="text-base font-bold dark:text-white text-slate-900 mt-1">{currentNode.concept_name}</h2>
               <p className="text-xs dark:text-slate-500 text-slate-500 mt-0.5">
                 {currentNode.chapter} · {currentNode.node_type} · {currentNode.estimated_minutes} min

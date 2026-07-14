@@ -341,7 +341,7 @@ export default function ChatContent() {
                             {/* Try next suggested prompts */}
                             {msg.tryNext && msg.tryNext.length > 0 && (
                               <div className="pt-3 border-t dark:border-[#1b1c2b] border-slate-200/65 mt-4">
-                                <p className="text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-widest mb-2.5">Try next —</p>
+                                <p className="text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-widest mb-2.5">Try next:</p>
                                 <div className="space-y-2">
                                   {msg.tryNext.map((q, idx) => (
                                     <button
@@ -390,7 +390,7 @@ export default function ChatContent() {
                   </div>
                 </div>
                 <div className="mt-2.5 flex items-center justify-between text-[9.5px] font-bold dark:text-slate-600 text-slate-400 tracking-wider uppercase">
-                  <span>KaTeX supported — type $F = ma$ for inline math</span>
+                  <span>KaTeX supported. Type $F = ma$ for inline math.</span>
                   <span>Press enter to send</span>
                 </div>
               </form>
