@@ -52,6 +52,31 @@ body {
   box-sizing: border-box;
 }
 
+/* Baseline keyboard focus indicator for interactive elements that don't
+   define their own focus-visible ring. Mouse clicks stay ring-free. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #8584ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .study-sidebar {
   background: var(--bg-main, #05060c);
   font-family: "Sora", "Manrope", "Segoe UI", sans-serif;
@@ -279,13 +304,40 @@ body {
   font-weight: 700;
 }
 
-.markdown-math img {
+.markdown-math img,
+.markdown-math .markdown-diagram {
   display: block;
   max-width: 100%;
-  margin: 14px 0;
+  max-height: 360px;
+  width: auto;
+  height: auto;
+  margin: 14px auto;
   border-radius: 8px;
   background: #ffffff;
-  padding: 6px;
+  padding: 10px;
+  object-fit: contain;
+}
+
+.markdown-diagram-wrap {
+  display: block;
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(98, 88, 255, 0.2);
+  background: #ffffff;
+}
+
+.markdown-diagram-wrap .markdown-diagram {
+  margin: 0 auto;
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-diagram-fallback {
+  color: #64748b;
+  font-size: 0.78rem;
+  text-align: center;
+  margin: 8px 0 0;
 }
 
 .markdown-math .katex-display {
@@ -310,6 +362,66 @@ body {
 
 .markdown-math--card p {
   margin: 0;
+}
+
+.markdown-math--slide {
+  color: var(--text-main, #e8e9f5);
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+.markdown-math--slide p + p {
+  margin-top: 0.65rem;
+}
+
+.markdown-math--formula {
+  font-size: 1rem;
+  overflow-x: auto;
+}
+
+.markdown-math--formula .katex-display {
+  margin: 0.5rem 0;
+  max-width: 100%;
+}
+
+.markdown-math--formula .katex-display > .katex {
+  white-space: normal;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* KaTeX parse fallbacks — never show screaming red error blocks */
+.markdown-math .katex-error {
+  color: var(--text-muted, #9698aa) !important;
+  background: rgba(98, 88, 255, 0.06);
+  border: 1px solid rgba(98, 88, 255, 0.15);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.slide-body-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(98, 88, 255, 0.35) transparent;
+}
+
+/* Follow-up picker deck — compact preview cards in chat */
+.picker-card-grid {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .picker-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .picker-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .markdown-math code {

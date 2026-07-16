@@ -9,6 +9,40 @@ type SortOrder = "asc" | "desc";
 
 const DEFAULT_CHART_COLORS = ["#6258ff", "#eab308", "#ef4444", "#38bdf8", "#22c55e"];
 
+function SortHeader({
+  label,
+  columnKey,
+  sortKey,
+  sortOrder,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  columnKey: SortKey;
+  sortKey: SortKey;
+  sortOrder: SortOrder;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const isActive = sortKey === columnKey;
+  const ariaSort = isActive ? (sortOrder === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <th aria-sort={ariaSort} className={`py-3 px-4 ${align === "right" ? "text-right" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(columnKey)}
+        aria-label={`Sort by ${label}${isActive ? (sortOrder === "asc" ? ", ascending" : ", descending") : ""}`}
+        className={`inline-flex items-center gap-1 cursor-pointer uppercase tracking-wider dark:hover:text-white hover:text-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] rounded ${
+          align === "right" ? "flex-row-reverse" : ""
+        }`}
+      >
+        {label}
+        <span aria-hidden="true">{isActive ? (sortOrder === "asc" ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
+
 export default function ProgressContent() {
   const { data, setData } = useApp();
   const [searchTerm, setSearchTerm] = useState("");
@@ -181,7 +215,14 @@ export default function ProgressContent() {
 
           <div className="relative w-full h-[200px]">
             {proficiencyOverTime.chapters.length > 0 ? (
-              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+              <svg
+                viewBox={`0 0 ${width} ${height}`}
+                className="w-full h-full"
+                role="img"
+                aria-label={`Proficiency over the last ${proficiencyOverTime.dates.length} days for ${proficiencyOverTime.chapters
+                  .map((c) => c.name)
+                  .join(", ")}.`}
+              >
                 {[0, 25, 50, 75, 100].map((grid) => {
                   const y = paddingTop + chartHeight - (grid / 100) * chartHeight;
                   return (
@@ -302,6 +343,7 @@ export default function ProgressContent() {
           <input
             type="text"
             placeholder="Search concepts or chapters..."
+            aria-label="Search concepts or chapters"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 text-xs dark:text-white text-slate-900 placeholder-slate-600 rounded-lg px-3 py-1.5 outline-none transition-colors w-full sm:w-[220px]"
@@ -312,42 +354,12 @@ export default function ProgressContent() {
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="border-b dark:border-[#1b1c2b] border-slate-200 text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-wider select-none">
-                <th
-                  onClick={() => handleSort("concept")}
-                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors"
-                >
-                  Concept {sortKey === "concept" && (sortOrder === "asc" ? "▲" : "▼")}
-                </th>
-                <th
-                  onClick={() => handleSort("chapter")}
-                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors"
-                >
-                  Chapter {sortKey === "chapter" && (sortOrder === "asc" ? "▲" : "▼")}
-                </th>
-                <th
-                  onClick={() => handleSort("score")}
-                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors text-right"
-                >
-                  Score {sortKey === "score" && (sortOrder === "asc" ? "▲" : "▼")}
-                </th>
-                <th
-                  onClick={() => handleSort("attempts")}
-                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors text-right"
-                >
-                  Attempts {sortKey === "attempts" && (sortOrder === "asc" ? "▲" : "▼")}
-                </th>
-                <th
-                  onClick={() => handleSort("accuracy")}
-                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors text-right"
-                >
-                  Accuracy {sortKey === "accuracy" && (sortOrder === "asc" ? "▲" : "▼")}
-                </th>
-                <th
-                  onClick={() => handleSort("lastAttempted")}
-                  className="py-3 px-4 cursor-pointer dark:hover:text-white text-slate-900 transition-colors"
-                >
-                  Last Attempted {sortKey === "lastAttempted" && (sortOrder === "asc" ? "▲" : "▼")}
-                </th>
+                <SortHeader label="Concept" columnKey="concept" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
+                <SortHeader label="Chapter" columnKey="chapter" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
+                <SortHeader label="Score" columnKey="score" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
+                <SortHeader label="Attempts" columnKey="attempts" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
+                <SortHeader label="Accuracy" columnKey="accuracy" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
+                <SortHeader label="Last Attempted" columnKey="lastAttempted" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
                 <th className="py-3 px-4 text-center">Trend</th>
               </tr>
             </thead>

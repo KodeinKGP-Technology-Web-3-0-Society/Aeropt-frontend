@@ -26,6 +26,7 @@ export type Concept = {
   score: number;
   attempts: number;
   tag: string | null;
+  not_started?: boolean;
 };
 
 export type Chapter = {
@@ -196,7 +197,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }));
       }
     } catch {
-      setOnboardingCompleted(false);
+      // Transient /auth/me failure: don't force a completed user back into
+      // onboarding. Leave the current flag untouched so a network blip can't
+      // trap them on the onboarding flow.
     } finally {
       setOnboardingLoading(false);
     }

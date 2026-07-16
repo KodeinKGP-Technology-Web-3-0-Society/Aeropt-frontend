@@ -15,6 +15,7 @@ import type {
   PlacementPlan,
 } from "@/lib/onboarding";
 import * as auth from "@/lib/auth";
+import { SlideDots } from "@/components/slides/SlideShell";
 
 const TOTAL_STEPS = 8;
 const DRAFT_KEY = "prepwise_onboarding_draft";
@@ -98,19 +99,8 @@ function buildDiagnosticBaseline(
   };
 }
 
-function StepDots({ step }: { step: number }) {
-  return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-        <span
-          key={i}
-          className={`h-2 rounded-full transition-all duration-300 ${
-            i + 1 === step ? "w-8 bg-[#006bff]" : i + 1 < step ? "w-2 bg-[#006bff]/50" : "w-2 bg-[#d4e0ed]"
-          }`}
-        />
-      ))}
-    </div>
-  );
+function canSkipStep(step: number): boolean {
+  return step === 5 || step === 6 || step === 7;
 }
 
 function SlideCard({
@@ -414,7 +404,9 @@ export default function OnboardingFlow() {
     };
     const cards = [
       `Your target: ${target} ${state.target_year}`,
-      `You've covered ${state.covered_chapters.length}/${chapters.length || 12} Physics chapters`,
+      chapters.length > 0
+        ? `You've covered ${state.covered_chapters.length}/${chapters.length} Physics chapters`
+        : `You've covered ${state.covered_chapters.length} Physics chapter${state.covered_chapters.length === 1 ? "" : "s"}`,
       state.journey_type === "fresh_start"
         ? `${chapters.reduce((sum, ch) => sum + ch.concept_count, 0) || 33} concepts ready to learn`
         : state.covered_chapters.length > 0
@@ -450,7 +442,7 @@ export default function OnboardingFlow() {
 
     cards.push("First up: your personalized learning path");
     return cards;
-  }, [state, chapters.length]);
+  }, [state, chapters]);
 
   if (loading) {
     return (
@@ -477,12 +469,18 @@ export default function OnboardingFlow() {
         </div>
 
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mb-4 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg p-2.5 text-center"
+          >
             {error}
           </div>
         )}
 
-        <StepDots step={step} />
+        <div className="mb-6">
+          <SlideDots total={TOTAL_STEPS} current={step - 1} />
+        </div>
 
         {step === 1 && (
           <SlideCard title="Welcome to PrepWise" subtitle="Tell us where you are on your JEE journey." onNext={goNext}>
