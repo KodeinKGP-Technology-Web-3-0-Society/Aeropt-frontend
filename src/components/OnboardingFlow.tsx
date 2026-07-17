@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppContext";
 import * as onboarding from "@/lib/onboarding";
 import MarkdownMath from "@/components/MarkdownMath";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
   ChapterMeta,
   CoverageDepth,
@@ -142,13 +143,17 @@ function SlideCard({
             </button>
           )}
           <button
-            type="button"
-            disabled={nextDisabled || loading}
-            onClick={onNext}
-            className="flex-1 py-3.5 rounded-lg bg-[#006bff] hover:bg-[#0058d1] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm"
-          >
-            {loading ? "Setting up..." : nextLabel}
-          </button>
+          type="button"
+          onClick={onNext}
+          disabled={nextDisabled || loading}
+          className="flex-1 py-3.5 rounded-lg bg-[#006bff] hover:bg-[#0058d1] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm flex items-center justify-center"
+        >
+          {loading ? (
+            <LoadingSpinner size={24} className="text-white" />
+          ) : (
+            nextLabel
+          )}
+        </button>
         </div>
       </div>
     </div>
@@ -446,8 +451,11 @@ export default function OnboardingFlow() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8f9fb]">
-        <p className="text-base text-[#476788]">Setting up your classroom...</p>
+      <div className="flex flex-col min-h-screen items-center justify-center bg-[#f8f9fb]">
+        <div className="mb-4">
+          <LoadingSpinner size={64} className="text-[#006bff]" />
+        </div>
+        <p className="text-base text-[#476788] font-medium">Setting up your classroom...</p>
       </div>
     );
   }
@@ -756,11 +764,15 @@ export default function OnboardingFlow() {
             {diagQuestions.length === 0 && diagnosticAnswers.length === 0 && (
               <button
                 type="button"
-                onClick={() => void startDiagnostic()}
+                onClick={startDiagnostic}
                 disabled={diagLoading || (placementPlan?.total_probes ?? 1) === 0}
-                className="w-full py-4 rounded-xl bg-[#006bff]/5 border border-[#006bff]/30 text-base text-[#006bff] font-semibold disabled:opacity-50 hover:bg-[#006bff]/10 transition-colors"
+                className="w-full py-3 rounded-lg bg-[#006bff] text-white font-semibold text-base hover:bg-[#0052cc] transition-colors disabled:opacity-50 flex items-center justify-center"
               >
-                {diagLoading ? "Loading questions..." : "Start diagnostic"}
+                {diagLoading ? (
+                  <LoadingSpinner size={24} className="text-white" />
+                ) : (
+                  "Start diagnostic"
+                )}
               </button>
             )}
             {diagQuestions.length > 0 && (
