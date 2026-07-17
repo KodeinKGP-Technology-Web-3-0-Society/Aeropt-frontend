@@ -99,6 +99,49 @@ export function chapterMasteryPct(nodes: PathNode[]): number {
 
 export type StudyStage = "theory" | "example" | "practice" | "pyq";
 
+export type NodeEntryMode = "start" | "resume" | "review";
+
+export type NodeEntry = {
+  mode: NodeEntryMode;
+  stage: StudyStage;
+  stageIndex: number;
+  /** When true, ChatWorkspace starts a clean session then strips `fresh`. */
+  fresh: boolean;
+  /** Card CTA, e.g. "Resume · Example" */
+  label: string;
+  /** Hero / dashboard primary button */
+  heroLabel: string;
+};
+
+export type StageProgressItem = {
+  stage: StudyStage;
+  label: string;
+  state: "done" | "current" | "todo";
+};
+
+export type BuildChatUrlOptions = {
+  stage?: StudyStage;
+  fresh?: boolean;
+};
+
+const DEFAULT_SEQUENCE: StudyStage[] = ["theory", "example", "practice", "pyq"];
+
+function isStudyStage(value: string): value is StudyStage {
+  return value === "theory" || value === "example" || value === "practice" || value === "pyq";
+}
+
+export function formatStageLabel(stage: StudyStage): string {
+  if (stage === "pyq") return "PYQ";
+  return stage.charAt(0).toUpperCase() + stage.slice(1);
+}
+
+/** Normalized content_sequence for a node (falls back to theory→pyq). */
+export function nodeContentSequence(node: PathNode): StudyStage[] {
+  const raw = node.content_sequence?.length ? node.content_sequence : DEFAULT_SEQUENCE;
+  const stages = raw.filter(isStudyStage);
+  return stages.length > 0 ? stages : [...DEFAULT_SEQUENCE];
+}
+
 export function stagePrompt(conceptName: string, stage: StudyStage): string {
   switch (stage) {
     case "theory":
@@ -114,12 +157,147 @@ export function stagePrompt(conceptName: string, stage: StudyStage): string {
   }
 }
 
-export function buildContinueChatUrl(node: PathNode, stage: StudyStage = "theory"): string {
+/**
+ * Decide Start vs Resume vs Review for a roadmap node.
+ * Resume uses local bind (stage + session) and omits `fresh` so chat does not restart.
+ */
+export function resolveNodeEntry(node: PathNode): NodeEntry {
+  const sequence = nodeContentSequence(node);
+  const firstStage = sequence[0] ?? "theory";
+
+  if (node.status === "completed" || node.status === "skipped") {
+    return {
+      mode: "review",
+      stage: firstStage,
+      stageIndex: 0,
+      fresh: true,
+      label: `Review · ${formatStageLabel(firstStage)}`,
+      heroLabel: "Review concept",
+    };
+  }
+
+  if (node.status === "in_progress") {
+    const bind = readRoadmapSessionBind(node.id);
+    const stageIndex =
+      bind && bind.stageIndex >= 0 && bind.stageIndex < sequence.length
+        ? bind.stageIndex
+        : 0;
+    const stage = sequence[stageIndex] ?? firstStage;
+    return {
+      mode: "resume",
+      stage,
+      stageIndex,
+      fresh: false,
+      label: `Resume · ${formatStageLabel(stage)}`,
+      heroLabel: `Resume · ${formatStageLabel(stage)}`,
+    };
+  }
+
+  return {
+    mode: "start",
+    stage: firstStage,
+    stageIndex: 0,
+    fresh: true,
+    label: `Start · ${formatStageLabel(firstStage)}`,
+    heroLabel: "Start learning",
+  };
+}
+
+/** Stage strip for in-progress / current cards (and completed = all done). */
+export function nodeStageProgress(node: PathNode): StageProgressItem[] {
+  const sequence = nodeContentSequence(node);
+  if (node.status === "completed") {
+    return sequence.map((stage) => ({
+      stage,
+      label: formatStageLabel(stage),
+      state: "done" as const,
+    }));
+  }
+  const entry = resolveNodeEntry(node);
+  // Pending = about to start at first stage; in_progress uses bind index.
+  const currentIndex = node.status === "pending" ? 0 : entry.stageIndex;
+  return sequence.map((stage, index) => ({
+    stage,
+    label: formatStageLabel(stage),
+    state:
+      index < currentIndex
+        ? ("done" as const)
+        : index === currentIndex
+          ? ("current" as const)
+          : ("todo" as const),
+  }));
+}
+
+/**
+ * Build /chat URL for a roadmap node.
+ * - No second arg: uses {@link resolveNodeEntry} (resume-aware).
+ * - `StudyStage` string: force that stage with `fresh=1` (legacy / explicit restart).
+ * - Options object: explicit stage + fresh.
+ */
+export function buildContinueChatUrl(
+  node: PathNode,
+  stageOrOptions?: StudyStage | BuildChatUrlOptions,
+): string {
+  let stage: StudyStage;
+  let fresh: boolean;
+
+  if (typeof stageOrOptions === "string") {
+    stage = stageOrOptions;
+    fresh = true;
+  } else if (stageOrOptions) {
+    stage = stageOrOptions.stage ?? resolveNodeEntry(node).stage;
+    fresh = stageOrOptions.fresh ?? true;
+  } else {
+    const entry = resolveNodeEntry(node);
+    stage = entry.stage;
+    fresh = entry.fresh;
+  }
+
   const params = new URLSearchParams({
     concept_id: node.concept_id,
     node_id: node.id,
     stage,
     prompt: stagePrompt(node.concept_name, stage),
   });
+  if (fresh) {
+    // One-shot: ChatWorkspace starts a clean session then strips this param.
+    params.set("fresh", "1");
+  }
   return `/chat?${params.toString()}`;
+}
+
+/** localStorage key binding a roadmap node to its active study session + stage. */
+export function roadmapSessionBindKey(nodeId: string): string {
+  return `aeropt-roadmap-bind:${nodeId}`;
+}
+
+export type RoadmapSessionBind = {
+  sessionId: string | null;
+  stageIndex: number;
+};
+
+export function readRoadmapSessionBind(nodeId: string): RoadmapSessionBind | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(roadmapSessionBindKey(nodeId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RoadmapSessionBind;
+    if (typeof parsed.stageIndex !== "number") return null;
+    return {
+      sessionId: parsed.sessionId ?? null,
+      stageIndex: parsed.stageIndex,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeRoadmapSessionBind(nodeId: string, bind: RoadmapSessionBind): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(roadmapSessionBindKey(nodeId), JSON.stringify(bind));
+}
+
+export function clearRoadmapSessionBind(nodeId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(roadmapSessionBindKey(nodeId));
 }

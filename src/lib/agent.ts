@@ -40,20 +40,61 @@ export type ProactiveCardPayload = {
   action?: string | null;
 };
 
+export type StudySlideItem = {
+  id: string;
+  type: string;
+  title: string;
+  body_md: string;
+  image_url?: string | null;
+};
+
+export type SlidesPayload = {
+  mode: string;
+  slides: StudySlideItem[];
+  current_index?: number;
+};
+
+export type StructuredLessonPayload = {
+  filling_gap?: string;
+  solution_steps?: string[];
+  insight?: string;
+};
+
+export type TurnPresentationPayload = {
+  slides?: SlidesPayload | null;
+  flashcards?: FlashcardsPayload | null;
+  grading_ui?: GradingUIPayload | null;
+  quiz_assessment?: QuizAssessmentPayload | null;
+  card?: ProactiveCardPayload | null;
+  mistake_brief?: string | null;
+  score_summary?: string | null;
+  structured?: StructuredLessonPayload | null;
+  proficiency_pct?: number | null;
+  awaiting_graded_response?: boolean;
+  follow_up_suggestions?: Array<Record<string, unknown> | string> | null;
+  quiz_steps?: Array<Record<string, unknown>> | null;
+  primary_concept_id?: string | null;
+  content_type_requested?: string | null;
+};
+
 export type AgentChatResponse = {
   session_id: string;
   response?: string | null;
   score_summary?: string | null;
   mistake_brief?: string | null;
   agent_used?: string | null;
-  follow_up_suggestions?: Array<Record<string, unknown>> | null;
+  follow_up_suggestions?: Array<Record<string, unknown> | string> | null;
   quiz_steps?: Array<Record<string, unknown>> | null;
   awaiting_graded_response?: boolean;
   flashcards?: FlashcardsPayload | null;
   grading_ui?: GradingUIPayload | null;
   quiz_assessment?: QuizAssessmentPayload | null;
   card?: ProactiveCardPayload | null;
+  slides?: SlidesPayload | null;
+  structured?: StructuredLessonPayload | null;
   proficiency_pct?: number | null;
+  primary_concept_id?: string | null;
+  content_type_requested?: string | null;
   error?: string | null;
 };
 
@@ -75,7 +116,35 @@ export type ChatTurnItem = {
   content: string;
   turn_index: number;
   agent_used?: string | null;
+  presentation?: TurnPresentationPayload | null;
 };
+
+export function presentationToAgentResponse(
+  sessionId: string,
+  turn: ChatTurnItem,
+): AgentChatResponse | null {
+  const pres = turn.presentation;
+  if (!pres && turn.role !== "assistant") return null;
+  return {
+    session_id: sessionId,
+    response: turn.content,
+    agent_used: turn.agent_used ?? null,
+    score_summary: pres?.score_summary ?? null,
+    mistake_brief: pres?.mistake_brief ?? null,
+    awaiting_graded_response: pres?.awaiting_graded_response ?? false,
+    flashcards: pres?.flashcards ?? null,
+    grading_ui: pres?.grading_ui ?? null,
+    quiz_assessment: pres?.quiz_assessment ?? null,
+    card: pres?.card ?? null,
+    slides: pres?.slides ?? null,
+    structured: pres?.structured ?? null,
+    proficiency_pct: pres?.proficiency_pct ?? null,
+    follow_up_suggestions: pres?.follow_up_suggestions ?? null,
+    quiz_steps: (pres?.quiz_steps as AgentChatResponse["quiz_steps"]) ?? null,
+    primary_concept_id: pres?.primary_concept_id ?? null,
+    content_type_requested: pres?.content_type_requested ?? null,
+  };
+}
 
 export type ChatSessionDetail = {
   session_id: string;
@@ -114,6 +183,26 @@ export async function fetchChatSessionDetail(
     throw new Error(sessionApiError(response, data));
   }
   return (await response.json()) as ChatSessionDetail;
+}
+
+export type ConceptProficiency = {
+  concept_id: string;
+  proficiency_pct: number | null;
+  proficiency_score?: number | null;
+  flagged_weak?: boolean | null;
+};
+
+/** Durable mastery from Supabase `user_concept_state` for the Live proficiency panel. */
+export async function fetchConceptProficiency(
+  userId: string,
+  conceptId: string,
+): Promise<ConceptProficiency | null> {
+  const params = new URLSearchParams({ user_id: userId });
+  const response = await fetch(
+    `${getAgentApiBase()}/api/v1/concepts/${encodeURIComponent(conceptId)}/proficiency?${params}`,
+  );
+  if (!response.ok) return null;
+  return (await response.json()) as ConceptProficiency;
 }
 
 export async function sendChatMessage(payload: {

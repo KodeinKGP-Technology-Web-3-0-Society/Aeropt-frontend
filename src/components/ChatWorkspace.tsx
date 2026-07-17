@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import MarkdownMath from "@/components/MarkdownMath";
 import StudySidebar from "@/components/StudySidebar";
 import {
@@ -11,15 +11,20 @@ import {
   QuizAssessmentNotice,
   StudyStepBar,
 } from "@/components/StudySessionCards";
-import { AgentChatResponse, PlacementContext, sendChatMessage, fetchChatSessions, fetchChatSessionDetail, type ChatTurnItem } from "@/lib/agent";
+import { AgentChatResponse, PlacementContext, sendChatMessage, fetchChatSessions, fetchChatSessionDetail, fetchConceptProficiency, presentationToAgentResponse, type ChatTurnItem } from "@/lib/agent";
+import ProactiveIntroCard from "@/components/slides/ProactiveIntroCard";
+import TheorySlideDeck from "@/components/slides/TheorySlideDeck";
 import { getSupabaseUserId } from "@/lib/auth";
 import { getAgentApiBase } from "@/lib/auth";
 import type { FlashcardItem } from "@/lib/agent";
 import * as onboarding from "@/lib/onboarding";
 import {
+  clearRoadmapSessionBind,
   fetchRoadmap,
+  readRoadmapSessionBind,
   stagePrompt,
   updateRoadmapProgress,
+  writeRoadmapSessionBind,
   type PathNode,
   type StudyStage,
 } from "@/lib/roadmap";
@@ -55,6 +60,16 @@ type Session = {
 const agentBaseUrl = getAgentApiBase();
 const SESSION_STORAGE_KEY = "agent_active_session_id";
 
+/** Stable across live UUID vs history turn_id so slide progress survives refresh. */
+function slideDeckStorageKey(
+  sessionId: string,
+  mode: string | undefined,
+  slides: { id?: string }[],
+): string {
+  const stamp = slides.map((s) => s.id || "").filter(Boolean).join("~");
+  return `aeropt-slide:${sessionId}:${mode || "deck"}:${stamp.slice(0, 160) || "anon"}`;
+}
+
 const fallbackPrompts = [
   "Explain torque and moment of inertia",
   "Give me a practice question on Newton's 2nd law",
@@ -78,20 +93,51 @@ function formatSessionTitle(
   return `Session ${index + 1}`;
 }
 
+function normalizeSuggestions(
+  suggestions: AgentChatResponse["follow_up_suggestions"],
+): string[] {
+  if (!suggestions) return [];
+  return suggestions
+    .map((item) => {
+      if (typeof item === "string") return item;
+      const preview = (item as { preview?: string }).preview;
+      return preview || (item as { text?: string }).text || "";
+    })
+    .filter(Boolean);
+}
+
 function turnsToMessages(turns: ChatTurnItem[], sessionId: string): Message[] {
-  return turns.map((turn) => ({
-    id: turn.turn_id || `turn-${turn.turn_index}`,
-    role: turn.role === "user" ? "user" : "assistant",
-    content: turn.content,
-    agent:
-      turn.role === "user"
-        ? null
-        : {
-            session_id: sessionId,
-            response: turn.content,
-            agent_used: turn.agent_used ?? null,
-          },
-  }));
+  return turns.map((turn) => {
+    const agent =
+      turn.role === "user" ? null : presentationToAgentResponse(sessionId, turn);
+    const structured = agent?.structured;
+    const tryNext = normalizeSuggestions(agent?.follow_up_suggestions);
+    return {
+      id: turn.turn_id || `turn-${turn.turn_index}`,
+      role: turn.role === "user" ? "user" : "assistant",
+      content: turn.content,
+      agent,
+      structured_response: structured
+        ? {
+            filling_gap: structured.filling_gap || "",
+            solution_steps: structured.solution_steps || [],
+            insight: structured.insight || "",
+            try_next: tryNext,
+            concepts_mentioned: agent?.primary_concept_id ? [agent.primary_concept_id] : [],
+            prerequisite_chain: [],
+          }
+        : tryNext.length > 0
+          ? {
+              filling_gap: "",
+              solution_steps: [],
+              insight: "",
+              try_next: tryNext,
+              concepts_mentioned: agent?.primary_concept_id ? [agent.primary_concept_id] : [],
+              prerequisite_chain: [],
+            }
+          : undefined,
+    };
+  });
 }
 
 function ArrowUpIcon() {
@@ -128,20 +174,26 @@ function TypingIndicator() {
   );
 }
 
-type AgentChatResponseLegacy = AgentChatResponse;
-
 function AssistantExtras({
   agent,
   onGrade,
   onPickCard,
   gradingDisabled,
   suppressPicker,
+  isLatest,
+  onSlidesComplete,
+  onSlideChange,
+  slideStorageKey,
 }: {
   agent?: AgentChatResponse | null;
   onGrade: (outcome: "correct" | "incorrect") => void;
   onPickCard: (card: FlashcardItem) => void;
   gradingDisabled?: boolean;
   suppressPicker?: boolean;
+  isLatest?: boolean;
+  onSlidesComplete?: () => void;
+  onSlideChange?: (current: number, total: number) => void;
+  slideStorageKey?: string;
 }) {
   if (!agent) return null;
   const showFlashcards =
@@ -149,7 +201,27 @@ function AssistantExtras({
     !(suppressPicker && agent.flashcards.mode === "picker");
   return (
     <>
-      {agent.grading_ui && (
+      {agent.mistake_brief && (
+        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-2">
+            Where you went wrong
+          </p>
+          <MarkdownMath content={agent.mistake_brief} className="markdown-math text-sm" />
+        </div>
+      )}
+      {agent.card && isLatest && (
+        <ProactiveIntroCard card={agent.card} />
+      )}
+      {agent.slides && agent.slides.slides.length > 0 && (
+        <TheorySlideDeck
+          payload={agent.slides}
+          fallbackMarkdown={agent.response || undefined}
+          onComplete={isLatest ? onSlidesComplete : undefined}
+          onSlideChange={isLatest ? onSlideChange : undefined}
+          storageKey={slideStorageKey}
+        />
+      )}
+      {agent.grading_ui && isLatest && (
         <GradingButtons gradingUi={agent.grading_ui} disabled={gradingDisabled} onGrade={onGrade} />
       )}
       {showFlashcards && (
@@ -173,25 +245,44 @@ function AssistantResponse({
   onPickCard,
   gradingDisabled,
   suppressPicker,
+  isLatest,
+  onSlidesComplete,
+  onSlideChange,
+  slideStorageKey,
 }: {
   message: Message;
   onGrade: (outcome: "correct" | "incorrect") => void;
   onPickCard: (card: FlashcardItem) => void;
   gradingDisabled?: boolean;
   suppressPicker?: boolean;
+  isLatest?: boolean;
+  onSlidesComplete?: () => void;
+  onSlideChange?: (current: number, total: number) => void;
+  slideStorageKey?: string;
 }) {
   const structured = message.structured_response;
+  const hasSlides = Boolean(message.agent?.slides?.slides?.length);
+  const hasStructuredSections =
+    !hasSlides &&
+    structured &&
+    (structured.filling_gap ||
+      structured.solution_steps.length > 0 ||
+      structured.insight);
 
-  if (!structured) {
+  if (!hasStructuredSections && !hasSlides) {
     return (
       <article className="lesson-response assistant-plain">
-        <MarkdownMath content={message.content} />
+        {!hasSlides && <MarkdownMath content={message.content} />}
         <AssistantExtras
           agent={message.agent}
           onGrade={onGrade}
           onPickCard={onPickCard}
           gradingDisabled={gradingDisabled}
           suppressPicker={suppressPicker}
+          isLatest={isLatest}
+          onSlidesComplete={onSlidesComplete}
+          onSlideChange={onSlideChange}
+          slideStorageKey={slideStorageKey}
         />
       </article>
     );
@@ -199,14 +290,14 @@ function AssistantResponse({
 
   return (
     <article className="lesson-response">
-      {structured.filling_gap && (
+      {structured?.filling_gap && (
         <section className="lesson-gap">
           <h3>FILLING A GAP FIRST</h3>
           <MarkdownMath content={structured.filling_gap} />
         </section>
       )}
 
-      {structured.solution_steps.length > 0 && (
+      {structured && structured.solution_steps.length > 0 && (
         <section className="lesson-solution">
           <div className="solution-rule">
             <span>SOLUTION</span>
@@ -220,12 +311,12 @@ function AssistantResponse({
         </section>
       )}
 
-      {structured.insight && (
+      {structured?.insight && (
         <div className="lesson-note">
           <MarkdownMath content={structured.insight} />
         </div>
       )}
-      {!structured.filling_gap && !structured.solution_steps.length && (
+      {!hasSlides && !structured?.filling_gap && !structured?.solution_steps.length && (
         <div className="assistant-plain">
           <MarkdownMath content={message.content} />
         </div>
@@ -236,50 +327,63 @@ function AssistantResponse({
         onPickCard={onPickCard}
         gradingDisabled={gradingDisabled}
         suppressPicker={suppressPicker}
+        isLatest={isLatest}
+        onSlidesComplete={onSlidesComplete}
+        onSlideChange={onSlideChange}
+        slideStorageKey={slideStorageKey}
       />
     </article>
   );
 }
 
-function normalizeSuggestions(
-  suggestions: AgentChatResponseLegacy["follow_up_suggestions"],
-): string[] {
-  if (!suggestions) return [];
-  return suggestions
-    .map((item) => {
-      if (typeof item === "string") return item;
-      const preview = (item as { preview?: string }).preview;
-      return preview || (item as { text?: string }).text || "";
-    })
-    .filter(Boolean);
-}
-
-function buildAssistantMessage(response: AgentChatResponseLegacy): Message {
+function buildAssistantMessage(response: AgentChatResponse): Message {
   const text = response.response?.trim() || "I could not generate a response.";
-  const tryNext = normalizeSuggestions(response.follow_up_suggestions);
+  const hasPickerCards = response.flashcards?.mode === "picker";
+  const hasSlides = Boolean(response.slides?.slides?.length);
+  const tryNext = hasPickerCards ? [] : normalizeSuggestions(response.follow_up_suggestions);
+  const structured = response.structured;
 
   return {
     id: crypto.randomUUID(),
     role: "assistant",
     content: text,
     agent: response,
-    structured_response: {
-      filling_gap: "",
-      solution_steps: [],
-      insight: "",
-      try_next: tryNext,
-      concepts_mentioned: [],
-      prerequisite_chain: [],
-    },
+    structured_response:
+      hasSlides
+        ? undefined
+        : structured &&
+            (structured.filling_gap || structured.solution_steps?.length || structured.insight)
+          ? {
+              filling_gap: structured.filling_gap || "",
+              solution_steps: structured.solution_steps || [],
+              insight: structured.insight || "",
+              try_next: tryNext,
+              concepts_mentioned: response.primary_concept_id
+                ? [response.primary_concept_id]
+                : [],
+              prerequisite_chain: [],
+            }
+          : {
+              filling_gap: "",
+              solution_steps: [],
+              insight: "",
+              try_next: tryNext,
+              concepts_mentioned: response.primary_concept_id
+                ? [response.primary_concept_id]
+                : [],
+              prerequisite_chain: [],
+            },
   };
 }
 
 export default function ChatWorkspace() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const roadmapConceptId = searchParams.get("concept_id");
   const roadmapNodeId = searchParams.get("node_id");
   const roadmapPrompt = searchParams.get("prompt");
   const initialStage = (searchParams.get("stage") as StudyStage | null) ?? "theory";
+  const forceFreshStart = searchParams.get("fresh") === "1";
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -298,10 +402,35 @@ export default function ChatWorkspace() {
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [conceptComplete, setConceptComplete] = useState(false);
   const [lastProficiencyPct, setLastProficiencyPct] = useState<number | null>(null);
+  const [slideProgress, setSlideProgress] = useState<{ current: number; total: number } | null>(null);
+  const [slidesComplete, setSlidesComplete] = useState(true);
   const formRef = useRef<HTMLFormElement>(null);
   const progressMarkedRef = useRef(false);
+  const autoPromptedRef = useRef(false);
+  const endingBeaconSentRef = useRef(false);
+  const startFreshRef = useRef(forceFreshStart);
+  const freshUrlHandledRef = useRef(false);
+  const [entryNonce, setEntryNonce] = useState(0);
 
   const isRoadmapSession = Boolean(roadmapNodeId && contentSequence.length > 0);
+
+  // Strip one-shot fresh=1 so refresh resumes the bound session instead of restarting.
+  useEffect(() => {
+    if (!forceFreshStart) {
+      freshUrlHandledRef.current = false;
+      return;
+    }
+    if (freshUrlHandledRef.current) return;
+    freshUrlHandledRef.current = true;
+    startFreshRef.current = true;
+    autoPromptedRef.current = false;
+    progressMarkedRef.current = false;
+    setEntryNonce((n) => n + 1);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("fresh");
+    const qs = params.toString();
+    router.replace(qs ? `/chat?${qs}` : "/chat", { scroll: false });
+  }, [forceFreshStart, router, searchParams]);
 
   useEffect(() => {
     if (!roadmapNodeId) return;
@@ -311,12 +440,22 @@ export default function ChatWorkspace() {
         const node = roadmap.nodes.find((item) => item.id === roadmapNodeId) ?? null;
         if (!node) return;
         setRoadmapNode(node);
+        if (typeof node.proficiency_pct === "number") {
+          setLastProficiencyPct((current) => (current != null ? current : node.proficiency_pct));
+        }
         const sequence = node.content_sequence?.length
           ? node.content_sequence
           : ["theory", "example", "practice", "pyq"];
         setContentSequence(sequence);
-        const stageIndex = Math.max(0, sequence.indexOf(initialStage));
-        setCurrentStageIndex(stageIndex >= 0 ? stageIndex : 0);
+        const bind = !startFreshRef.current ? readRoadmapSessionBind(roadmapNodeId) : null;
+        const fromUrl = Math.max(0, sequence.indexOf(initialStage));
+        const stageIndex =
+          bind && bind.stageIndex >= 0 && bind.stageIndex < sequence.length
+            ? bind.stageIndex
+            : fromUrl >= 0
+              ? fromUrl
+              : 0;
+        setCurrentStageIndex(stageIndex);
         if (!progressMarkedRef.current && node.status !== "completed") {
           progressMarkedRef.current = true;
           await updateRoadmapProgress({ node_id: node.id, status: "in_progress" });
@@ -329,7 +468,16 @@ export default function ChatWorkspace() {
       }
     };
     void loadNode();
-  }, [roadmapNodeId, initialStage]);
+  }, [roadmapNodeId, initialStage, entryNonce]);
+
+  // Persist roadmap stage + session so refresh mid-sequence resumes correctly.
+  useEffect(() => {
+    if (!roadmapNodeId) return;
+    writeRoadmapSessionBind(roadmapNodeId, {
+      sessionId: activeSessionId,
+      stageIndex: currentStageIndex,
+    });
+  }, [roadmapNodeId, activeSessionId, currentStageIndex]);
 
   const completeConcept = useCallback(async (proficiencyPct?: number | null) => {
     if (!roadmapNodeId || conceptComplete) return;
@@ -382,7 +530,98 @@ export default function ChatWorkspace() {
     [messages],
   );
 
+  // Prefer turn proficiency; otherwise load durable Supabase user_concept_state.
+  useEffect(() => {
+    const conceptId =
+      roadmapConceptId || latestAssistant?.agent?.primary_concept_id || null;
+    if (!conceptId) return;
+
+    if (typeof latestAssistant?.agent?.proficiency_pct === "number") {
+      setLastProficiencyPct(latestAssistant.agent.proficiency_pct);
+      return;
+    }
+
+    const userId = getSupabaseUserId();
+    if (!userId) return;
+    let cancelled = false;
+    void (async () => {
+      const row = await fetchConceptProficiency(userId, conceptId);
+      if (cancelled || typeof row?.proficiency_pct !== "number") return;
+      setLastProficiencyPct(row.proficiency_pct);
+      setPanelCollapsed(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    roadmapConceptId,
+    latestAssistant?.agent?.primary_concept_id,
+    latestAssistant?.agent?.proficiency_pct,
+  ]);
+
+  const currentStage = isRoadmapSession ? contentSequence[currentStageIndex] : null;
+  const stageUsesSlides = currentStage === "theory" || currentStage === "example";
+  const latestHasSlides = Boolean(latestAssistant?.agent?.slides?.slides?.length);
+  const requiresSlides = stageUsesSlides && latestHasSlides;
+
+  useEffect(() => {
+    if (!stageUsesSlides) {
+      setSlidesComplete(true);
+      setSlideProgress(null);
+      return;
+    }
+    const slides = latestAssistant?.agent?.slides?.slides;
+    if (!slides?.length) {
+      // Waiting for deck / presentation restore — keep Next locked for slide stages.
+      setSlidesComplete(false);
+      setSlideProgress(null);
+      return;
+    }
+    const total = slides.length;
+    let current = latestAssistant?.agent?.slides?.current_index ?? 0;
+    if (activeSessionId && typeof window !== "undefined") {
+      const key = slideDeckStorageKey(
+        activeSessionId,
+        latestAssistant?.agent?.slides?.mode,
+        slides,
+      );
+      const stored = localStorage.getItem(key);
+      if (stored != null) {
+        const parsed = Number.parseInt(stored, 10);
+        if (!Number.isNaN(parsed)) {
+          current = Math.min(Math.max(0, parsed), Math.max(0, total - 1));
+        }
+      }
+    }
+    setSlidesComplete(current >= total - 1);
+    setSlideProgress((prev) =>
+      prev?.current === current && prev?.total === total ? prev : { current, total },
+    );
+  }, [
+    latestAssistant?.id,
+    currentStageIndex,
+    stageUsesSlides,
+    latestAssistant?.agent?.slides?.slides,
+    latestAssistant?.agent?.slides?.mode,
+    latestAssistant?.agent?.slides?.current_index,
+    activeSessionId,
+  ]);
+
+  const handleSlidesComplete = useCallback(() => {
+    setSlidesComplete(true);
+  }, []);
+
+  const handleSlideChange = useCallback((current: number, total: number) => {
+    setSlideProgress((prev) =>
+      prev?.current === current && prev?.total === total ? prev : { current, total },
+    );
+    if (total > 0 && current >= total - 1) {
+      setSlidesComplete(true);
+    }
+  }, []);
+
   const quickPrompts = useMemo(() => {
+    if (latestAssistant?.agent?.flashcards?.mode === "picker") return [];
     const fromBackend = latestAssistant?.structured_response?.try_next?.filter(Boolean);
     if (fromBackend && fromBackend.length > 0) return fromBackend;
     return fallbackPrompts;
@@ -436,10 +675,15 @@ export default function ChatWorkspace() {
     setError("");
     try {
       const detail = await fetchChatSessionDetail(userId, sessionId);
-      setMessages(turnsToMessages(detail.turns, sessionId));
+      const loaded = turnsToMessages(detail.turns, sessionId);
+      setMessages(loaded);
       setActiveSessionId(sessionId);
       localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-      setAwaitingGrade(false);
+      const lastAssistant = [...loaded].reverse().find((m) => m.role === "assistant");
+      setAwaitingGrade(Boolean(lastAssistant?.agent?.grading_ui?.show_correct_incorrect));
+      if (typeof lastAssistant?.agent?.proficiency_pct === "number") {
+        setLastProficiencyPct(lastAssistant.agent.proficiency_pct);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load session history.");
     } finally {
@@ -450,14 +694,41 @@ export default function ChatWorkspace() {
   async function selectSession(sessionId: string) {
     if (sessionId === activeSessionId || isReplying || isLoadingSession) return;
     setMessages([]);
+    setLastProficiencyPct(null);
     await loadSessionHistory(sessionId);
   }
 
   function createSession() {
     setActiveSessionId(null);
     setMessages([]);
+    setLastProficiencyPct(null);
     localStorage.removeItem(SESSION_STORAGE_KEY);
+    if (roadmapNodeId) clearRoadmapSessionBind(roadmapNodeId);
     setError("");
+    autoPromptedRef.current = true; // don't re-fire roadmap auto-prompt after explicit New chat
+  }
+
+  function flushEndSessionBeacon(sessionId: string) {
+    if (endingBeaconSentRef.current) return;
+    const userId = getSupabaseUserId();
+    if (!userId) return;
+    endingBeaconSentRef.current = true;
+    const body = JSON.stringify({ user_id: userId, session_id: sessionId });
+    const url = `${agentBaseUrl}/api/v1/chat/end-session`;
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+        const ok = navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+        if (ok) return;
+      }
+      void fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      });
+    } catch {
+      // Best-effort flush on unload
+    }
   }
 
   async function endSession() {
@@ -467,6 +738,7 @@ export default function ChatWorkspace() {
 
     setIsEndingSession(true);
     setError("");
+    endingBeaconSentRef.current = true;
     try {
       await fetch(`${agentBaseUrl}/api/v1/chat/end-session`, {
         method: "POST",
@@ -475,7 +747,9 @@ export default function ChatWorkspace() {
       });
       setActiveSessionId(null);
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      if (roadmapNodeId) clearRoadmapSessionBind(roadmapNodeId);
     } catch (caught) {
+      endingBeaconSentRef.current = false;
       setError(caught instanceof Error ? caught.message : "Unable to end this session.");
     } finally {
       setIsEndingSession(false);
@@ -542,10 +816,15 @@ export default function ChatWorkspace() {
     setMessages((current) => [...current, userMessage]);
 
     try {
-      const agentResponse = await sendAgentMessage(isGradeTap ? "1" : trimmed, activeSessionId, {
-        gradedOutcome,
-        studyStage,
-      });
+      // graded_outcome is the contract; query mirrors 1/0 for transcript/diagnostics only.
+      const agentResponse = await sendAgentMessage(
+        isGradeTap ? (gradedOutcome === "correct" ? "1" : "0") : trimmed,
+        activeSessionId,
+        {
+          gradedOutcome,
+          studyStage,
+        },
+      );
       return await handleAgentResponse(agentResponse);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
@@ -577,6 +856,9 @@ export default function ChatWorkspace() {
         return;
       }
 
+      setSessionsReady(false);
+      const isRoadmapEntry = Boolean(roadmapNodeId);
+
       try {
         const list = await fetchChatSessions(userId);
         const mapped: Session[] = list.map((session, index) => ({
@@ -585,6 +867,46 @@ export default function ChatWorkspace() {
         }));
         setSessions(mapped);
 
+        // Roadmap Start/Continue (fresh=1): never overlay an unrelated prior transcript.
+        if (isRoadmapEntry && startFreshRef.current) {
+          startFreshRef.current = false;
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+          const defaultSeq = ["theory", "example", "practice", "pyq"] as StudyStage[];
+          const stageIdx = Math.max(0, defaultSeq.indexOf(initialStage));
+          writeRoadmapSessionBind(roadmapNodeId!, {
+            sessionId: null,
+            stageIndex: stageIdx,
+          });
+          setCurrentStageIndex(stageIdx);
+          setActiveSessionId(null);
+          setMessages([]);
+          setAwaitingGrade(false);
+          return;
+        }
+
+        // Roadmap resume (refresh / mid-lesson): restore bound session + leave messages for gating.
+        if (isRoadmapEntry && roadmapNodeId) {
+          const bind = readRoadmapSessionBind(roadmapNodeId);
+          const boundId =
+            bind?.sessionId && mapped.some((session) => session.id === bind.sessionId)
+              ? bind.sessionId
+              : null;
+          if (boundId) {
+            if (typeof bind?.stageIndex === "number") {
+              setCurrentStageIndex(bind.stageIndex);
+            }
+            await loadSessionHistory(boundId);
+            return;
+          }
+          // No bind — start clean so we don't show a stale free-chat transcript.
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+          setActiveSessionId(null);
+          setMessages([]);
+          setAwaitingGrade(false);
+          return;
+        }
+
+        // Free chat: restore last active session.
         const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
         const targetId =
           savedSessionId && mapped.some((session) => session.id === savedSessionId)
@@ -595,6 +917,22 @@ export default function ChatWorkspace() {
           await loadSessionHistory(targetId);
         }
       } catch (caught) {
+        if (isRoadmapEntry && roadmapNodeId) {
+          const bind = readRoadmapSessionBind(roadmapNodeId);
+          if (bind?.sessionId && !startFreshRef.current) {
+            setActiveSessionId(bind.sessionId);
+            setSessions([{ id: bind.sessionId, title: "Current session" }]);
+            try {
+              await loadSessionHistory(bind.sessionId);
+              return;
+            } catch {
+              /* fall through */
+            }
+          }
+          setActiveSessionId(null);
+          setMessages([]);
+          return;
+        }
         const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
         if (savedSessionId) {
           setActiveSessionId(savedSessionId);
@@ -617,18 +955,44 @@ export default function ChatWorkspace() {
     };
 
     void bootstrapSessions();
-  }, [loadSessionHistory]);
+  }, [loadSessionHistory, roadmapNodeId, entryNonce, initialStage]);
 
   useEffect(() => {
     if (!sessionsReady || !roadmapPrompt || messages.length > 0 || isReplying || isLoadingSession) {
       return;
     }
+    if (autoPromptedRef.current) return;
+    autoPromptedRef.current = true;
     void submitMessage(roadmapPrompt);
   }, [roadmapPrompt, messages.length, isReplying, isLoadingSession, sessionsReady]);
 
+  // Flush session summary on tab close / hard navigation away (not soft Next.js routes).
+  useEffect(() => {
+    endingBeaconSentRef.current = false;
+    const onPageHide = () => {
+      if (!activeSessionId) return;
+      flushEndSessionBeacon(activeSessionId);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [activeSessionId]);
+
   return (
     <main className="chat-page">
-      <StudySidebar />
+      <StudySidebar
+        studyContext={{
+          conceptName: roadmapNode?.concept_name,
+          conceptId: roadmapConceptId,
+          nodeId: roadmapNodeId,
+          stage: currentStage,
+          stageIndex: currentStageIndex,
+          stageTotal: contentSequence.length,
+          slideProgress,
+          proficiencyPct: lastProficiencyPct ?? roadmapNode?.proficiency_pct ?? null,
+          weakPrereq: latestAssistant?.agent?.card?.weak_prereq ?? null,
+          journeyType: placementContext.journeyType ?? null,
+        }}
+      />
 
       <section className="chat-main">
         <header className="chat-header">
@@ -685,6 +1049,18 @@ export default function ChatWorkspace() {
                 onPickCard={(card) => void submitPickerCard(card)}
                 gradingDisabled={isReplying}
                 suppressPicker={isRoadmapSession}
+                isLatest={message.id === latestAssistant?.id}
+                onSlidesComplete={handleSlidesComplete}
+                onSlideChange={handleSlideChange}
+                slideStorageKey={
+                  activeSessionId && message.agent?.slides?.slides?.length
+                    ? slideDeckStorageKey(
+                        activeSessionId,
+                        message.agent.slides.mode,
+                        message.agent.slides.slides,
+                      )
+                    : undefined
+                }
               />
             ),
           )}
@@ -699,12 +1075,15 @@ export default function ChatWorkspace() {
               conceptName={roadmapNode.concept_name}
               loading={isReplying}
               conceptComplete={conceptComplete}
+              slideProgress={requiresSlides ? slideProgress : null}
+              slidesComplete={slidesComplete}
+              requiresSlides={requiresSlides}
               onAdvance={(stage) => void advanceStudyStage(stage)}
             />
           )}
 
           <div className="quick-prompts">
-            {!awaitingGrade && !isRoadmapSession && (
+            {!awaitingGrade && !isRoadmapSession && quickPrompts.length > 0 && (
               <>
                 <span>Try next</span>
                 {quickPrompts.map((prompt) => (
@@ -749,9 +1128,40 @@ export default function ChatWorkspace() {
         {!panelCollapsed && (
           <div className="concept-content">
             <h2>Live proficiency</h2>
-            <p className="concept-empty">
-              Concept scores update in Supabase as you study. Check the dashboard for your full concept health.
-            </p>
+            {(roadmapNode?.concept_name ||
+              roadmapConceptId ||
+              latestAssistant?.agent?.primary_concept_id) && (
+              <p className="concept-name">
+                {roadmapNode?.concept_name ||
+                  (roadmapConceptId || latestAssistant?.agent?.primary_concept_id || "").replace(
+                    /_/g,
+                    " ",
+                  )}
+              </p>
+            )}
+            {(lastProficiencyPct != null ||
+              typeof latestAssistant?.agent?.proficiency_pct === "number" ||
+              typeof roadmapNode?.proficiency_pct === "number") && (
+              <p className="concept-score">
+                {lastProficiencyPct ??
+                  latestAssistant?.agent?.proficiency_pct ??
+                  roadmapNode?.proficiency_pct}
+                % mastery
+              </p>
+            )}
+            {latestAssistant?.agent?.content_type_requested && (
+              <p className="concept-meta">
+                Stage: {latestAssistant.agent.content_type_requested}
+              </p>
+            )}
+            {lastProficiencyPct == null &&
+              typeof latestAssistant?.agent?.proficiency_pct !== "number" &&
+              typeof roadmapNode?.proficiency_pct !== "number" && (
+                <p className="concept-empty">
+                  Scores update as you grade practice and PYQ. Full concept health lives on the
+                  dashboard.
+                </p>
+              )}
           </div>
         )}
       </aside>

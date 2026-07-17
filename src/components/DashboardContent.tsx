@@ -8,6 +8,7 @@ import {
   LearningPath,
   buildContinueChatUrl,
   fetchRoadmap,
+  resolveNodeEntry,
 } from "@/lib/roadmap";
 import { fetchReadiness, fetchSandboxQueue, type SandboxAction } from "@/lib/sandbox";
 import SandboxCardDeck from "@/components/SandboxCardDeck";
@@ -80,13 +81,29 @@ export default function DashboardContent() {
     router.push("/chat");
   };
 
-  const handleConceptClick = (concept: Concept) => {
-    if (concept.tag === "WEAK") {
-      setQuizActive(true);
-      router.push("/chat");
-    } else {
-      router.push("/chat");
+  const openConceptChat = (conceptName: string, weak = false) => {
+    if (weak) setQuizActive(true);
+    const node = roadmap?.nodes.find((n) => n.concept_name === conceptName) ?? null;
+    const stage = weak ? "practice" : "theory";
+    const params = new URLSearchParams({
+      prompt: weak
+        ? `Help me improve at ${conceptName}`
+        : `Explain ${conceptName}`,
+      stage,
+      fresh: "1",
+    });
+    if (node) {
+      params.set("concept_id", node.concept_id);
+      params.set("node_id", node.id);
+      params.set("prompt", weak
+        ? `Give me a practice question on ${conceptName}`
+        : `Explain ${conceptName}`);
     }
+    router.push(`/chat?${params.toString()}`);
+  };
+
+  const handleConceptClick = (concept: Concept) => {
+    openConceptChat(concept.name, concept.tag === "WEAK");
   };
 
   // ── Loading Skeleton ─────────────────────────────────────────────────
@@ -236,7 +253,7 @@ export default function DashboardContent() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
             </svg>
-            {currentNode ? "Continue learning" : "Start Session"}
+            {currentNode ? resolveNodeEntry(currentNode).heroLabel : "Start Session"}
           </button>
         </div>
       </div>
@@ -299,13 +316,15 @@ export default function DashboardContent() {
                   <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-2">{stat.value}</h2>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {stat.list?.map((concept) => (
-                      <span
+                      <button
                         key={concept}
-                        onClick={() => router.push("/chat")}
-                        className="cursor-pointer text-[9px] font-bold text-[#f87171] border border-[#f87171]/20 bg-[#f87171]/5 px-2 py-0.5 rounded hover:bg-[#f87171]/10 transition-colors"
+                        type="button"
+                        onClick={() => openConceptChat(concept, true)}
+                        aria-label={`Practise ${concept}`}
+                        className="cursor-pointer text-[9px] font-bold text-[#f87171] border border-[#f87171]/20 bg-[#f87171]/5 px-2 py-0.5 rounded hover:bg-[#f87171]/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f87171]"
                       >
                         {concept}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -408,11 +427,14 @@ export default function DashboardContent() {
             {currentChapter.concepts.map((concept) => {
               const isWeak = concept.tag === "WEAK";
               const isStrong = concept.tag === "STRONG";
+              const isNotStarted = Boolean(concept.not_started);
               return (
-                <div
+                <button
                   key={concept.name}
+                  type="button"
                   onClick={() => handleConceptClick(concept)}
-                  className={`p-4 border rounded-xl dark:bg-[#080911]/50 bg-white dark:hover:bg-[#101021] hover:bg-slate-50 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group ${
+                  aria-label={`${concept.name}${isNotStarted ? " — not started" : `, ${concept.score}% proficiency`}. Open in chat.`}
+                  className={`text-left w-full p-4 border rounded-xl dark:bg-[#080911]/50 bg-white dark:hover:bg-[#101021] hover:bg-slate-50 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] ${
                     isWeak
                       ? "border-red-950/40 hover:border-red-900/60 shadow-[0_0_15px_rgba(239,68,68,0.03)]"
                       : isStrong
@@ -441,18 +463,36 @@ export default function DashboardContent() {
                       {concept.attempts} attempts
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className={`text-xs font-extrabold ${concept.score < 50 ? "text-red-400" : concept.score < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
-                        {concept.score}%
+                      <span
+                        className={`text-xs font-extrabold ${
+                          isNotStarted
+                            ? "dark:text-slate-500 text-slate-500"
+                            : concept.score < 50
+                              ? "text-red-400"
+                              : concept.score < 75
+                                ? "text-yellow-400"
+                                : "text-emerald-400"
+                        }`}
+                      >
+                        {isNotStarted ? "Not started" : `${concept.score}%`}
                       </span>
                       <div className="w-12 dark:bg-[#121126] bg-slate-100 h-1 rounded-full overflow-hidden mt-1">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${concept.score < 50 ? "bg-red-400" : concept.score < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
-                          style={{ width: `${concept.score}%` }}
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isNotStarted
+                              ? "bg-slate-500/40"
+                              : concept.score < 50
+                                ? "bg-red-400"
+                                : concept.score < 75
+                                  ? "bg-yellow-400"
+                                  : "bg-emerald-400"
+                          }`}
+                          style={{ width: isNotStarted ? "0%" : `${concept.score}%` }}
                         />
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

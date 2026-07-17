@@ -5,6 +5,19 @@ import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
 import { useApp } from "@/components/AppContext";
 
+export type StudySidebarContext = {
+  conceptName?: string | null;
+  conceptId?: string | null;
+  nodeId?: string | null;
+  stage?: string | null;
+  stageIndex?: number;
+  stageTotal?: number;
+  slideProgress?: { current: number; total: number } | null;
+  proficiencyPct?: number | null;
+  weakPrereq?: string | null;
+  journeyType?: string | null;
+};
+
 type SidebarUser = {
   name: string;
   badge: string;
@@ -16,11 +29,18 @@ type NavItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 };
 
+const STAGE_LABELS: Record<string, string> = {
+  theory: "Theory",
+  example: "Worked example",
+  practice: "Practice",
+  pyq: "PYQ",
+};
+
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: HomeIcon },
   { label: "Roadmap", href: "/roadmap", icon: MapIcon },
   { label: "Study Session", href: "/chat", icon: ChatIcon },
-  { label: "Practice", href: "/pratice", icon: LayersIcon },
+  { label: "Practice", href: "/practice", icon: LayersIcon },
   { label: "Progress", href: "/progress", icon: ChartIcon },
   { label: "Settings", href: "/settings", icon: SettingsIcon },
 ];
@@ -117,7 +137,67 @@ function SidebarUserCard({ user, onLogout }: { user: SidebarUser; onLogout: () =
   );
 }
 
-export default function StudySidebar() {
+function StudyContextPanel({ context }: { context: StudySidebarContext }) {
+  const hasConcept = Boolean(context.conceptName);
+  if (!hasConcept && context.proficiencyPct == null) return null;
+
+  const stageLabel = context.stage ? STAGE_LABELS[context.stage] ?? context.stage : null;
+
+  return (
+    <div className="mb-4 rounded-xl border dark:border-[#6258ff]/25 border-indigo-200/60 dark:bg-[#121126]/40 bg-indigo-50/30 p-3">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff] mb-2">Now studying</p>
+      {context.conceptName && (
+        <p className="text-xs font-semibold dark:text-white text-slate-900 leading-snug">{context.conceptName}</p>
+      )}
+      {typeof context.proficiencyPct === "number" && (
+        <div className="mt-2">
+          <div className="flex justify-between text-[10px] dark:text-slate-400 text-slate-500 mb-1">
+            <span>Proficiency</span>
+            <span>{context.proficiencyPct}%</span>
+          </div>
+          <div className="h-1.5 rounded-full dark:bg-slate-800 bg-slate-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#6258ff]"
+              style={{ width: `${Math.min(100, context.proficiencyPct)}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {stageLabel && typeof context.stageIndex === "number" && typeof context.stageTotal === "number" && (
+        <p className="mt-2 text-[10px] dark:text-slate-400 text-slate-500">
+          Stage {context.stageIndex + 1}/{context.stageTotal}: {stageLabel}
+        </p>
+      )}
+      {context.slideProgress && context.slideProgress.total > 0 && (
+        <p className="mt-1 text-[10px] dark:text-slate-400 text-slate-500">
+          Slide {context.slideProgress.current + 1}/{context.slideProgress.total}
+        </p>
+      )}
+      {context.weakPrereq && (
+        <p className="mt-2 text-[10px] text-amber-400/90">Weak prereq: {context.weakPrereq}</p>
+      )}
+      {context.journeyType && (
+        <p className="mt-1 text-[9px] uppercase tracking-wider dark:text-slate-600 text-slate-400">
+          {context.journeyType.replace(/_/g, " ")}
+        </p>
+      )}
+      {context.conceptId && (
+        <Link
+          href={`/chat?concept_id=${encodeURIComponent(context.conceptId)}${
+            context.nodeId ? `&node_id=${encodeURIComponent(context.nodeId)}` : ""
+          }&stage=practice&fresh=1&prompt=${encodeURIComponent(
+            `Give me a practice question on ${context.conceptName || context.conceptId}`,
+          )}`}
+          className="mt-3 inline-block text-[10px] font-bold uppercase tracking-wider text-[#8584ff] hover:text-white"
+        >
+          Jump to practice →
+        </Link>
+      )}
+    </div>
+  );
+}
+
+export default function StudySidebar({ studyContext }: { studyContext?: StudySidebarContext }) {
   const pathname = usePathname();
   const { data, logout } = useApp();
   const user = data.user;
@@ -128,6 +208,8 @@ export default function StudySidebar() {
         <BrandIcon />
         <span className="text-base font-bold tracking-tight dark:text-white text-slate-900">Prepwise</span>
       </div>
+
+      {studyContext && pathname === "/chat" && <StudyContextPanel context={studyContext} />}
 
       <nav className="space-y-1">
         {navItems.map((item) => (
@@ -152,4 +234,3 @@ export default function StudySidebar() {
     </aside>
   );
 }
-
