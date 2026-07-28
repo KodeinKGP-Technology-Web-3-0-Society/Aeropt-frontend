@@ -15,6 +15,7 @@ import {
   nodeStageProgress,
   resolveNodeEntry,
 } from "@/lib/roadmap";
+import { invalidateCache } from "@/lib/apiCache";
 
 function formatNodeType(nodeType: string): string {
   if (!nodeType) return "Learn";
@@ -138,7 +139,17 @@ function NodeCard({
             {statusLabel(node.status, isUpNext)}
           </span>
         </div>
-        <p className="mt-1.5 text-xs dark:text-slate-500 text-slate-500 font-medium">
+        <p
+          className={`mt-1.5 text-xs font-medium ${
+            node.proficiency_display === "almost_mastered"
+              ? "text-amber-500"
+              : node.proficiency_display === "strong" || node.proficiency_display === "mastered"
+                ? "text-emerald-500"
+                : node.proficiency_display === "weak"
+                  ? "text-red-400"
+                  : "dark:text-slate-500 text-slate-500"
+          }`}
+        >
           {formatNodeType(node.node_type)} · {node.estimated_minutes} min · Mastery:{" "}
           {formatProficiencyLabel(node)}
         </p>
@@ -180,9 +191,11 @@ export default function RoadmapContent() {
   const [regenerating, setRegenerating] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>({});
 
-  const loadRoadmap = useCallback((regenerate = false) => {
-    setLoading(true);
-    setError(null);
+  const loadRoadmap = useCallback((regenerate = false, silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     if (regenerate) setRegenerating(true);
 
     fetchRoadmap(regenerate)
@@ -199,7 +212,18 @@ export default function RoadmapContent() {
   }, []);
 
   useEffect(() => {
+    invalidateCache("roadmap");
     loadRoadmap();
+  }, [loadRoadmap]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      invalidateCache("roadmap");
+      loadRoadmap(false, true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [loadRoadmap]);
 
   const chapters = useMemo(() => {

@@ -24,6 +24,7 @@ export function StudyStepBar({
   slidesComplete,
   requiresSlides,
   onAdvance,
+  layout = "toolbar",
 }: {
   stages: string[];
   currentStageIndex: number;
@@ -35,37 +36,83 @@ export function StudyStepBar({
   /** When true, Next stays disabled until slidesComplete (theory/example with a deck). */
   requiresSlides?: boolean;
   onAdvance: (stage: StudyStage) => void;
+  layout?: "toolbar" | "card";
 }) {
   if (!stages.length) return null;
 
   const nextBlocked =
     Boolean(requiresSlides) && !slidesComplete;
 
+  const stageChips = stages.map((stage, index) => {
+    const done = index < currentStageIndex || conceptComplete;
+    const active = index === currentStageIndex && !conceptComplete;
+    return (
+      <span
+        key={stage}
+        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+          done
+            ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-400"
+            : active
+              ? "border-[#6258ff]/50 bg-[#6258ff]/15 text-[#8584ff]"
+              : "border-slate-500/20 text-slate-500"
+        }`}
+      >
+        {STAGE_LABELS[stage] ?? stage}
+      </span>
+    );
+  });
+
+  const slideHint =
+    requiresSlides && !slidesComplete
+      ? slideProgress && slideProgress.total > 0
+        ? `Slide ${slideProgress.current + 1} of ${slideProgress.total} — finish slides to continue`
+        : "Finish the slide deck to continue"
+      : null;
+
+  if (layout === "toolbar") {
+    return (
+      <div className="study-step-toolbar">
+        <div className="study-step-toolbar__meta">
+          <p className="study-step-toolbar__label">Study path · {conceptName}</p>
+          <div className="study-step-toolbar__chips">{stageChips}</div>
+        </div>
+        <div className="study-step-toolbar__actions">
+          {slideHint && <p className="study-step-toolbar__hint">{slideHint}</p>}
+          {conceptComplete ? (
+            <div className="study-step-toolbar__complete">
+              <p>Concept complete!</p>
+              <Link
+                href="/roadmap"
+                className="inline-flex items-center justify-center rounded-lg bg-[#6258ff] hover:bg-[#5045ff] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5"
+              >
+                Back to roadmap
+              </Link>
+            </div>
+          ) : currentStageIndex < stages.length - 1 ? (
+            <button
+              type="button"
+              disabled={loading || nextBlocked}
+              onClick={() => onAdvance(stages[currentStageIndex + 1] as StudyStage)}
+              className="study-step-toolbar__next"
+            >
+              Next: {STAGE_LABELS[stages[currentStageIndex + 1]] ?? stages[currentStageIndex + 1]} →
+            </button>
+          ) : (
+            <p className="study-step-toolbar__hint">
+              Complete the final question above, then grade your answer to finish this concept.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 rounded-xl border dark:border-[#6258ff]/30 border-indigo-200 dark:bg-[#121126]/50 bg-indigo-50/40 p-4">
       <p className="text-[10px] font-bold uppercase tracking-wider text-[#8584ff] mb-3">
         Study path · {conceptName}
       </p>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {stages.map((stage, index) => {
-          const done = index < currentStageIndex || conceptComplete;
-          const active = index === currentStageIndex && !conceptComplete;
-          return (
-            <span
-              key={stage}
-              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                done
-                  ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-400"
-                  : active
-                    ? "border-[#6258ff]/50 bg-[#6258ff]/15 text-[#8584ff]"
-                    : "border-slate-500/20 text-slate-500"
-              }`}
-            >
-              {STAGE_LABELS[stage] ?? stage}
-            </span>
-          );
-        })}
-      </div>
+      <div className="flex flex-wrap gap-2 mb-4">{stageChips}</div>
       {requiresSlides && slideProgress && slideProgress.total > 0 && !slidesComplete && (
         <p className="text-xs dark:text-slate-400 text-slate-500 mb-3">
           Slide {slideProgress.current + 1} of {slideProgress.total} — finish slides to continue

@@ -1,4 +1,11 @@
 import * as auth from "@/lib/auth";
+import {
+  CacheTTL,
+  cacheKey,
+  cachedGet,
+  invalidateCache,
+  invalidateUserProductCache,
+} from "@/lib/apiCache";
 
 export type NodeStatus = "pending" | "in_progress" | "completed" | "skipped";
 export type NodeType = "learn" | "revise" | "mastered";
@@ -6,9 +13,15 @@ export type NodeType = "learn" | "revise" | "mastered";
 export type ProficiencyDisplay =
   | "not_started"
   | "strong"
+  | "almost_mastered"
   | "moderate"
   | "weak"
   | "mastered";
+
+/** Meeting Jul 17 — unified mastery gate (percent scale for dashboard colors). */
+export const MASTERY_THRESHOLD_PCT = 80;
+export const ALMOST_MASTERED_THRESHOLD_PCT = 65;
+export const WEAK_THRESHOLD_PCT = 40;
 
 export type PathNode = {
   id: string;
@@ -32,8 +45,14 @@ export function formatProficiencyLabel(node: Pick<PathNode, "proficiency_pct" | 
   if (node.proficiency_display === "not_started" || node.proficiency_pct === null) {
     return "Not started";
   }
-  if (node.proficiency_display === "mastered") {
+  if (node.proficiency_display === "mastered" || node.proficiency_display === "strong") {
     return `${node.proficiency_pct}% mastered`;
+  }
+  if (node.proficiency_display === "almost_mastered") {
+    return `${node.proficiency_pct}% · Almost mastered`;
+  }
+  if (node.proficiency_display === "weak") {
+    return `${node.proficiency_pct}% · Weak`;
   }
   return `${node.proficiency_pct}% mastery`;
 }
@@ -62,8 +81,13 @@ export type RoadmapProgressResponse = {
 };
 
 export async function fetchRoadmap(regenerate = false): Promise<LearningPath> {
-  const suffix = regenerate ? "?regenerate=1" : "";
-  return auth.apiRequest<LearningPath>(`${auth.getApiBaseUrl()}/roadmap/${suffix}`);
+  if (regenerate) {
+    invalidateCache("roadmap");
+    return auth.apiRequest<LearningPath>(`${auth.getApiBaseUrl()}/roadmap/?regenerate=1`);
+  }
+  return cachedGet(cacheKey(["roadmap"]), CacheTTL.roadmap, () =>
+    auth.apiRequest<LearningPath>(`${auth.getApiBaseUrl()}/roadmap/`)
+  );
 }
 
 export async function fetchRoadmapNext(): Promise<RoadmapNextResponse> {
@@ -75,10 +99,15 @@ export async function updateRoadmapProgress(payload: {
   status: NodeStatus;
   proficiency_pct?: number;
 }): Promise<RoadmapProgressResponse> {
-  return auth.apiRequest<RoadmapProgressResponse>(`${auth.getApiBaseUrl()}/roadmap/progress/`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  const result = await auth.apiRequest<RoadmapProgressResponse>(
+    `${auth.getApiBaseUrl()}/roadmap/progress/`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
+  invalidateUserProductCache();
+  return result;
 }
 
 export function groupNodesByChapter(nodes: PathNode[]): Record<string, PathNode[]> {

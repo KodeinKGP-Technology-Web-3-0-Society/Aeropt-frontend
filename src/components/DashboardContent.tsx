@@ -4,8 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp, Chapter, Concept } from "@/components/AppContext";
 import { apiRequest, getApiBaseUrl } from "@/lib/auth";
+import { CacheTTL, cacheKey, cachedGet, peekCache } from "@/lib/apiCache";
 import {
   LearningPath,
+  ALMOST_MASTERED_THRESHOLD_PCT,
+  MASTERY_THRESHOLD_PCT,
+  WEAK_THRESHOLD_PCT,
   buildContinueChatUrl,
   fetchRoadmap,
   resolveNodeEntry,
@@ -13,24 +17,47 @@ import {
 import { fetchReadiness, fetchSandboxQueue, type SandboxAction } from "@/lib/sandbox";
 import SandboxCardDeck from "@/components/SandboxCardDeck";
 
+function scoreColorClasses(score: number): { text: string; bar: string } {
+  if (score < WEAK_THRESHOLD_PCT) {
+    return { text: "text-red-400", bar: "bg-red-400" };
+  }
+  if (score < ALMOST_MASTERED_THRESHOLD_PCT) {
+    return { text: "text-yellow-400", bar: "bg-yellow-400" };
+  }
+  if (score < MASTERY_THRESHOLD_PCT) {
+    return { text: "text-amber-400", bar: "bg-amber-400" };
+  }
+  return { text: "text-emerald-400", bar: "bg-emerald-400" };
+}
+
 export default function DashboardContent() {
   const router = useRouter();
   const { data, setData, setQuizActive } = useApp();
   const [activeTab, setActiveTab] = useState("Laws of Motion");
-  const [loading, setLoading] = useState(true);
+  const cachedRoadmap = peekCache<LearningPath>(cacheKey(["roadmap"]));
+  const [loading, setLoading] = useState(!cachedRoadmap);
   const [error, setError] = useState<string | null>(null);
-  const [roadmap, setRoadmap] = useState<LearningPath | null>(null);
+  const [roadmap, setRoadmap] = useState<LearningPath | null>(cachedRoadmap);
   const [sandboxQueue, setSandboxQueue] = useState<SandboxAction[]>([]);
   const [readiness, setReadiness] = useState<number | null>(null);
+  const [studyGoal, setStudyGoal] = useState<{
+    minutes: number;
+    depth: string;
+  } | null>(null);
 
   const fetchDashboard = useCallback(() => {
-    setLoading(true);
+    const warm =
+      Boolean(peekCache(cacheKey(["dashboard"]))) ||
+      Boolean(peekCache(cacheKey(["roadmap"])));
+    setLoading(!warm);
     setError(null);
 
     const url = `${getApiBaseUrl()}/analytics/dashboard/`;
 
     Promise.all([
-      apiRequest<typeof data.dashboard>(url),
+      cachedGet(cacheKey(["dashboard"]), CacheTTL.dashboard, () =>
+        apiRequest<typeof data.dashboard>(url)
+      ),
       fetchRoadmap().catch(() => null),
       fetchSandboxQueue().catch(() => ({ queue: [], count: 0 })),
       fetchReadiness().catch(() => null),
@@ -42,6 +69,17 @@ export default function DashboardContent() {
         }));
         setRoadmap(roadmapData);
         setSandboxQueue(queueData.queue || []);
+        if (queueData.daily_goal_minutes) {
+          setStudyGoal({
+            minutes: queueData.daily_goal_minutes,
+            depth: queueData.preferred_depth || "standard",
+          });
+        } else if (roadmapData?.daily_goal_minutes) {
+          setStudyGoal({
+            minutes: roadmapData.daily_goal_minutes,
+            depth: "standard",
+          });
+        }
         setReadiness(readinessData?.overall ?? null);
         setLoading(false);
       })
@@ -260,6 +298,13 @@ export default function DashboardContent() {
 
       <SandboxCardDeck queue={sandboxQueue} loading={loading} />
 
+      {studyGoal && (
+        <p className="text-xs dark:text-slate-400 text-slate-500 mb-6 -mt-2">
+          Today&apos;s goal: {studyGoal.minutes} min · {studyGoal.depth} depth
+          {roadmap ? ` · ~${roadmap.estimated_weeks} weeks at this pace` : ""}
+        </p>
+      )}
+
       {currentNode && (
         <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#6258ff]/30 border-indigo-200 rounded-xl p-5 shadow-lg mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -407,12 +452,12 @@ export default function DashboardContent() {
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">Chapter Proficiency</span>
               <div className="flex items-center gap-1.5">
-                <span className={`text-base font-extrabold ${currentChapter.overallScore < 50 ? "text-red-400" : currentChapter.overallScore < 75 ? "text-yellow-400" : "text-emerald-400"}`}>
+                <span className={`text-base font-extrabold ${scoreColorClasses(currentChapter.overallScore).text}`}>
                   {currentChapter.overallScore}%
                 </span>
                 <div className="w-16 dark:bg-[#121126] bg-slate-100 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${currentChapter.overallScore < 50 ? "bg-red-400" : currentChapter.overallScore < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
+                    className={`h-full rounded-full transition-all duration-500 ${scoreColorClasses(currentChapter.overallScore).bar}`}
                     style={{ width: `${currentChapter.overallScore}%` }}
                   />
                 </div>
@@ -425,9 +470,16 @@ export default function DashboardContent() {
         {currentChapter && currentChapter.concepts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {currentChapter.concepts.map((concept) => {
-              const isWeak = concept.tag === "WEAK";
-              const isStrong = concept.tag === "STRONG";
               const isNotStarted = Boolean(concept.not_started);
+              const isWeak = !isNotStarted && (concept.tag === "WEAK" || concept.score < WEAK_THRESHOLD_PCT);
+              const isAlmostMastered =
+                !isNotStarted &&
+                concept.score >= ALMOST_MASTERED_THRESHOLD_PCT &&
+                concept.score < MASTERY_THRESHOLD_PCT;
+              const isStrong = !isNotStarted && concept.score >= MASTERY_THRESHOLD_PCT;
+              const colors = isNotStarted
+                ? { text: "dark:text-slate-500 text-slate-500", bar: "bg-slate-500/40" }
+                : scoreColorClasses(concept.score);
               return (
                 <button
                   key={concept.name}
@@ -451,6 +503,11 @@ export default function DashboardContent() {
                         Weak
                       </span>
                     )}
+                    {isAlmostMastered && (
+                      <span className="text-[8px] font-extrabold text-amber-400 border border-amber-500/20 bg-amber-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider flex-none">
+                        Almost mastered
+                      </span>
+                    )}
                     {isStrong && (
                       <span className="text-[8px] font-extrabold text-emerald-400 border border-emerald-500/20 bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider flex-none">
                         Strong
@@ -464,29 +521,13 @@ export default function DashboardContent() {
                     </div>
                     <div className="flex flex-col items-end">
                       <span
-                        className={`text-xs font-extrabold ${
-                          isNotStarted
-                            ? "dark:text-slate-500 text-slate-500"
-                            : concept.score < 50
-                              ? "text-red-400"
-                              : concept.score < 75
-                                ? "text-yellow-400"
-                                : "text-emerald-400"
-                        }`}
+                        className={`text-xs font-extrabold ${colors.text}`}
                       >
                         {isNotStarted ? "Not started" : `${concept.score}%`}
                       </span>
                       <div className="w-12 dark:bg-[#121126] bg-slate-100 h-1 rounded-full overflow-hidden mt-1">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isNotStarted
-                              ? "bg-slate-500/40"
-                              : concept.score < 50
-                                ? "bg-red-400"
-                                : concept.score < 75
-                                  ? "bg-yellow-400"
-                                  : "bg-emerald-400"
-                          }`}
+                          className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
                           style={{ width: isNotStarted ? "0%" : `${concept.score}%` }}
                         />
                       </div>

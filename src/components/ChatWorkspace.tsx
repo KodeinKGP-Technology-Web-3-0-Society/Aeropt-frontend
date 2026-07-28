@@ -13,6 +13,8 @@ import {
 } from "@/components/StudySessionCards";
 import { AgentChatResponse, PlacementContext, sendChatMessage, fetchChatSessions, fetchChatSessionDetail, fetchConceptProficiency, presentationToAgentResponse, type ChatTurnItem } from "@/lib/agent";
 import ProactiveIntroCard from "@/components/slides/ProactiveIntroCard";
+import PracticeAttemptView from "@/components/PracticeAttemptView";
+import { splitPracticeAttempt } from "@/lib/practiceContent";
 import TheorySlideDeck from "@/components/slides/TheorySlideDeck";
 import { getSupabaseUserId } from "@/lib/auth";
 import { getAgentApiBase } from "@/lib/auth";
@@ -81,8 +83,12 @@ function formatSessionTitle(
   index: number,
 ): string {
   if (preview?.trim()) {
-    const trimmed = preview.trim();
-    return trimmed.length > 48 ? `${trimmed.slice(0, 47)}…` : trimmed;
+    const trimmed = preview.trim().replace(/\s+/g, " ");
+    const normalized =
+      trimmed.length > 0
+        ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+        : trimmed;
+    return normalized.length > 42 ? `${normalized.slice(0, 41)}…` : normalized;
   }
   if (updatedAt) {
     const date = new Date(updatedAt);
@@ -97,13 +103,35 @@ function normalizeSuggestions(
   suggestions: AgentChatResponse["follow_up_suggestions"],
 ): string[] {
   if (!suggestions) return [];
-  return suggestions
-    .map((item) => {
-      if (typeof item === "string") return item;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of suggestions) {
+    let text = "";
+    if (typeof item === "string") text = item;
+    else {
       const preview = (item as { preview?: string }).preview;
-      return preview || (item as { text?: string }).text || "";
-    })
-    .filter(Boolean);
+      text = preview || (item as { text?: string }).text || "";
+    }
+    const trimmed = text.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function dedupeSessions(sessions: Session[]): Session[] {
+  const seen = new Set<string>();
+  const out: Session[] = [];
+  for (const session of sessions) {
+    const key = session.title.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(session);
+  }
+  return out.slice(0, 8);
 }
 
 function turnsToMessages(turns: ChatTurnItem[], sessionId: string): Message[] {
@@ -209,7 +237,7 @@ function AssistantExtras({
           <MarkdownMath content={agent.mistake_brief} className="markdown-math text-sm" />
         </div>
       )}
-      {agent.card && isLatest && (
+      {agent.card && isLatest && !suppressPicker && (
         <ProactiveIntroCard card={agent.card} />
       )}
       {agent.slides && agent.slides.slides.length > 0 && (
@@ -262,6 +290,10 @@ function AssistantResponse({
 }) {
   const structured = message.structured_response;
   const hasSlides = Boolean(message.agent?.slides?.slides?.length);
+  const practiceSplit = !hasSlides ? splitPracticeAttempt(message.content) : null;
+  const hidePracticeSolution = Boolean(
+    isLatest && message.agent?.grading_ui?.show_correct_incorrect,
+  );
   const hasStructuredSections =
     !hasSlides &&
     structured &&
@@ -272,7 +304,15 @@ function AssistantResponse({
   if (!hasStructuredSections && !hasSlides) {
     return (
       <article className="lesson-response assistant-plain">
-        {!hasSlides && <MarkdownMath content={message.content} />}
+        {practiceSplit ? (
+          <PracticeAttemptView
+            question={practiceSplit.question}
+            remainder={practiceSplit.remainder}
+            hideSolution={hidePracticeSolution}
+          />
+        ) : (
+          !hasSlides && <MarkdownMath content={message.content} />
+        )}
         <AssistantExtras
           agent={message.agent}
           onGrade={onGrade}
@@ -318,7 +358,15 @@ function AssistantResponse({
       )}
       {!hasSlides && !structured?.filling_gap && !structured?.solution_steps.length && (
         <div className="assistant-plain">
-          <MarkdownMath content={message.content} />
+          {practiceSplit ? (
+            <PracticeAttemptView
+              question={practiceSplit.question}
+              remainder={practiceSplit.remainder}
+              hideSolution={hidePracticeSolution}
+            />
+          ) : (
+            <MarkdownMath content={message.content} />
+          )}
         </div>
       )}
       <AssistantExtras
@@ -411,8 +459,17 @@ export default function ChatWorkspace() {
   const startFreshRef = useRef(forceFreshStart);
   const freshUrlHandledRef = useRef(false);
   const [entryNonce, setEntryNonce] = useState(0);
+  const [roadmapBindReady, setRoadmapBindReady] = useState(false);
 
   const isRoadmapSession = Boolean(roadmapNodeId && contentSequence.length > 0);
+
+  const persistRoadmapBind = useCallback(
+    (stageIndex: number, sessionId: string | null = activeSessionId) => {
+      if (!roadmapNodeId) return;
+      writeRoadmapSessionBind(roadmapNodeId, { sessionId, stageIndex });
+    },
+    [roadmapNodeId, activeSessionId],
+  );
 
   // Strip one-shot fresh=1 so refresh resumes the bound session instead of restarting.
   useEffect(() => {
@@ -470,14 +527,15 @@ export default function ChatWorkspace() {
     void loadNode();
   }, [roadmapNodeId, initialStage, entryNonce]);
 
-  // Persist roadmap stage + session so refresh mid-sequence resumes correctly.
   useEffect(() => {
-    if (!roadmapNodeId) return;
-    writeRoadmapSessionBind(roadmapNodeId, {
-      sessionId: activeSessionId,
-      stageIndex: currentStageIndex,
-    });
-  }, [roadmapNodeId, activeSessionId, currentStageIndex]);
+    setRoadmapBindReady(false);
+  }, [roadmapNodeId, entryNonce]);
+
+  // Persist roadmap stage + session after bootstrap restores saved state (avoids overwriting bind with 0 on mount).
+  useEffect(() => {
+    if (!roadmapNodeId || !roadmapBindReady) return;
+    persistRoadmapBind(currentStageIndex);
+  }, [roadmapNodeId, roadmapBindReady, currentStageIndex, persistRoadmapBind]);
 
   const completeConcept = useCallback(async (proficiencyPct?: number | null) => {
     if (!roadmapNodeId || conceptComplete) return;
@@ -623,9 +681,17 @@ export default function ChatWorkspace() {
   const quickPrompts = useMemo(() => {
     if (latestAssistant?.agent?.flashcards?.mode === "picker") return [];
     const fromBackend = latestAssistant?.structured_response?.try_next?.filter(Boolean);
-    if (fromBackend && fromBackend.length > 0) return fromBackend;
-    return fallbackPrompts;
+    const raw = fromBackend && fromBackend.length > 0 ? fromBackend : fallbackPrompts;
+    const seen = new Set<string>();
+    return raw.filter((prompt) => {
+      const key = prompt.trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [latestAssistant]);
+
+  const visibleSessions = useMemo(() => dedupeSessions(sessions), [sessions]);
 
   async function sendAgentMessage(
     query: string,
@@ -781,7 +847,9 @@ export default function ChatWorkspace() {
     if (currentStageIndex >= contentSequence.length - 1) {
       await completeConcept(agentResponse.proficiency_pct ?? lastProficiencyPct);
     } else {
-      setCurrentStageIndex((index) => index + 1);
+      const nextIndex = currentStageIndex + 1;
+      setCurrentStageIndex(nextIndex);
+      persistRoadmapBind(nextIndex);
     }
   }
 
@@ -790,6 +858,7 @@ export default function ChatWorkspace() {
     const nextIndex = contentSequence.indexOf(nextStage);
     if (nextIndex >= 0) {
       setCurrentStageIndex(nextIndex);
+      persistRoadmapBind(nextIndex);
     }
     await submitMessage(stagePrompt(roadmapNode.concept_name, nextStage), undefined, nextStage);
   }
@@ -853,6 +922,9 @@ export default function ChatWorkspace() {
       const userId = getSupabaseUserId();
       if (!userId) {
         setSessionsReady(true);
+        if (roadmapNodeId) {
+          setRoadmapBindReady(true);
+        }
         return;
       }
 
@@ -951,6 +1023,9 @@ export default function ChatWorkspace() {
         }
       } finally {
         setSessionsReady(true);
+        if (roadmapNodeId) {
+          setRoadmapBindReady(true);
+        }
       }
     };
 
@@ -958,13 +1033,32 @@ export default function ChatWorkspace() {
   }, [loadSessionHistory, roadmapNodeId, entryNonce, initialStage]);
 
   useEffect(() => {
-    if (!sessionsReady || !roadmapPrompt || messages.length > 0 || isReplying || isLoadingSession) {
+    if (!sessionsReady || messages.length > 0 || isReplying || isLoadingSession) {
       return;
     }
     if (autoPromptedRef.current) return;
+    if (!isRoadmapSession || !roadmapNode) {
+      if (!roadmapPrompt) return;
+      autoPromptedRef.current = true;
+      void submitMessage(roadmapPrompt);
+      return;
+    }
+
+    const stage = (contentSequence[currentStageIndex] ?? initialStage) as StudyStage;
     autoPromptedRef.current = true;
-    void submitMessage(roadmapPrompt);
-  }, [roadmapPrompt, messages.length, isReplying, isLoadingSession, sessionsReady]);
+    void submitMessage(stagePrompt(roadmapNode.concept_name, stage), undefined, stage);
+  }, [
+    roadmapPrompt,
+    messages.length,
+    isReplying,
+    isLoadingSession,
+    sessionsReady,
+    isRoadmapSession,
+    roadmapNode,
+    contentSequence,
+    currentStageIndex,
+    initialStage,
+  ]);
 
   // Flush session summary on tab close / hard navigation away (not soft Next.js routes).
   useEffect(() => {
@@ -994,9 +1088,13 @@ export default function ChatWorkspace() {
         }}
       />
 
-      <section className="chat-main">
+      <section className={`chat-main ${isRoadmapSession && roadmapNode ? "chat-main--roadmap" : ""}`}>
         <header className="chat-header">
-          <h1>{activeSession?.title ?? "Study Session"}</h1>
+          <h1>
+            {isRoadmapSession && roadmapNode?.concept_name
+              ? roadmapNode.concept_name
+              : activeSession?.title ?? "Study Session"}
+          </h1>
           <div className="header-actions">
             <button type="button" className="header-action-button" onClick={createSession}>
               New chat
@@ -1012,28 +1110,53 @@ export default function ChatWorkspace() {
           </div>
         </header>
 
-        <div className="chat-scroll">
-          <div className="session-list">
-            {sessions.map((session) => (
-              <button
-                key={session.id}
-                type="button"
-                className={`session-pill ${session.id === activeSessionId ? "session-pill-active" : ""}`}
-                onClick={() => void selectSession(session.id)}
-              >
-                {session.title}
-              </button>
-            ))}
+        {isRoadmapSession && roadmapNode && (
+          <div className="study-path-bar">
+            <StudyStepBar
+              stages={contentSequence}
+              currentStageIndex={currentStageIndex}
+              conceptName={roadmapNode.concept_name}
+              loading={isReplying}
+              conceptComplete={conceptComplete}
+              slideProgress={requiresSlides ? slideProgress : null}
+              slidesComplete={slidesComplete}
+              requiresSlides={requiresSlides}
+              onAdvance={(stage) => void advanceStudyStage(stage)}
+            />
           </div>
+        )}
+
+        <div className="chat-scroll">
+          {!isRoadmapSession && visibleSessions.length > 0 && (
+            <div className="session-list-wrap">
+              <div className="session-list">
+                {visibleSessions.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    className={`session-pill ${session.id === activeSessionId ? "session-pill-active" : ""}`}
+                    onClick={() => void selectSession(session.id)}
+                    title={session.title}
+                  >
+                    {session.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {isLoadingSession && messages.length === 0 && (
             <p className="chat-error">Loading your last session…</p>
           )}
 
-          {!isLoadingSession && messages.length === 0 && (
+          {!isRoadmapSession && !isLoadingSession && messages.length === 0 && (
             <p className="chat-error">
               Ask a doubt, request practice, or say &quot;quiz me on torque&quot; to start.
             </p>
+          )}
+
+          {isRoadmapSession && isReplying && messages.length === 0 && (
+            <p className="chat-status">Loading lesson…</p>
           )}
 
           {messages.map((message) =>
@@ -1068,30 +1191,23 @@ export default function ChatWorkspace() {
           {isReplying && <TypingIndicator />}
           {error && <p className="chat-error">{error}</p>}
 
-          {isRoadmapSession && roadmapNode && (
-            <StudyStepBar
-              stages={contentSequence}
-              currentStageIndex={currentStageIndex}
-              conceptName={roadmapNode.concept_name}
-              loading={isReplying}
-              conceptComplete={conceptComplete}
-              slideProgress={requiresSlides ? slideProgress : null}
-              slidesComplete={slidesComplete}
-              requiresSlides={requiresSlides}
-              onAdvance={(stage) => void advanceStudyStage(stage)}
-            />
-          )}
-
           <div className="quick-prompts">
             {!awaitingGrade && !isRoadmapSession && quickPrompts.length > 0 && (
-              <>
-                <span>Try next</span>
-                {quickPrompts.map((prompt) => (
-                  <button key={prompt} type="button" onClick={() => void submitMessage(prompt)}>
-                    {prompt} {"->"}
-                  </button>
-                ))}
-              </>
+              <div className="quick-prompts-row">
+                <span className="quick-prompts-label">Try next</span>
+                <div className="quick-prompts-chips">
+                  {quickPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="quick-prompt-chip"
+                      onClick={() => void submitMessage(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useApp } from "@/components/AppContext";
 import { apiRequest, getApiBaseUrl } from "@/lib/auth";
+import { CacheTTL, cacheKey, cachedGet } from "@/lib/apiCache";
 
 type SortKey = "concept" | "chapter" | "score" | "attempts" | "accuracy" | "lastAttempted";
 type SortOrder = "asc" | "desc";
@@ -56,7 +57,9 @@ export default function ProgressContent() {
     setError(null);
 
     const url = `${getApiBaseUrl()}/analytics/progress/`;
-    apiRequest<typeof data.progress & { totalAttempts?: number }>(url)
+    cachedGet(cacheKey(["progress"]), CacheTTL.progress, () =>
+      apiRequest<typeof data.progress & { totalAttempts?: number }>(url)
+    )
       .then((resData) => {
         const { totalAttempts: _totalAttempts, ...progress } = resData;
         setData((prev) => ({

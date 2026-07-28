@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppContext";
 import * as onboarding from "@/lib/onboarding";
@@ -10,15 +10,16 @@ import type {
   CoverageDepth,
   DiagnosticQuestion,
   JourneyType,
-  LearningSource,
+  MilestoneKind,
   OnboardingState,
   PlacementPlan,
 } from "@/lib/onboarding";
 import * as auth from "@/lib/auth";
 import { SlideDots } from "@/components/slides/SlideShell";
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = onboarding.TOTAL_ONBOARDING_STEPS;
 const DRAFT_KEY = "prepwise_onboarding_draft";
+const DRAFT_VERSION = 2;
 
 type LocalDiagnosticAnswer = {
   concept_id: string;
@@ -27,6 +28,7 @@ type LocalDiagnosticAnswer = {
 };
 
 type OnboardingDraft = {
+  version?: number;
   state: OnboardingState;
   step: number;
   diagnosticAnswers: LocalDiagnosticAnswer[];
@@ -54,7 +56,24 @@ function loadDraft(): OnboardingDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(DRAFT_KEY);
-    return raw ? (JSON.parse(raw) as OnboardingDraft) : null;
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as OnboardingDraft;
+    const step = onboarding.migrateOnboardingStep(draft.step);
+    const state: OnboardingState = {
+      ...onboarding.DEFAULT_ONBOARDING,
+      ...draft.state,
+      current_step: step,
+      daily_goal_minutes:
+        draft.state?.daily_goal_minutes ?? onboarding.DEFAULT_ONBOARDING.daily_goal_minutes,
+      preferred_depth:
+        draft.state?.preferred_depth ?? onboarding.DEFAULT_ONBOARDING.preferred_depth,
+    };
+    return {
+      version: DRAFT_VERSION,
+      state,
+      step,
+      diagnosticAnswers: draft.diagnosticAnswers ?? [],
+    };
   } catch {
     return null;
   }
@@ -62,7 +81,10 @@ function loadDraft(): OnboardingDraft | null {
 
 function saveDraft(draft: OnboardingDraft) {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  sessionStorage.setItem(
+    DRAFT_KEY,
+    JSON.stringify({ ...draft, version: DRAFT_VERSION })
+  );
 }
 
 function clearDraft() {
@@ -99,10 +121,6 @@ function buildDiagnosticBaseline(
   };
 }
 
-function canSkipStep(step: number): boolean {
-  return step === 5 || step === 6 || step === 7;
-}
-
 function SlideCard({
   title,
   subtitle,
@@ -124,10 +142,10 @@ function SlideCard({
 }) {
   return (
     <div className="w-full max-w-[640px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-white border border-[#d4e0ed] rounded-[24px] p-8 shadow-[0_8px_30px_rgb(0,107,255,0.05)]">
-        <h2 className="text-[38px] leading-tight font-bold text-[#0b3558] mb-3">{title}</h2>
+      <div className="bg-[#0d0e16] border border-[#2a2b3c] rounded-[24px] p-8 shadow-[0_8px_30px_rgb(98,88,255,0.06)]">
+        <h2 className="text-[38px] leading-tight font-bold text-[#eff0ff] mb-3">{title}</h2>
         {subtitle && (
-          <p className="text-base text-[#476788] mb-8">{subtitle}</p>
+          <p className="text-base text-[#8f91a3] mb-8">{subtitle}</p>
         )}
         <div className="mb-10 space-y-4">{children}</div>
         <div className="flex gap-4">
@@ -136,7 +154,7 @@ function SlideCard({
               type="button"
               onClick={onBack}
               disabled={loading}
-              className="flex-1 py-3.5 rounded-lg border border-[#d4e0ed] bg-white text-base font-medium text-[#0b3558] disabled:opacity-50 hover:bg-[#f8f9fb] transition-colors"
+              className="flex-1 py-3.5 rounded-lg border border-[#2f3242] bg-[#141622] text-base font-medium text-[#d7d8e8] disabled:opacity-50 hover:bg-[#1a1b28] transition-colors"
             >
               Back
             </button>
@@ -145,7 +163,7 @@ function SlideCard({
             type="button"
             disabled={nextDisabled || loading}
             onClick={onNext}
-            className="flex-1 py-3.5 rounded-lg bg-[#006bff] hover:bg-[#0058d1] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm"
+            className="flex-1 py-3.5 rounded-lg bg-[#6258ff] hover:bg-[#5045ff] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm"
           >
             {loading ? "Setting up..." : nextLabel}
           </button>
@@ -164,6 +182,7 @@ export default function OnboardingFlow() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [persisting, setPersisting] = useState(false);
   const [error, setError] = useState("");
   const [placementPlan, setPlacementPlan] = useState<PlacementPlan | null>(null);
   const [diagQuestions, setDiagQuestions] = useState<DiagnosticQuestion[]>([]);
@@ -174,6 +193,7 @@ export default function OnboardingFlow() {
   const [probedConceptScores, setProbedConceptScores] = useState<Record<string, number>>({});
   const [completedDiagQuestions, setCompletedDiagQuestions] = useState<DiagnosticQuestion[]>([]);
   const [showAnswer, setShowAnswer] = useState(false);
+  const persistLock = useRef(false);
 
   useEffect(() => {
     const init = async () => {
@@ -185,13 +205,21 @@ export default function OnboardingFlow() {
         }
         setUserId(me.id);
         const draft = loadDraft();
-        if (draft) {
+        if (onboarding.hasServerOnboardingProgress(me)) {
+          const serverState = onboarding.meToOnboardingState(me);
+          setState(serverState);
+          setStep(serverState.current_step);
+          if (draft?.diagnosticAnswers?.length) {
+            setDiagnosticAnswers(draft.diagnosticAnswers);
+          }
+        } else if (draft) {
           setState(draft.state);
           setStep(draft.step);
           setDiagnosticAnswers(draft.diagnosticAnswers);
         } else {
-          setState(onboarding.meToOnboardingState(me));
-          setStep(me.onboarding_step > 0 ? me.onboarding_step : 1);
+          const initial = onboarding.meToOnboardingState(me);
+          setState(initial);
+          setStep(initial.current_step > 0 ? initial.current_step : 1);
         }
         const ch = await onboarding.fetchChapters();
         setChapters(ch);
@@ -206,11 +234,11 @@ export default function OnboardingFlow() {
 
   useEffect(() => {
     if (loading) return;
-    saveDraft({ state, step, diagnosticAnswers });
+    saveDraft({ version: DRAFT_VERSION, state, step, diagnosticAnswers });
   }, [state, step, diagnosticAnswers, loading]);
 
   useEffect(() => {
-    if (loading || step !== 7) return;
+    if (loading || step !== 6) return;
     const loadPlan = async () => {
       try {
         const plan = await onboarding.fetchPlacementPlan({
@@ -227,7 +255,6 @@ export default function OnboardingFlow() {
   }, [loading, step, state.journey_type, state.covered_chapters, state.self_assessed_coverage]);
 
   const skipCoverageSteps = state.journey_type === "fresh_start";
-  const skipDiagnosticStep = false;
 
   const goToStep = (nextStep: number) => {
     setError("");
@@ -235,24 +262,82 @@ export default function OnboardingFlow() {
     setStep(nextStep);
   };
 
+  const persistMilestone = async (
+    kind: MilestoneKind,
+    nextState: OnboardingState,
+    nextStep: number
+  ) => {
+    if (!userId || persistLock.current) return;
+    persistLock.current = true;
+    setPersisting(true);
+    try {
+      await onboarding.persistOnboardingMilestone(userId, kind, nextState, nextStep);
+      saveDraft({
+        version: DRAFT_VERSION,
+        state: { ...nextState, current_step: nextStep },
+        step: nextStep,
+        diagnosticAnswers,
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not save progress");
+    } finally {
+      persistLock.current = false;
+      setPersisting(false);
+    }
+  };
+
+  const advanceFrom = async (fromStep: number) => {
+    let next = Math.min(fromStep + 1, TOTAL_STEPS);
+    if (fromStep === 2 && skipCoverageSteps) {
+      next = 5;
+    }
+
+    const nextState = { ...state, current_step: next };
+
+    if (fromStep === 2) {
+      if (skipCoverageSteps) {
+        // Target + empty placement in one pass when coverage is skipped
+        if (userId && !persistLock.current) {
+          persistLock.current = true;
+          setPersisting(true);
+          try {
+            await onboarding.persistOnboardingMilestone(userId, "target", nextState, next);
+            await onboarding.persistOnboardingMilestone(userId, "placement", nextState, next);
+            saveDraft({
+              version: DRAFT_VERSION,
+              state: { ...nextState, current_step: next },
+              step: next,
+              diagnosticAnswers,
+            });
+          } catch (caught) {
+            setError(caught instanceof Error ? caught.message : "Could not save progress");
+          } finally {
+            persistLock.current = false;
+            setPersisting(false);
+          }
+        }
+      } else {
+        await persistMilestone("target", nextState, next);
+      }
+    } else if (fromStep === 4) {
+      await persistMilestone("placement", nextState, next);
+    } else if (fromStep === 5) {
+      await persistMilestone("rhythm", nextState, next);
+    } else if (fromStep === 6) {
+      await persistMilestone("diagnostic", nextState, next);
+    }
+
+    goToStep(next);
+  };
+
   const goNext = () => {
-    if (step === 2 && skipCoverageSteps) {
-      goToStep(5);
-      return;
-    }
-    if (step === 6 && skipDiagnosticStep) {
-      goToStep(8);
-      return;
-    }
-    goToStep(Math.min(step + 1, TOTAL_STEPS));
+    void advanceFrom(step);
   };
 
   const goBack = () => {
     let prev = step - 1;
     if (prev === 4 && skipCoverageSteps) prev = 2;
     if (prev === 3 && skipCoverageSteps) prev = 2;
-    if (prev === 7 && skipDiagnosticStep) prev = 6;
-    if (prev === 8 && skipDiagnosticStep) prev = 6;
     goToStep(Math.max(1, prev));
   };
 
@@ -286,18 +371,20 @@ export default function OnboardingFlow() {
           grade_level: state.grade_level,
           daily_goal_minutes: state.daily_goal_minutes,
           preferred_depth: state.preferred_depth,
-          onboarding_step: 8,
+          onboarding_step: TOTAL_STEPS,
         },
         placement: {
           journey_type: state.journey_type,
-          learning_source: state.learning_source,
           covered_chapters: state.covered_chapters,
           self_assessed_coverage: state.self_assessed_coverage,
           diagnostic_baseline,
         },
-        snapshot: { ...state, diagnostic_baseline } as unknown as Record<string, unknown>,
-        current_step: 8,
-        onboarding_step: 8,
+        snapshot: { ...state, diagnostic_baseline, current_step: TOTAL_STEPS } as unknown as Record<
+          string,
+          unknown
+        >,
+        current_step: TOTAL_STEPS,
+        onboarding_step: TOTAL_STEPS,
       });
       clearDraft();
       await refreshOnboardingStatus();
@@ -375,10 +462,12 @@ export default function OnboardingFlow() {
       if (nextIndex >= diagQuestions.length) {
         const baseline = buildDiagnosticBaseline(nextScores, diagQuestions);
         setCompletedDiagQuestions(diagQuestions);
-        setState((prev) => ({ ...prev, diagnostic_baseline: baseline }));
+        const nextState = { ...state, diagnostic_baseline: baseline };
+        setState(nextState);
         setDiagQuestions([]);
         setDiagIndex(0);
         setShowAnswer(false);
+        await persistMilestone("diagnostic", nextState, step);
       } else {
         setDiagIndex(nextIndex);
         setShowAnswer(false);
@@ -389,6 +478,22 @@ export default function OnboardingFlow() {
       setDiagGrading(false);
     }
   };
+
+  const conceptsRemaining = useMemo(() => {
+    const totalConcepts =
+      chapters.reduce((sum, ch) => sum + ch.concept_count, 0) || 33;
+    if (state.journey_type === "fresh_start") return totalConcepts;
+    const coveredSet = new Set(state.covered_chapters);
+    const coveredConcepts = chapters
+      .filter((ch) => coveredSet.has(ch.name))
+      .reduce((sum, ch) => sum + ch.concept_count, 0);
+    return Math.max(8, totalConcepts - Math.floor(coveredConcepts * 0.5));
+  }, [chapters, state.covered_chapters, state.journey_type]);
+
+  const etaWeeks = onboarding.estimateWeeksPreview(
+    state.daily_goal_minutes,
+    conceptsRemaining
+  );
 
   const revealCards = useMemo(() => {
     const target =
@@ -412,7 +517,8 @@ export default function OnboardingFlow() {
         : state.covered_chapters.length > 0
           ? `${state.covered_chapters.length} chapter${state.covered_chapters.length === 1 ? "" : "s"} marked. Starting from your gaps.`
           : "Your path starts from chapter one",
-      `Daily rhythm: ${state.daily_goal_minutes} min · ${state.preferred_depth} depth`,
+      `Today's goal: ${state.daily_goal_minutes} min · ${state.preferred_depth} depth`,
+      `At this pace: ~${etaWeeks} week${etaWeeks === 1 ? "" : "s"} to cover your path`,
     ];
 
     if (typeof baseline.overall === "number") {
@@ -442,27 +548,28 @@ export default function OnboardingFlow() {
 
     cards.push("First up: your personalized learning path");
     return cards;
-  }, [state, chapters]);
+  }, [state, chapters, etaWeeks]);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8f9fb]">
-        <p className="text-base text-[#476788]">Setting up your classroom...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#05060c]">
+        <p className="text-base text-[#8f91a3]">Setting up your classroom...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen overflow-y-auto bg-[#f8f9fb] px-4 py-12 md:py-16 font-sans text-[#0b3558]">
+    <div className="h-screen overflow-y-auto bg-[#05060c] px-4 py-12 md:py-16 font-sans text-[#eff0ff]">
       <div className="max-w-[640px] mx-auto relative">
         <div className="flex items-center justify-between mb-10 min-h-[32px]">
           <span className="w-10" />
           <div className="text-center">
-            <p className="text-[14px] uppercase tracking-widest text-[#006bff] font-semibold">
+            <p className="text-[14px] uppercase tracking-widest text-[#6258ff] font-semibold">
               Enter the Classroom
             </p>
-            <p className="text-sm text-[#476788] mt-1">
+            <p className="text-sm text-[#8f91a3] mt-1">
               Step {step} of {TOTAL_STEPS}
+              {persisting ? " · Saving…" : ""}
             </p>
           </div>
           <span className="w-10" />
@@ -492,12 +599,12 @@ export default function OnboardingFlow() {
                   onClick={() => setState((s) => ({ ...s, journey_type: opt.id }))}
                   className={`w-full text-left p-5 rounded-xl border transition-all duration-200 ${
                     state.journey_type === opt.id
-                      ? "border-[#006bff] bg-[#006bff]/5 shadow-[0_2px_12px_rgb(0,107,255,0.08)]"
-                      : "border-[#d4e0ed] bg-white hover:border-[#0b3558]/30"
+                      ? "border-[#6258ff] bg-[#6258ff]/10 shadow-[0_2px_12px_rgb(98,88,255,0.15)]"
+                      : "border-[#2f3242] bg-[#141622] hover:border-[#6258ff]/40"
                   }`}
                 >
-                  <p className="font-semibold text-[18px] text-[#0b3558]">{opt.title}</p>
-                  <p className="text-base text-[#476788] mt-1">{opt.subtitle}</p>
+                  <p className="font-semibold text-[18px] text-[#eff0ff]">{opt.title}</p>
+                  <p className="text-base text-[#8f91a3] mt-1">{opt.subtitle}</p>
                 </button>
               ))}
             </div>
@@ -510,10 +617,11 @@ export default function OnboardingFlow() {
             subtitle="We'll tune content depth and PYQ mix to this."
             onBack={goBack}
             onNext={goNext}
+            loading={persisting}
           >
             <div className="space-y-4">
               <div>
-                <label className="text-[14px] font-medium text-[#0b3558] block mb-2">
+                <label className="text-[14px] font-medium text-[#eff0ff] block mb-2">
                   Exam
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -524,8 +632,8 @@ export default function OnboardingFlow() {
                       onClick={() => setState((s) => ({ ...s, target_exam: exam }))}
                       className={`py-3 rounded-lg text-[15px] font-medium border transition-colors ${
                         state.target_exam === exam
-                          ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
-                          : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
+                          ? "border-[#6258ff] bg-[#6258ff]/10 text-[#6258ff]"
+                          : "border-[#2f3242] bg-[#141622] text-[#8f91a3] hover:border-[#6258ff]/40"
                       }`}
                     >
                       {exam === "BOTH" ? "Both" : exam === "JEE_MAINS" ? "Main" : "Advanced"}
@@ -534,7 +642,7 @@ export default function OnboardingFlow() {
                 </div>
               </div>
               <div>
-                <label className="text-[14px] font-medium text-[#0b3558] block mb-2">
+                <label className="text-[14px] font-medium text-[#eff0ff] block mb-2">
                   Class
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -545,8 +653,8 @@ export default function OnboardingFlow() {
                       onClick={() => setState((s) => ({ ...s, grade_level: grade }))}
                       className={`py-3 rounded-lg text-[15px] font-medium border transition-colors ${
                         state.grade_level === grade
-                          ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
-                          : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
+                          ? "border-[#6258ff] bg-[#6258ff]/10 text-[#6258ff]"
+                          : "border-[#2f3242] bg-[#141622] text-[#8f91a3] hover:border-[#6258ff]/40"
                       }`}
                     >
                       {grade === "DROPPER" ? "Dropper" : grade.replace("CLASS_", "Class ")}
@@ -555,7 +663,7 @@ export default function OnboardingFlow() {
                 </div>
               </div>
               <div>
-                <label className="text-[14px] font-medium text-[#0b3558] block mb-2">
+                <label className="text-[14px] font-medium text-[#eff0ff] block mb-2">
                   Target year
                 </label>
                 <input
@@ -564,7 +672,7 @@ export default function OnboardingFlow() {
                   onChange={(e) =>
                     setState((s) => ({ ...s, target_year: Number(e.target.value) || s.target_year }))
                   }
-                  className="w-full bg-white border border-[#d4e0ed] rounded-lg px-4 py-3 text-[15px] text-[#0b3558] focus:border-[#006bff] focus:ring-1 focus:ring-[#006bff] outline-none transition-all"
+                  className="w-full bg-[#0d0e16] border border-[#2f3242] rounded-lg px-4 py-3 text-[15px] text-[#eff0ff] focus:border-[#6258ff] focus:ring-1 focus:ring-[#6258ff] outline-none transition-all"
                 />
               </div>
             </div>
@@ -585,7 +693,7 @@ export default function OnboardingFlow() {
                   <label
                     key={ch.name}
                     className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
-                      checked ? "border-[#006bff] bg-[#006bff]/5" : "border-[#d4e0ed] bg-white hover:border-[#0b3558]/30"
+                      checked ? "border-[#6258ff] bg-[#6258ff]/10" : "border-[#2f3242] bg-[#141622] hover:border-[#6258ff]/40"
                     }`}
                   >
                     <input
@@ -599,11 +707,11 @@ export default function OnboardingFlow() {
                             : [...s.covered_chapters, ch.name],
                         }))
                       }
-                      className="accent-[#006bff] w-4 h-4"
+                      className="accent-[#6258ff] w-4 h-4"
                     />
-                    <span className="text-base text-[#0b3558] flex-1">{ch.name}</span>
+                    <span className="text-base text-[#eff0ff] flex-1">{ch.name}</span>
                     {ch.concept_count > 0 && (
-                      <span className="text-[12px] font-medium px-2.5 py-1 rounded-full bg-slate-100 text-[#476788]">
+                      <span className="text-[12px] font-medium px-2.5 py-1 rounded-full bg-[#1a1b28] text-[#8f91a3]">
                         {ch.concept_count} concepts
                       </span>
                     )}
@@ -621,11 +729,12 @@ export default function OnboardingFlow() {
             onBack={goBack}
             onNext={goNext}
             nextDisabled={state.covered_chapters.length === 0}
+            loading={persisting}
           >
             <div className="space-y-6 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
               {state.covered_chapters.map((ch) => (
                 <div key={ch}>
-                  <p className="text-base font-medium text-[#0b3558] mb-3">{ch}</p>
+                  <p className="text-base font-medium text-[#eff0ff] mb-3">{ch}</p>
                   <div className="grid grid-cols-3 gap-3">
                     {(["barely", "moderate", "strong"] as CoverageDepth[]).map((depth) => (
                       <button
@@ -642,8 +751,8 @@ export default function OnboardingFlow() {
                         }
                         className={`py-2 rounded-lg text-sm font-medium capitalize border transition-colors ${
                           state.self_assessed_coverage[ch] === depth
-                            ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
-                            : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
+                            ? "border-[#6258ff] bg-[#6258ff]/10 text-[#6258ff]"
+                            : "border-[#2f3242] bg-[#141622] text-[#8f91a3] hover:border-[#6258ff]/40"
                         }`}
                       >
                         {depth}
@@ -657,44 +766,20 @@ export default function OnboardingFlow() {
         )}
 
         {step === 5 && (
-          <SlideCard title="Where do you study from?" onBack={goBack} onNext={goNext}>
-            <div className="grid grid-cols-2 gap-4">
-              {(
-                [
-                  ["school", "School"],
-                  ["coaching", "Coaching"],
-                  ["self_study", "Self-study"],
-                  ["mixed", "Mixed"],
-                ] as [LearningSource, string][]
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setState((s) => ({ ...s, learning_source: id }))}
-                  className={`py-4 rounded-xl text-base font-medium border transition-colors ${
-                    state.learning_source === id
-                      ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
-                      : "border-[#d4e0ed] bg-white text-[#0b3558] hover:border-[#0b3558]/30"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </SlideCard>
-        )}
-
-        {step === 6 && (
           <SlideCard
             title="Study rhythm"
-            subtitle="We'll size sessions to fit your day."
+            subtitle="We'll size your daily queue and teaching depth to fit."
             onBack={goBack}
             onNext={goNext}
+            loading={persisting}
           >
             <div className="space-y-8">
               <div>
-                <label className="text-base font-medium text-[#0b3558] block mb-4">
-                  Daily study goal: <span className="text-[#006bff] font-bold">{state.daily_goal_minutes === 120 ? "120+" : state.daily_goal_minutes} min</span>
+                <label className="text-base font-medium text-[#eff0ff] block mb-4">
+                  Daily study goal:{" "}
+                  <span className="text-[#6258ff] font-bold">
+                    {state.daily_goal_minutes === 120 ? "120+" : state.daily_goal_minutes} min
+                  </span>
                 </label>
                 <input
                   type="range"
@@ -705,11 +790,14 @@ export default function OnboardingFlow() {
                   onChange={(e) =>
                     setState((s) => ({ ...s, daily_goal_minutes: Number(e.target.value) }))
                   }
-                  className="w-full accent-[#006bff]"
+                  className="w-full accent-[#6258ff]"
                 />
+                <p className="text-sm text-[#8f91a3] mt-3">
+                  Preview: ~{etaWeeks} week{etaWeeks === 1 ? "" : "s"} on your path at this pace.
+                </p>
               </div>
               <div>
-                <label className="text-[14px] font-medium text-[#0b3558] block mb-3">
+                <label className="text-[14px] font-medium text-[#eff0ff] block mb-3">
                   Preferred depth
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -720,20 +808,27 @@ export default function OnboardingFlow() {
                       onClick={() => setState((s) => ({ ...s, preferred_depth: depth }))}
                       className={`py-3 rounded-lg text-[15px] font-medium capitalize border transition-colors ${
                         state.preferred_depth === depth
-                          ? "border-[#006bff] bg-[#006bff]/5 text-[#006bff]"
-                          : "border-[#d4e0ed] bg-white text-[#476788] hover:border-[#0b3558]/30"
+                          ? "border-[#6258ff] bg-[#6258ff]/10 text-[#6258ff]"
+                          : "border-[#2f3242] bg-[#141622] text-[#8f91a3] hover:border-[#6258ff]/40"
                       }`}
                     >
                       {depth}
                     </button>
                   ))}
                 </div>
+                <p className="text-sm text-[#8f91a3] mt-3">
+                  {state.preferred_depth === "quick"
+                    ? "Shorter explanations and fewer slides."
+                    : state.preferred_depth === "deep"
+                      ? "More intuition and an extra worked angle."
+                      : "Balanced teaching — our default pace."}
+                </p>
               </div>
             </div>
           </SlideCard>
         )}
 
-        {step === 7 && (
+        {step === 6 && (
           <SlideCard
             title="Quick diagnostic"
             subtitle={
@@ -746,9 +841,10 @@ export default function OnboardingFlow() {
             onBack={goBack}
             onNext={goNext}
             nextLabel="Continue"
+            loading={persisting}
           >
             {placementPlan && placementPlan.total_probes > 0 && diagQuestions.length === 0 && diagnosticAnswers.length === 0 && (
-              <p className="text-sm text-[#476788] mb-4">
+              <p className="text-sm text-[#8f91a3] mb-4">
                 {placementPlan.total_probes} chapter probe{placementPlan.total_probes === 1 ? "" : "s"} · ~
                 {placementPlan.estimated_minutes} min
               </p>
@@ -758,7 +854,7 @@ export default function OnboardingFlow() {
                 type="button"
                 onClick={() => void startDiagnostic()}
                 disabled={diagLoading || (placementPlan?.total_probes ?? 1) === 0}
-                className="w-full py-4 rounded-xl bg-[#006bff]/5 border border-[#006bff]/30 text-base text-[#006bff] font-semibold disabled:opacity-50 hover:bg-[#006bff]/10 transition-colors"
+                className="w-full py-4 rounded-xl bg-[#6258ff]/10 border border-[#6258ff]/30 text-base text-[#6258ff] font-semibold disabled:opacity-50 hover:bg-[#6258ff]/15 transition-colors"
               >
                 {diagLoading ? "Loading questions..." : "Start diagnostic"}
               </button>
@@ -766,18 +862,23 @@ export default function OnboardingFlow() {
             {diagQuestions.length > 0 && (
               <div className="space-y-6">
                 <div>
-                  <p className="text-sm font-medium text-[#476788] mb-1">
+                  <p className="text-sm font-medium text-[#8f91a3] mb-1">
                     Chapter {diagIndex + 1} of {diagQuestions.length} · {diagQuestions[diagIndex]?.chapter}
                   </p>
-                  <p className="text-xs text-[#006bff] font-semibold">
+                  <p className="text-xs text-[#6258ff] font-semibold">
                     {diagQuestions[diagIndex]?.concept_name}
                   </p>
                 </div>
-                <p className="text-base text-[#0b3558] leading-relaxed p-4 bg-[#f8f9fb] border border-[#d4e0ed] rounded-lg">
-                  {diagQuestions[diagIndex]?.question_text}
-                </p>
+                <div className="text-base text-[#eff0ff] leading-relaxed p-4 bg-[#05060c] border border-[#2f3242] rounded-lg">
+                  {diagQuestions[diagIndex]?.question_text && (
+                    <MarkdownMath
+                      content={diagQuestions[diagIndex].question_text}
+                      className="markdown-math text-base text-[#eff0ff] leading-relaxed"
+                    />
+                  )}
+                </div>
                 {diagQuestions[diagIndex]?.image_url && (
-                  <div className="mt-2 mb-4 flex justify-center bg-white p-4 rounded-lg border border-[#d4e0ed]">
+                  <div className="mt-2 mb-4 flex justify-center bg-[#141622] p-4 rounded-lg border border-[#2f3242]">
                     <img
                       src={diagQuestions[diagIndex].image_url}
                       alt="Question diagram"
@@ -787,15 +888,15 @@ export default function OnboardingFlow() {
                 )}
 
                 {showAnswer ? (
-                  <div className="mt-4 mb-6 p-4 rounded-lg bg-indigo-50/30 border border-indigo-100">
-                    <p className="text-sm font-semibold text-indigo-800 mb-2">Solution</p>
+                  <div className="mt-4 mb-6 p-4 rounded-lg bg-[#6258ff]/10 border border-[#6258ff]/25">
+                    <p className="text-sm font-semibold text-[#8584ff] mb-2">Solution</p>
                     {diagQuestions[diagIndex]?.solution_text && (
-                      <div className="text-sm text-[#0b3558] mb-3 whitespace-pre-wrap">
+                      <div className="text-sm text-[#eff0ff] mb-3">
                         <MarkdownMath content={diagQuestions[diagIndex].solution_text!} />
                       </div>
                     )}
                     {diagQuestions[diagIndex]?.solution_image_url && (
-                      <div className="flex justify-center bg-white p-3 rounded border border-indigo-100 mt-2">
+                      <div className="flex justify-center bg-[#0d0e16] p-3 rounded border border-[#2f3242] mt-2">
                         <img
                           src={diagQuestions[diagIndex].solution_image_url!}
                           alt="Solution diagram"
@@ -811,7 +912,7 @@ export default function OnboardingFlow() {
                   <button
                     type="button"
                     onClick={() => setShowAnswer(true)}
-                    className="w-full py-3 mb-6 rounded-lg bg-[#f8f9fb] text-[#006bff] border border-[#006bff]/20 font-medium text-sm hover:bg-[#006bff]/5 transition-colors"
+                    className="w-full py-3 mb-6 rounded-lg bg-[#141622] text-[#6258ff] border border-[#6258ff]/25 font-medium text-sm hover:bg-[#1a1b28] transition-colors"
                   >
                     Show Answer
                   </button>
@@ -822,7 +923,7 @@ export default function OnboardingFlow() {
                     type="button"
                     onClick={() => void gradeDiagnostic(true)}
                     disabled={diagGrading}
-                    className="py-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-base hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                    className="py-3 rounded-lg bg-emerald-950/30 text-emerald-400 border border-emerald-500/30 font-medium text-base hover:bg-emerald-950/50 transition-colors disabled:opacity-50"
                   >
                     Got it right
                   </button>
@@ -830,7 +931,7 @@ export default function OnboardingFlow() {
                     type="button"
                     onClick={() => void gradeDiagnostic(false)}
                     disabled={diagGrading}
-                    className="py-3 rounded-lg bg-red-50 text-red-700 border border-red-200 font-medium text-base hover:bg-red-100 transition-colors disabled:opacity-50"
+                    className="py-3 rounded-lg bg-red-950/30 text-red-400 border border-red-500/30 font-medium text-base hover:bg-red-950/50 transition-colors disabled:opacity-50"
                   >
                     Got it wrong
                   </button>
@@ -838,7 +939,7 @@ export default function OnboardingFlow() {
               </div>
             )}
             {diagQuestions.length === 0 && diagnosticAnswers.length > 0 && (
-              <p className="text-base font-medium text-emerald-600 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+              <p className="text-base font-medium text-emerald-400 bg-emerald-950/25 p-4 rounded-lg border border-emerald-500/25">
                 Diagnostic complete. {diagnosticAnswers.length} chapter
                 {diagnosticAnswers.length === 1 ? "" : "s"} probed.
               </p>
@@ -846,7 +947,7 @@ export default function OnboardingFlow() {
           </SlideCard>
         )}
 
-        {step === 8 && (
+        {step === 7 && (
           <SlideCard
             title="Your Classroom"
             subtitle="Here's your starting state. Your classroom is ready."
@@ -859,7 +960,7 @@ export default function OnboardingFlow() {
               {revealCards.map((line, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-xl bg-[#f8f9fb] border border-[#d4e0ed] text-base text-[#0b3558] font-medium"
+                  className="p-4 rounded-xl bg-[#141622] border border-[#2f3242] text-base text-[#d7d8e8] font-medium"
                 >
                   {line}
                 </div>

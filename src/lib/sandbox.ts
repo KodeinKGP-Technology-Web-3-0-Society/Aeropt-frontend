@@ -1,4 +1,5 @@
 import * as auth from "@/lib/auth";
+import { CacheTTL, cacheKey, cachedGet } from "@/lib/apiCache";
 
 export type SandboxAction = {
   id: string;
@@ -16,6 +17,9 @@ export type SandboxAction = {
 export type SandboxQueueResponse = {
   queue: SandboxAction[];
   count: number;
+  daily_goal_minutes?: number;
+  preferred_depth?: string;
+  queue_target_minutes?: number;
 };
 
 export type ReadinessResponse = {
@@ -33,7 +37,9 @@ export type ReadinessResponse = {
 };
 
 export async function fetchSandboxQueue(): Promise<SandboxQueueResponse> {
-  return auth.apiRequest(`${auth.getApiBaseUrl()}/sandbox/queue/`);
+  return cachedGet(cacheKey(["sandbox", "queue"]), CacheTTL.sandboxQueue, () =>
+    auth.apiRequest(`${auth.getApiBaseUrl()}/sandbox/queue/`)
+  );
 }
 
 export async function fetchReadiness(): Promise<ReadinessResponse> {

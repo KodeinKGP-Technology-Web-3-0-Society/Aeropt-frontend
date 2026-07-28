@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp, PracticeQuestion } from "@/components/AppContext";
+import MarkdownMath from "@/components/MarkdownMath";
 
 export default function PracticeContent() {
   const router = useRouter();
@@ -70,45 +71,6 @@ export default function PracticeContent() {
     if (!activeQuestion) return;
     addChatMessage(`Explain Question ${activeQuestion.questionNumber} from Practice: "${activeQuestion.text}"`);
     router.push("/chat");
-  };
-
-  const cleanMathSymbols = (str: string) => {
-    return str
-      .replace(/\\tau/g, "τ")
-      .replace(/\\theta/g, "θ")
-      .replace(/\\alpha/g, "α")
-      .replace(/\\times/g, "×")
-      .replace(/\\cdot/g, "·")
-      .replace(/\\sin/g, "sin")
-      .replace(/\\cos/g, "cos")
-      .replace(/\\text\{\s*m\}/g, " m")
-      .replace(/\\text\{\s*N\}/g, " N")
-      .replace(/\\text\{\s*kg\}/g, " kg")
-      .replace(/\\frac\{(.*?)\}\{(.*?)\}/g, "($1/$2)")
-      .replace(/\\\^/g, "^")
-      .replace(/\^2/g, "²")
-      .replace(/\^3/g, "³")
-      .replace(/\\circ/g, "°")
-      .replace(/\\frac/g, "");
-  };
-
-  const renderMath = (text: string) => {
-    if (!text) return "";
-    let formatted = text;
-
-    // Replace block math $$...$$
-    formatted = formatted.replace(/\$\$(.*?)\$\$/g, (_, match) => {
-      let math = cleanMathSymbols(match);
-      return `<div class="my-3 py-2 px-3 dark:bg-[#05060a] bg-slate-50 border dark:border-[#1b1c2b] border-slate-200 rounded-lg text-center font-mono text-xs text-[#8584ff] overflow-x-auto shadow-inner select-all">${math}</div>`;
-    });
-
-    // Replace inline math $...$
-    formatted = formatted.replace(/\$(.*?)\$/g, (_, match) => {
-      let math = cleanMathSymbols(match);
-      return `<span class="px-1 py-0.5 dark:bg-[#0d0e16] bg-white border dark:border-[#212239] border-slate-300 rounded font-mono text-[11px] text-[#8584ff] select-all">${math}</span>`;
-    });
-
-    return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
   };
 
   return (
@@ -283,7 +245,10 @@ export default function PracticeContent() {
                     }`}>
                       {opt.label}
                     </span>
-                    <span className="text-xs sm:text-[13px] font-semibold leading-relaxed">{renderMath(opt.text)}</span>
+                    <MarkdownMath
+                      content={opt.text}
+                      className="markdown-math text-xs sm:text-[13px] font-semibold leading-relaxed flex-1"
+                    />
                   </button>
                 );
               })}
@@ -347,7 +312,12 @@ export default function PracticeContent() {
                         <span className="h-4.5 w-4.5 rounded dark:bg-[#111124] bg-slate-100 border dark:border-[#212239] border-slate-300 text-[#8584ff] text-[9.5px] font-bold flex items-center justify-center flex-none">
                           {idx + 1}
                         </span>
-                        <div className="flex-1 mt-0.5">{renderMath(step)}</div>
+                        <div className="flex-1 mt-0.5">
+                          <MarkdownMath
+                            content={step}
+                            className="markdown-math text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-medium"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>

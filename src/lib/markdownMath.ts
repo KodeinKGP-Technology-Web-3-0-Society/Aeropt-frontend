@@ -92,8 +92,9 @@ function isLatexHeavy(text: string): boolean {
   // Prefer math when macros dominate, or line is short equation-like
   const words = englishWordCount(s);
   const macros = (s.match(/\\[a-zA-Z]+/g) || []).length;
-  if (macros >= 1 && words <= 4) return true;
-  if (macros >= 2 && words <= 8) return true;
+  // One macro + several English words → mixed prose/equation; wrap fragments only.
+  if (macros >= 1 && words <= 2) return true;
+  if (macros >= 2 && words <= 4) return true;
   if (/[=\\]/.test(s) && words <= 2 && s.length <= 180) return true;
   return false;
 }
@@ -111,7 +112,40 @@ function collapseDoubleEscapedMacros(text: string): string {
 }
 
 /**
- * Wrap bare TeX fragments inside prose lines: \vec{F}_{ij} → $\vec{F}_{ij}$
+ * Wrap short inline assignments in prose: a_1 = \frac{F}{M_1} → $a_1 = \frac{F}{M_1}$
+ * Mirrors agent `_wrap_equation_fragments` for residual DB text.
+ */
+function wrapEquationFragments(text: string): string {
+  const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g);
+  const fragRe =
+    /(?<![\\$])((?:\\[a-zA-Z]+|[A-Za-z])[\w]*(?:_\{?[A-Za-z0-9]+\}?|\^[{}\d]+)?\s*=\s*(?:\\[a-zA-Z]+(?:\{[^{}]{0,40}\})*|-?\d+(?:\.\d+)?(?:\s*(?:kg|g|m|s|N|J|W|Pa|rad|deg|°|\/s(?:\^?2)?|m\/s(?:\^?2)?))?|[A-Za-z\\][\w\\^_{}]{0,20}))/g;
+
+  return parts
+    .map((part, index) => {
+      if (index % 2 === 1) return part;
+      return part
+        .split("\n")
+        .map((line) => {
+          if (line.includes("$") || line.length > 120) return line;
+          return line.replace(fragRe, (fragment) => {
+            const trimmed = fragment.trim();
+            if (trimmed.length > 48 || trimmed.split(/\s+/).length > 4) return fragment;
+            const rhs = trimmed.split("=", 2)[1] ?? "";
+            const rhsWords = rhs
+              .replace(/\\[a-zA-Z]+/g, " ")
+              .replace(/[^A-Za-z\s]/g, " ")
+              .split(/\s+/)
+              .filter((w) => w.length >= 3);
+            if (rhsWords.length > 0) return fragment;
+            return `$${trimmed}$`;
+          });
+        })
+        .join("\n");
+    })
+    .join("");
+}
+
+/**
  * Skips segments already inside $...$ / $$...$$.
  */
 function wrapInlineLatexFragments(text: string): string {
@@ -216,6 +250,55 @@ function expandLiteralNewlinesInProse(text: string): string {
     .join("");
 }
 
+/** Short OCR/diagram token lines (COM, L, 2, m, v₀) — not standalone sentences. */
+function isDiagramLayoutFragment(line: string): boolean {
+  const s = line.trim();
+  if (!s || s.length > 36) return false;
+  if (/^\(\d+\)\s+\S/.test(s) && s.length > 18) return false;
+  if (/[.!?]/.test(s)) return false;
+  if (isLatexHeavy(s)) return false;
+  if (englishWordCount(s) > 3) return false;
+  return true;
+}
+
+/**
+ * Join consecutive diagram-label lines into one prose line so KaTeX/markdown
+ * does not stack each token vertically (common in DB solution OCR text).
+ */
+function collapseDiagramLines(text: string): string {
+  const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g);
+  return parts
+    .map((part, index) => {
+      if (index % 2 === 1) return part;
+      const lines = part.split("\n");
+      const out: string[] = [];
+      let buffer: string[] = [];
+
+      const flush = () => {
+        if (buffer.length === 0) return;
+        out.push(buffer.length === 1 ? buffer[0] : buffer.join(" "));
+        buffer = [];
+      };
+
+      for (const line of lines) {
+        if (!line.trim()) {
+          flush();
+          out.push("");
+          continue;
+        }
+        if (isDiagramLayoutFragment(line)) {
+          buffer.push(line.trim());
+        } else {
+          flush();
+          out.push(line);
+        }
+      }
+      flush();
+      return out.join("\n");
+    })
+    .join("");
+}
+
 /** Escape unpaired `$` so remark-math never swallows whole paragraphs. */
 export function balanceMathDelimiters(text: string): string {
   const chars = [...text];
@@ -285,6 +368,8 @@ export function normalizeFormulaMarkdown(raw: string): string {
 export function preprocessFormulaSlideMath(raw: string): string {
   if (!raw?.trim()) return raw;
   let text = collapseDoubleEscapedMacros(raw);
+  text = expandLiteralNewlinesInProse(text);
+  text = collapseDiagramLines(text);
   text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => `$$\n${String(inner).trim()}\n$$`);
   text = text.replace(/\\\((.+?)\\\)/g, (_, inner) => `$${String(inner).trim()}$`);
   if (!text.includes("$$") && !/(?:^|[^\\])\$/.test(text)) {
@@ -306,10 +391,12 @@ export function preprocessMarkdownMath(raw: string): string {
   text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => `$$\n${String(inner).trim()}\n$$`);
   text = text.replace(/\\\((.+?)\\\)/g, (_, inner) => `$${String(inner).trim()}$`);
   text = expandLiteralNewlinesInProse(text);
+  text = collapseDiagramLines(text);
   // Unicode → TeX before wrapping so ω becomes \omega and then gets delimited.
   text = unicodeMathToLatex(text);
   text = cleanDisplayMathBlocks(text);
   text = wrapUndelimitedLatex(text);
+  text = wrapEquationFragments(text);
   text = wrapInlineLatexFragments(text);
   text = balanceMathDelimiters(text);
   text = cleanDisplayMathBlocks(text);
@@ -367,6 +454,22 @@ export const MATH_GOLDEN_FIXTURES: MathFixture[] = [
     surface: "chat",
     input: "Use \\[ F = ma \\] for Newton's second law.",
     mustInclude: ["$$", "F = ma"],
+  },
+  {
+    id: "diagnostic-mixed-prose-equation",
+    surface: "chat",
+    input:
+      "Analyzing system from Non Inertial frame of reference of block M_1\nThe acceleration of block M_1, a_1 = \\frac{F}{M_1+M_2+M_3}",
+    mustInclude: ["Analyzing system", "$a_1 = \\frac{F}{M_1+M_2+M_3}$"],
+    mustNotInclude: ["$$\nThe acceleration"],
+  },
+  {
+    id: "diagram-label-lines-collapsed",
+    surface: "chat",
+    input:
+      "mv_0 = Mv ...(i)\\n(2) Net torque on the system about COM of rod is zero.\\nCOM\\nL\\n2\\nBefore collision\\nm\\nv_0\\nω",
+    mustInclude: ["COM L 2 Before collision m v_0", "(2) Net torque"],
+    mustNotInclude: ["COM\nL\n2\nBefore"],
   },
 ];
 
