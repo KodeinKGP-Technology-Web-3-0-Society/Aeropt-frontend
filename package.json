@@ -10,8 +10,7 @@
     "test:math": "node --experimental-strip-types src/lib/markdownMath.selftest.ts"
   },
   "dependencies": {
-    "@lottiefiles/dotlottie-react": "^0.19.9",
-    "katex": "^0.17.0",
+    "katex": "0.16.47",
     "next": "^16.2.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

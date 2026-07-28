@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppContext";
 import * as onboarding from "@/lib/onboarding";
 import MarkdownMath from "@/components/MarkdownMath";
-import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
   ChapterMeta,
   CoverageDepth,
@@ -164,13 +163,9 @@ function SlideCard({
             type="button"
             disabled={nextDisabled || loading}
             onClick={onNext}
-            className="flex-1 py-3.5 rounded-lg bg-[#6258ff] hover:bg-[#5045ff] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm flex items-center justify-center"
+            className="flex-1 py-3.5 rounded-lg bg-[#6258ff] hover:bg-[#5045ff] transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm"
           >
-            {loading ? (
-              <LoadingSpinner size={24} className="text-white" />
-            ) : (
-              nextLabel
-            )}
+            {loading ? "Setting up..." : nextLabel}
           </button>
         </div>
       </div>
@@ -557,11 +552,8 @@ export default function OnboardingFlow() {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-[#05060c]">
-        <div className="mb-4">
-          <LoadingSpinner size={64} className="text-[#6258ff]" />
-        </div>
-        <p className="text-base text-[#8f91a3] font-medium">Setting up your classroom...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#05060c]">
+        <p className="text-base text-[#8f91a3]">Setting up your classroom...</p>
       </div>
     );
   }
@@ -860,15 +852,11 @@ export default function OnboardingFlow() {
             {diagQuestions.length === 0 && diagnosticAnswers.length === 0 && (
               <button
                 type="button"
-                onClick={startDiagnostic}
+                onClick={() => void startDiagnostic()}
                 disabled={diagLoading || (placementPlan?.total_probes ?? 1) === 0}
-                className="w-full py-4 rounded-xl bg-[#6258ff]/10 border border-[#6258ff]/30 text-base text-[#6258ff] font-semibold disabled:opacity-50 hover:bg-[#6258ff]/15 transition-colors flex items-center justify-center"
+                className="w-full py-4 rounded-xl bg-[#6258ff]/10 border border-[#6258ff]/30 text-base text-[#6258ff] font-semibold disabled:opacity-50 hover:bg-[#6258ff]/15 transition-colors"
               >
-                {diagLoading ? (
-                  <LoadingSpinner size={24} className="text-white" />
-                ) : (
-                  "Start diagnostic"
-                )}
+                {diagLoading ? "Loading questions..." : "Start diagnostic"}
               </button>
             )}
             {diagQuestions.length > 0 && (
