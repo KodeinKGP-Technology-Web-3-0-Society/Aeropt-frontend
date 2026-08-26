@@ -42,56 +42,83 @@ Rejected alternatives:
 
 ---
 
-## 4. Routing
+## 4. Create ownership (single site)
+
+**Only `src/app/chat/page.tsx` creates sessions.**
+
+| Surface | Responsibility |
+|---------|----------------|
+| `chat/page.tsx` | Call `createChatSession` → `router.replace(/chat/<id>?…)` preserving search params. Show loading/error during create. Guard against double-invoke (React Strict Mode / remount). |
+| `chat/[sessionId]/page.tsx` | Render `ChatWorkspace` only. Never create. |
+| `ChatWorkspace` | If mounted under `[sessionId]`, load that id. “New chat” and any “start empty” action only `router.push("/chat")` (or `/chat?…` for roadmap). Never call create itself. |
+| Entry links (sidebar, dashboard, practice, sandbox, roadmap) | Navigate to `/chat` or `/chat?…` only — never invent a session id. |
+
+This prevents double-create.
+
+---
+
+## 5. Routing
 
 | URL | Behavior |
 |-----|----------|
-| `/chat` | Authenticated bootstrap: create session → `router.replace(/chat/<id>[?query])`. Preserve roadmap/study query params. |
-| `/chat/[sessionId]` | Load session detail (turns may be empty). If session missing / not owned → error + offer New chat. |
-| `/chat/[sessionId]?node=…&concept=…&stage=…` | Same load; roadmap context from query (and bind update to this id). |
+| `/chat` | Create session → `replace` to `/chat/<session-id>` + **unchanged** existing query string. |
+| `/chat/[sessionId]` | Load that session’s turns (may be empty). Missing / wrong owner → not-found + New chat CTA → `/chat`. |
+| `/chat/[sessionId]?concept_id=&node_id=&stage=&prompt=&fresh=1` | Load that id; apply roadmap/study context from query. |
 
-**App Router:** add `Aeropt-frontend/src/app/chat/[sessionId]/page.tsx` (reuse `ChatWorkspace`). Keep `chat/page.tsx` as the “create then redirect” entry.
+**Preserve existing query keys** (do not rename): `concept_id`, `node_id`, `stage`, `prompt`, `fresh`. Names above are the real keys from `buildContinueChatUrl`.
 
-**Middleware:** protect `/chat/:path*` (already covered).
+**App Router:**
 
----
+- Keep `src/app/chat/page.tsx` as create-then-redirect only (no full workspace UI after success).
+- Add `src/app/chat/[sessionId]/page.tsx` wrapping `ChatWorkspace` in the same AuthGuard/Suspense pattern.
 
-## 5. Frontend behavior (`ChatWorkspace`)
-
-### 5.1 Bootstrap
-
-- If route has **no** `sessionId` (`/chat`): call `createChatSession(userId)` → set active id → `replace` to `/chat/<id>` (+ existing search params). Empty messages. Do **not** restore `SESSION_STORAGE_KEY`.
-- If route has `sessionId`: set active id, fetch history (empty OK). Update `SESSION_STORAGE_KEY` optionally for legacy; **URL is source of truth**.
-
-### 5.2 Entry points
-
-Update links that go to Study Session:
-
-- Sidebar Study Session → `/chat` (triggers create).
-- Dashboard / Practice “start” → `/chat`.
-- Roadmap `buildContinueChatUrl` → `/chat?…` (no session in path yet; page creates then replace). Or create then push `/chat/<id>?…` from the caller — either is fine; prefer centralizing create in `/chat` page so all entry points stay `/chat[?…]`.
-
-### 5.3 Session list & New chat
-
-- `selectSession(id)` → `router.push(/chat/<id>)` (history load from route effect).
-- New chat → `router.push(/chat)` or create + `push(/chat/<newId>)`. Prefer `push(/chat)` so one code path creates.
-
-### 5.4 Roadmap
-
-- Always new session on Start/Continue (`fresh` / no resume of bound transcript).
-- After create, write roadmap bind `{ sessionId: newId, stageIndex }`.
-- Mid-lesson refresh on `/chat/<id>?node=…` still loads **that** id (not create again).
-
-### 5.5 Remove / reduce
-
-- Stop “Free chat: restore last active session” branch on bare `/chat`.
-- Stop auto-picking `mapped[0]` as active on open.
+**Middleware:** `/chat/:path*` already protected — no change required beyond verifying.
 
 ---
 
-## 6. Backend (`Aeropt-agent`)
+## 6. Frontend behavior (`ChatWorkspace`)
 
-### 6.1 New endpoint
+### 6.1 Bootstrap (only on `/chat/[sessionId]`)
+
+- Read `sessionId` from the route.
+- Fetch session detail; set messages (possibly `[]`).
+- Optionally mirror id into `SESSION_STORAGE_KEY`; **URL is source of truth**.
+- Do **not** restore last session from storage.
+- Do **not** auto-select `mapped[0]`.
+
+### 6.2 Entry points
+
+All “open Study Session / start empty” navigations go to bare `/chat` (plus query if needed):
+
+- Sidebar Study Session → `/chat`
+- Dashboard / Practice / Sandbox starts → `/chat` or `/chat?…`
+- Roadmap Start/Continue → `/chat?concept_id&node_id&stage&prompt&fresh=1` (always `fresh=1` for new session; update `buildContinueChatUrl` / `resolveNodeEntry` so Continue no longer resumes a prior transcript)
+
+After create, page replaces to `/chat/<newId>?…` and roadmap bind is written as `{ sessionId: newId, stageIndex }` (from ChatWorkspace when it sees `node_id`, or from page after create — prefer ChatWorkspace once on `[sessionId]` so stage logic stays in one place).
+
+### 6.3 Session list & New chat
+
+- `selectSession(id)` → `router.push(/chat/<id>)` (load via route bootstrap).
+- New chat → `router.push("/chat")` only.
+
+### 6.4 Roadmap resume path — removed
+
+Delete the “roadmap resume bound session transcript” and “free chat restore last session” branches on open.
+
+- Bound `sessionId` is **not** used to reopen an old transcript when entering from roadmap.
+- Bind still stores the **current** lesson session + stage for mid-lesson UI (stage chips) after the new session is created.
+- Refresh on `/chat/<id>?node_id=…` loads **that** id (page is `[sessionId]`, so no create).
+- `fresh=1`: strip after applying one-shot lesson setup (stage/prompt), same as today, but it no longer means “clear localStorage and invent null session” — create already happened on `/chat`.
+
+### 6.5 Loading UX on `/chat`
+
+While create runs: short “Starting session…” (or existing Suspense fallback). On failure: error + retry that re-calls create once (no auto-loop).
+
+---
+
+## 7. Backend (`Aeropt-agent`)
+
+### 7.1 New endpoint
 
 ```
 POST /api/v1/chat/sessions
@@ -99,41 +126,42 @@ Body: { "user_id": "<uuid>" }
 Response: { "session_id": "<uuid>" }
 ```
 
-Implementation: call existing `db.create_session(user_id)`; return id. Auth model unchanged (caller-supplied `user_id`, same as message API).
+Implementation: `db.create_session(user_id)`; return id. Same caller-supplied `user_id` model as message API.
 
-### 6.2 Unchanged
+### 7.2 Unchanged
 
-- `POST /api/v1/chat/message` still accepts `session_id`; first message uses the pre-created id.
-- `GET …/sessions`, `GET …/sessions/{id}`, `POST …/end-session` unchanged.
+- `POST /api/v1/chat/message` — first message uses pre-created `session_id`.
+- List / detail / end-session endpoints unchanged.
 
-### 6.3 Frontend client
+### 7.3 Frontend client
 
 Add `createChatSession(userId)` in `src/lib/agent.ts`.
 
 ---
 
-## 7. Error handling
+## 8. Error handling
 
 | Case | Behavior |
 |------|----------|
-| Create session fails | Show error on `/chat`; do not loop redirect. |
-| Load unknown / other-user id | Show not-found; CTA New chat → `/chat`. |
-| Create succeeds, replace fails | Unlikely; if stuck on `/chat` without id, allow retry once with guard against infinite redirect. |
+| Create fails | Stay on `/chat`; show error + retry. No redirect loop. |
+| Unknown / other-user `sessionId` | Not-found on workspace; CTA New chat → `/chat`. |
+| Strict Mode double mount on `/chat` | Create at most once (ref/lock or abort duplicate). |
 
 ---
 
-## 8. Testing (manual)
+## 9. Testing (manual)
 
-1. Open Study Session → URL is `/chat/<uuid>`, empty composer, no prior turns.
-2. Send a message → same URL; history persists on refresh.
-3. Open Study Session again from sidebar → different new uuid, empty.
-4. Click older session in list → `/chat/<old-id>` with prior turns.
-5. Roadmap Start → `/chat/<new-id>?…`, empty then auto-prompt as today.
-6. Refresh mid-roadmap lesson on that URL → same session, not a new one.
+1. Open Study Session → `/chat/<uuid>`, empty, no prior turns.
+2. Send a message → same URL; refresh keeps history.
+3. Open Study Session again → different uuid, empty.
+4. Click older session → `/chat/<old-id>` with prior turns.
+5. Roadmap Start and Continue → each get a **new** `/chat/<id>?concept_id&node_id&stage&prompt&fresh=1`, empty then auto-prompt.
+6. Refresh mid-lesson on that URL → same session, not a new one.
+7. Audit navigators: `StudySidebar`, `DashboardContent`, `PracticeContent`, `SandboxCardDeck`, `RoadmapContent` — all empty starts hit `/chat[?…]`.
 
 ---
 
-## 9. Out of scope
+## 10. Out of scope
 
 - Deleting empty unused sessions.
 - Session title renaming / sharing.
@@ -142,13 +170,13 @@ Add `createChatSession(userId)` in `src/lib/agent.ts`.
 
 ---
 
-## 10. Files likely touched
+## 11. Files likely touched
 
 - `Aeropt-agent/api_server.py` — POST create session
 - `Aeropt-frontend/src/lib/agent.ts` — `createChatSession`
-- `Aeropt-frontend/src/app/chat/page.tsx` — create + redirect
+- `Aeropt-frontend/src/app/chat/page.tsx` — create + redirect only
 - `Aeropt-frontend/src/app/chat/[sessionId]/page.tsx` — new
-- `Aeropt-frontend/src/components/ChatWorkspace.tsx` — bootstrap / select / new chat
-- `Aeropt-frontend/src/lib/roadmap.ts` — URLs stay `/chat?…` (create on entry)
-- `Aeropt-frontend/src/components/StudySidebar.tsx` — href `/chat` (unchanged path)
-- `Aeropt-frontend/src/middleware.ts` — confirm `/chat/:path*`
+- `Aeropt-frontend/src/components/ChatWorkspace.tsx` — load by route id; New chat → `/chat`; remove restore/resume-on-open
+- `Aeropt-frontend/src/lib/roadmap.ts` — Continue always new session (`fresh=1`); URLs remain `/chat?…`
+- Entry components only if any deep-link to a stale pattern (verify `StudySidebar`, Dashboard, Practice, Sandbox)
+- `Aeropt-frontend/src/middleware.ts` — verify only
