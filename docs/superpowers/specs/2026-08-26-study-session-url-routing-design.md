@@ -21,7 +21,7 @@ Users expect ChatGPT/Gemini behavior: nav to Study Session → blank chat with i
 ## 2. Success criteria
 
 1. Navigating to Study Session (sidebar, Dashboard “Start a session”, Practice, etc.) creates a **new** empty session and lands on `/chat/<session-id>`.
-2. Roadmap Start/Continue also creates a **new** session (no resume of prior transcript); URL is `/chat/<session-id>?…roadmap params`.
+2. Roadmap Start/Continue also creates a **new** session (no resume of prior transcript); URL is `/chat/<session-id>?…roadmap params`. Continue keeps the **bound stage**; Start begins at theory.
 3. Opening `/chat/<existing-id>` loads that session’s history.
 4. Sidebar session click navigates to `/chat/<that-id>`.
 5. “New chat” creates another new session and navigates to its URL.
@@ -62,7 +62,7 @@ This prevents double-create.
 | URL | Behavior |
 |-----|----------|
 | `/chat` | Create session → `replace` to `/chat/<session-id>` + **unchanged** existing query string. |
-| `/chat/[sessionId]` | Load that session’s turns (may be empty). Missing / wrong owner → not-found + New chat CTA → `/chat`. |
+| `/chat/[sessionId]` | Load that session’s turns (may be empty). Missing / wrong owner → inline not-found + New chat → `/chat`. |
 | `/chat/[sessionId]?concept_id=&node_id=&stage=&prompt=&fresh=1` | Load that id; apply roadmap/study context from query. |
 
 **Preserve existing query keys** (do not rename): `concept_id`, `node_id`, `stage`, `prompt`, `fresh`. Names above are the real keys from `buildContinueChatUrl`.
@@ -92,9 +92,11 @@ All “open Study Session / start empty” navigations go to bare `/chat` (plus 
 
 - Sidebar Study Session → `/chat`
 - Dashboard / Practice / Sandbox starts → `/chat` or `/chat?…`
-- Roadmap Start/Continue → `/chat?concept_id&node_id&stage&prompt&fresh=1` (always `fresh=1` for new session; update `buildContinueChatUrl` / `resolveNodeEntry` so Continue no longer resumes a prior transcript)
+- Roadmap Start/Continue → `/chat?concept_id&node_id&stage&prompt&fresh=1`
+  - **Always new transcript** (`fresh=1`; create on `/chat`).
+  - **Stage:** Start → first stage (theory). Continue → **bound `stageIndex`** (e.g. still Practice) via `resolveNodeEntry` / bind — new empty chat, same place in the path. Update URL builders so Continue sets `fresh=1` but keeps the resolved stage (do not treat Continue like a full restart to theory).
 
-After create, page replaces to `/chat/<newId>?…` and roadmap bind is written as `{ sessionId: newId, stageIndex }` (from ChatWorkspace when it sees `node_id`, or from page after create — prefer ChatWorkspace once on `[sessionId]` so stage logic stays in one place).
+After create, page replaces to `/chat/<newId>?…` and roadmap bind is written as `{ sessionId: newId, stageIndex }` (from ChatWorkspace once on `[sessionId]` so stage logic stays in one place).
 
 ### 6.3 Session list & New chat
 
@@ -103,14 +105,16 @@ After create, page replaces to `/chat/<newId>?…` and roadmap bind is written a
 
 ### 6.4 Roadmap resume path — removed
 
-Delete the “roadmap resume bound session transcript” and “free chat restore last session” branches on open.
+Delete the “roadmap resume bound session **transcript**” and “free chat restore last session” branches on open.
 
 - Bound `sessionId` is **not** used to reopen an old transcript when entering from roadmap.
+- Bound `stageIndex` **is** used for Continue: new empty chat opens at that stage.
 - Bind still stores the **current** lesson session + stage for mid-lesson UI (stage chips) after the new session is created.
 - Refresh on `/chat/<id>?node_id=…` loads **that** id (page is `[sessionId]`, so no create).
 - `fresh=1`: after applying one-shot lesson setup (stage/prompt), strip it with  
   `router.replace(/chat/<currentSessionId>?…without fresh)`.  
   **Never** replace to bare `/chat` — that would create a second session.
+- In-progress UI copy (`Resume · …` / `mode: "resume"`) may stay for Continue when stage is mid-path; it means resume **stage**, not prior chat turns.
 
 ### 6.5 Loading UX on `/chat`
 
@@ -154,7 +158,7 @@ Add `createChatSession(userId)` in `src/lib/agent.ts`.
 | Case | Behavior |
 |------|----------|
 | Create fails | Stay on `/chat`; show error + retry. No redirect loop. |
-| Unknown / other-user `sessionId` | Not-found on workspace; CTA New chat → `/chat`. |
+| Unknown / other-user `sessionId` | **Inline** not-found UI in workspace (message + New chat → `/chat`); not Next.js `notFound()`. |
 | Strict Mode double mount on `/chat` | Create at most once (ref/lock or abort duplicate). |
 
 ---
@@ -165,7 +169,7 @@ Add `createChatSession(userId)` in `src/lib/agent.ts`.
 2. Send a message → same URL; refresh keeps history.
 3. Open Study Session again → different uuid, empty.
 4. Click older session → `/chat/<old-id>` with prior turns.
-5. Roadmap Start and Continue → each get a **new** `/chat/<id>?concept_id&node_id&stage&prompt&fresh=1`, empty then auto-prompt.
+5. Roadmap Start → new empty chat at theory. Continue → new empty chat at bound stage (e.g. Practice). Both land on `/chat/<id>?concept_id&node_id&stage&prompt&fresh=1` then strip `fresh` without leaving `/chat/<id>`.
 6. Refresh mid-lesson on that URL → same session, not a new one.
 7. Audit navigators: `StudySidebar`, `DashboardContent`, `PracticeContent`, `SandboxCardDeck`, `RoadmapContent` — all empty starts hit `/chat[?…]`.
 
@@ -187,6 +191,6 @@ Add `createChatSession(userId)` in `src/lib/agent.ts`.
 - `Aeropt-frontend/src/app/chat/page.tsx` — create + redirect only
 - `Aeropt-frontend/src/app/chat/[sessionId]/page.tsx` — new
 - `Aeropt-frontend/src/components/ChatWorkspace.tsx` — load by route id; New chat → `/chat`; remove restore/resume-on-open
-- `Aeropt-frontend/src/lib/roadmap.ts` — Continue always new session (`fresh=1`); URLs remain `/chat?…`
+- `Aeropt-frontend/src/lib/roadmap.ts` — Continue: `fresh=1` + bound stage; Start: theory; URLs remain `/chat?…`
 - Entry components only if any deep-link to a stale pattern (verify `StudySidebar`, Dashboard, Practice, Sandbox)
 - `Aeropt-frontend/src/middleware.ts` — verify only
