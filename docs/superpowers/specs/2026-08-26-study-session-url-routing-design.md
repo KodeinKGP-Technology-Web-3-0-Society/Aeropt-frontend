@@ -108,11 +108,18 @@ Delete the “roadmap resume bound session transcript” and “free chat restor
 - Bound `sessionId` is **not** used to reopen an old transcript when entering from roadmap.
 - Bind still stores the **current** lesson session + stage for mid-lesson UI (stage chips) after the new session is created.
 - Refresh on `/chat/<id>?node_id=…` loads **that** id (page is `[sessionId]`, so no create).
-- `fresh=1`: strip after applying one-shot lesson setup (stage/prompt), same as today, but it no longer means “clear localStorage and invent null session” — create already happened on `/chat`.
+- `fresh=1`: after applying one-shot lesson setup (stage/prompt), strip it with  
+  `router.replace(/chat/<currentSessionId>?…without fresh)`.  
+  **Never** replace to bare `/chat` — that would create a second session.
 
 ### 6.5 Loading UX on `/chat`
 
 While create runs: short “Starting session…” (or existing Suspense fallback). On failure: error + retry that re-calls create once (no auto-loop).
+
+### 6.6 Session id plumbing & storage
+
+- `[sessionId]/page.tsx` passes `sessionId` into `ChatWorkspace` as a **required prop** (preferred over re-reading `useParams` inside the workspace).
+- Keep writing `SESSION_STORAGE_KEY` when the active id changes (harmless mirror for any leftover readers). Stop **reading** it for bootstrap/restore. Full removal of the key is out of scope unless nothing else references it after a quick grep.
 
 ---
 
@@ -128,10 +135,13 @@ Response: { "session_id": "<uuid>" }
 
 Implementation: `db.create_session(user_id)`; return id. Same caller-supplied `user_id` model as message API.
 
+Register as a distinct FastAPI route on the same path prefix as the existing  
+`GET /api/v1/chat/sessions` list handler (POST create + GET list coexist).
+
 ### 7.2 Unchanged
 
 - `POST /api/v1/chat/message` — first message uses pre-created `session_id`.
-- List / detail / end-session endpoints unchanged.
+- `GET /api/v1/chat/sessions`, detail, and end-session endpoints unchanged.
 
 ### 7.3 Frontend client
 
