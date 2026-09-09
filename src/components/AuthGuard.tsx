@@ -39,8 +39,8 @@ export default function AuthGuard({
 
   if (authLoading || (isLoggedIn && onboardingLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50">
-        <p className="text-sm dark:text-slate-400 text-slate-500">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <p className="text-sm text-muted">Loading...</p>
       </div>
     );
   }
@@ -51,8 +51,8 @@ export default function AuthGuard({
 
   if (!onboardingCompleted && requireOnboarding && pathname !== "/onboarding") {
     return (
-      <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50">
-        <p className="text-sm dark:text-slate-400 text-slate-500">Redirecting to onboarding...</p>
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <p className="text-sm text-muted">Redirecting to onboarding...</p>
       </div>
     );
   }

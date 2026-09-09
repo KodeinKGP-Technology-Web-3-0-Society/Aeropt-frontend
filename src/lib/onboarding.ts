@@ -9,6 +9,7 @@ import {
 export type JourneyType = "fresh_start" | "mid_journey" | "revision_dropper";
 export type LearningSource = "school" | "coaching" | "self_study" | "mixed";
 export type CoverageDepth = "barely" | "moderate" | "strong";
+export type SubjectDepth = "not_started" | CoverageDepth;
 export type TargetExam = "JEE_MAINS" | "JEE_ADVANCED" | "BOTH";
 export type GradeLevel = "CLASS_11" | "CLASS_12" | "DROPPER";
 export type PreferredDepth = "quick" | "standard" | "deep";
@@ -70,6 +71,17 @@ export type ChapterMeta = {
   name: string;
   concept_count: number;
   order: number;
+  unit?: string;
+};
+
+export type SyllabusUnit = {
+  name: string;
+  chapters: string[];
+};
+
+export type SyllabusSubject = {
+  name: string;
+  units: SyllabusUnit[];
 };
 
 export type ChapterSnapshot = {
@@ -79,38 +91,13 @@ export type ChapterSnapshot = {
   probed: boolean;
 };
 
-export type PlacementProbe = {
-  chapter: string;
-  concept_id: string;
-  concept_name: string;
-  reason?: string;
-};
-
-export type PlacementPlan = {
-  probes: PlacementProbe[];
-  total_probes: number;
-  estimated_minutes: number;
-  skipped_chapters: string[];
-  journey_type: JourneyType;
-};
-
-export type DiagnosticQuestion = {
-  question_id: string;
-  concept_id: string;
-  concept_name: string;
-  chapter: string;
-  question_text: string;
-  content_id: string;
-  image_url?: string;
-  solution_text?: string;
-  solution_image_url?: string;
-};
-
 export type OnboardingState = {
   journey_type: JourneyType;
   target_exam: TargetExam;
   target_year: number;
   grade_level: GradeLevel;
+  subject_proficiency: Record<string, SubjectDepth>;
+  unit_coverage: Record<string, CoverageDepth>;
   covered_chapters: string[];
   self_assessed_coverage: Record<string, CoverageDepth>;
   daily_goal_minutes: number;
@@ -119,14 +106,20 @@ export type OnboardingState = {
   current_step: number;
 };
 
-/** Current onboarding step count after removing the unused study-source step. */
-export const TOTAL_ONBOARDING_STEPS = 7;
+export const TOTAL_ONBOARDING_STEPS = 3;
+export const ONBOARDING_SUBJECTS = ["Physics", "Chemistry", "Mathematics"] as const;
 
 export const DEFAULT_ONBOARDING: OnboardingState = {
   journey_type: "fresh_start",
   target_exam: "BOTH",
   target_year: new Date().getFullYear() + 2,
   grade_level: "CLASS_11",
+  subject_proficiency: {
+    Physics: "not_started",
+    Chemistry: "not_started",
+    Mathematics: "not_started",
+  },
+  unit_coverage: {},
   covered_chapters: [],
   self_assessed_coverage: {},
   daily_goal_minutes: 45,
@@ -136,16 +129,65 @@ export const DEFAULT_ONBOARDING: OnboardingState = {
 };
 
 /**
- * Map drafts saved before study-source was removed
- * (old 8-step flow) onto the current 7-step numbering.
+ * Map drafts from the old 7/8-step wizard onto the 3-step flow.
+ * New drafts already use steps 1–3.
  */
-export function migrateOnboardingStep(step: number): number {
+export function migrateOnboardingStep(step: number, fromLegacy = false): number {
   if (!Number.isFinite(step) || step < 1) return 1;
-  if (step <= 4) return step;
-  if (step === 5) return 5; // old source → rhythm
-  if (step === 6) return 5; // old rhythm
-  if (step === 7) return 6; // old diagnostic
-  return TOTAL_ONBOARDING_STEPS; // old classroom / anything higher
+  if (!fromLegacy) {
+    return Math.min(Math.max(Math.round(step), 1), TOTAL_ONBOARDING_STEPS);
+  }
+  if (step <= 2) return 1;
+  if (step <= 4 || step === 6) return 2;
+  return 3;
+}
+
+function isLegacyStep(step: number | undefined, snapshot?: Record<string, unknown> | null): boolean {
+  if (snapshot && typeof snapshot === "object" && snapshot.subject_proficiency) return false;
+  return typeof step === "number" && step > TOTAL_ONBOARDING_STEPS;
+}
+
+export function expandUnitCoverage(
+  unitCoverage: Record<string, CoverageDepth>,
+  subjects: SyllabusSubject[]
+): { covered_chapters: string[]; self_assessed_coverage: Record<string, CoverageDepth> } {
+  const covered_chapters: string[] = [];
+  const self_assessed_coverage: Record<string, CoverageDepth> = {};
+  const physics = subjects.find((s) => s.name === "Physics");
+  for (const unit of physics?.units ?? []) {
+    const depth = unitCoverage[unit.name];
+    if (!depth) continue;
+    for (const chapter of unit.chapters) {
+      if (!covered_chapters.includes(chapter)) covered_chapters.push(chapter);
+      self_assessed_coverage[chapter] = depth;
+    }
+  }
+  return { covered_chapters, self_assessed_coverage };
+}
+
+export function buildKnowledgeBaseline(state: OnboardingState): Record<string, unknown> {
+  return {
+    ...(state.diagnostic_baseline || {}),
+    subject_proficiency: state.subject_proficiency,
+    unit_coverage: state.unit_coverage,
+    source: "onboarding_self_assess_v3",
+  };
+}
+
+export function focusChaptersFromPlacement(placement: SyllabusPlacement | null | undefined): string[] {
+  if (!placement) return [];
+  const fromSelf = Object.entries(placement.self_assessed_coverage || {})
+    .filter(([, depth]) => depth === "barely")
+    .map(([chapter]) => chapter);
+  if (fromSelf.length > 0) return fromSelf.slice(0, 3);
+  const baseline = (placement.diagnostic_baseline || {}) as {
+    chapter_scores?: Record<string, number>;
+  };
+  const fromScores = Object.entries(baseline.chapter_scores || {})
+    .filter(([, score]) => score < 0.45)
+    .map(([chapter]) => chapter);
+  if (fromScores.length > 0) return fromScores.slice(0, 3);
+  return (placement.covered_chapters || []).slice(0, 2);
 }
 
 export async function fetchMe(): Promise<MeResponse> {
@@ -154,22 +196,23 @@ export async function fetchMe(): Promise<MeResponse> {
   );
 }
 
-export async function fetchChapters(): Promise<ChapterMeta[]> {
-  const data = await cachedGet(cacheKey(["chapters"]), CacheTTL.chapters, () =>
-    auth.apiRequest<{ chapters: ChapterMeta[] }>(`${auth.getApiBaseUrl()}/onboarding/chapters/`)
-  );
-  return data.chapters;
+export async function fetchSyllabusOutline(): Promise<{
+  chapters: ChapterMeta[];
+  subjects: SyllabusSubject[];
+}> {
+  return cachedGet(cacheKey(["chapters"]), CacheTTL.chapters, () =>
+    auth.apiRequest<{ chapters: ChapterMeta[]; subjects?: SyllabusSubject[] }>(
+      `${auth.getApiBaseUrl()}/onboarding/chapters/`
+    )
+  ).then((data) => ({
+    chapters: data.chapters || [],
+    subjects: data.subjects || [{ name: "Physics", units: [] }, { name: "Chemistry", units: [] }, { name: "Mathematics", units: [] }],
+  }));
 }
 
-export async function fetchPlacementPlan(payload: {
-  journey_type: JourneyType;
-  covered_chapters: string[];
-  self_assessed_coverage: Record<string, CoverageDepth>;
-}): Promise<PlacementPlan> {
-  return auth.apiRequest<PlacementPlan>(
-    `${auth.getApiBaseUrl()}/onboarding/placement-plan/`,
-    { method: "POST", body: JSON.stringify(payload) }
-  );
+export async function fetchChapters(): Promise<ChapterMeta[]> {
+  const outline = await fetchSyllabusOutline();
+  return outline.chapters;
 }
 
 export async function patchStudentProfile(
@@ -202,7 +245,7 @@ export async function patchOnboardingSession(
   );
 }
 
-export type MilestoneKind = "target" | "placement" | "rhythm" | "diagnostic";
+export type MilestoneKind = "target" | "knowledge" | "preferences";
 
 export async function persistOnboardingMilestone(
   userId: string,
@@ -224,18 +267,20 @@ export async function persistOnboardingMilestone(
         grade_level: state.grade_level,
         onboarding_step: nextStep,
       }),
+      patchPlacement(userId, { journey_type: state.journey_type }),
       patchOnboardingSession(userId, sessionPatch),
     ]);
     return;
   }
 
-  if (kind === "placement") {
+  if (kind === "knowledge") {
+    const baseline = buildKnowledgeBaseline(state);
     await Promise.all([
       patchPlacement(userId, {
         journey_type: state.journey_type,
         covered_chapters: state.covered_chapters,
         self_assessed_coverage: state.self_assessed_coverage,
-        diagnostic_baseline: state.diagnostic_baseline,
+        diagnostic_baseline: baseline,
       }),
       patchStudentProfile(userId, { onboarding_step: nextStep }),
       patchOnboardingSession(userId, sessionPatch),
@@ -243,27 +288,12 @@ export async function persistOnboardingMilestone(
     return;
   }
 
-  if (kind === "rhythm") {
-    await Promise.all([
-      patchStudentProfile(userId, {
-        daily_goal_minutes: state.daily_goal_minutes,
-        preferred_depth: state.preferred_depth,
-        onboarding_step: nextStep,
-      }),
-      patchOnboardingSession(userId, sessionPatch),
-    ]);
-    return;
-  }
-
-  // diagnostic
   await Promise.all([
-    patchPlacement(userId, {
-      journey_type: state.journey_type,
-      covered_chapters: state.covered_chapters,
-      self_assessed_coverage: state.self_assessed_coverage,
-      diagnostic_baseline: state.diagnostic_baseline,
+    patchStudentProfile(userId, {
+      daily_goal_minutes: state.daily_goal_minutes,
+      preferred_depth: state.preferred_depth,
+      onboarding_step: nextStep,
     }),
-    patchStudentProfile(userId, { onboarding_step: nextStep }),
     patchOnboardingSession(userId, sessionPatch),
   ]);
 }
@@ -275,50 +305,19 @@ export async function completeOnboarding(payload: {
   current_step?: number;
   onboarding_step?: number;
 }): Promise<{ ok: boolean; sandbox: SandboxSummary }> {
-  const result = await auth.apiRequest(`${auth.getApiBaseUrl()}/onboarding/complete/`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const result = await auth.apiRequest<{ ok: boolean; sandbox: SandboxSummary }>(
+    `${auth.getApiBaseUrl()}/onboarding/complete/`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
   invalidateUserProductCache();
   return result;
 }
 
-export async function startDiagnostic(
-  userId: string,
-  options: { probes: PlacementProbe[]; questionCount?: number }
-): Promise<{ questions: DiagnosticQuestion[] }> {
-  const response = await fetch(`${auth.getAgentApiBase()}/api/v1/onboarding/diagnostic`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_id: userId,
-      action: "start",
-      question_count: options.questionCount ?? options.probes.length,
-      probes: options.probes,
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(await auth.parseResponseError(response));
-  }
-  return response.json() as Promise<{ questions: DiagnosticQuestion[] }>;
-}
-
-export async function submitDiagnosticAnswer(payload: {
-  user_id: string;
-  concept_id: string;
-  content_id: string;
-  is_correct: boolean;
-}): Promise<{ concept_scores: Record<string, number>; overall: number }> {
-  const response = await fetch(`${auth.getAgentApiBase()}/api/v1/onboarding/diagnostic`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, action: "grade" }),
-  });
-  if (!response.ok) {
-    throw new Error(await auth.parseResponseError(response));
-  }
-  invalidateUserProductCache();
-  return response.json() as Promise<{ concept_scores: Record<string, number>; overall: number }>;
+function isSubjectDepth(value: unknown): value is SubjectDepth {
+  return value === "not_started" || value === "barely" || value === "moderate" || value === "strong";
 }
 
 function snapshotToState(snapshot: Record<string, unknown> | null | undefined): Partial<OnboardingState> {
@@ -342,6 +341,12 @@ function snapshotToState(snapshot: Record<string, unknown> | null | undefined): 
   if (snapshot.self_assessed_coverage && typeof snapshot.self_assessed_coverage === "object") {
     out.self_assessed_coverage = snapshot.self_assessed_coverage as Record<string, CoverageDepth>;
   }
+  if (snapshot.subject_proficiency && typeof snapshot.subject_proficiency === "object") {
+    out.subject_proficiency = snapshot.subject_proficiency as Record<string, SubjectDepth>;
+  }
+  if (snapshot.unit_coverage && typeof snapshot.unit_coverage === "object") {
+    out.unit_coverage = snapshot.unit_coverage as Record<string, CoverageDepth>;
+  }
   if (typeof snapshot.daily_goal_minutes === "number") {
     out.daily_goal_minutes = snapshot.daily_goal_minutes;
   }
@@ -350,9 +355,19 @@ function snapshotToState(snapshot: Record<string, unknown> | null | undefined): 
   }
   if (snapshot.diagnostic_baseline && typeof snapshot.diagnostic_baseline === "object") {
     out.diagnostic_baseline = snapshot.diagnostic_baseline as Record<string, unknown>;
+    const baseline = snapshot.diagnostic_baseline as Record<string, unknown>;
+    if (!out.subject_proficiency && baseline.subject_proficiency && typeof baseline.subject_proficiency === "object") {
+      out.subject_proficiency = baseline.subject_proficiency as Record<string, SubjectDepth>;
+    }
+    if (!out.unit_coverage && baseline.unit_coverage && typeof baseline.unit_coverage === "object") {
+      out.unit_coverage = baseline.unit_coverage as Record<string, CoverageDepth>;
+    }
   }
   if (typeof snapshot.current_step === "number") {
-    out.current_step = migrateOnboardingStep(snapshot.current_step);
+    out.current_step = migrateOnboardingStep(
+      snapshot.current_step,
+      isLegacyStep(snapshot.current_step, snapshot)
+    );
   }
   return out;
 }
@@ -362,12 +377,25 @@ export function meToOnboardingState(me: MeResponse): OnboardingState {
   const placement = me.placement;
   const session = me.onboarding_session;
   const fromSnapshot = snapshotToState(session?.snapshot);
-  const step = migrateOnboardingStep(
-    fromSnapshot.current_step ??
-      session?.current_step ??
-      profile?.onboarding_step ??
-      1
-  );
+  const rawStep = fromSnapshot.current_step ?? session?.current_step ?? profile?.onboarding_step ?? 1;
+  const step = migrateOnboardingStep(rawStep, isLegacyStep(session?.current_step, session?.snapshot));
+  const baseline = (fromSnapshot.diagnostic_baseline ?? placement?.diagnostic_baseline ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const subjectFromBaseline = (baseline.subject_proficiency || {}) as Record<string, SubjectDepth>;
+  const unitFromBaseline = (baseline.unit_coverage || {}) as Record<string, CoverageDepth>;
+
+  const subject_proficiency = {
+    ...DEFAULT_ONBOARDING.subject_proficiency,
+    ...subjectFromBaseline,
+    ...(fromSnapshot.subject_proficiency || {}),
+  };
+  for (const key of Object.keys(subject_proficiency)) {
+    if (!isSubjectDepth(subject_proficiency[key])) {
+      subject_proficiency[key] = "not_started";
+    }
+  }
 
   return {
     journey_type:
@@ -381,6 +409,8 @@ export function meToOnboardingState(me: MeResponse): OnboardingState {
     grade_level:
       fromSnapshot.grade_level ??
       ((profile?.grade_level as GradeLevel) || DEFAULT_ONBOARDING.grade_level),
+    subject_proficiency,
+    unit_coverage: fromSnapshot.unit_coverage ?? unitFromBaseline ?? {},
     covered_chapters:
       fromSnapshot.covered_chapters ?? placement?.covered_chapters ?? [],
     self_assessed_coverage:
@@ -393,8 +423,7 @@ export function meToOnboardingState(me: MeResponse): OnboardingState {
       fromSnapshot.preferred_depth ??
       profile?.preferred_depth ??
       DEFAULT_ONBOARDING.preferred_depth,
-    diagnostic_baseline:
-      fromSnapshot.diagnostic_baseline ?? placement?.diagnostic_baseline ?? {},
+    diagnostic_baseline: baseline,
     current_step: step,
   };
 }
@@ -402,14 +431,14 @@ export function meToOnboardingState(me: MeResponse): OnboardingState {
 export function hasServerOnboardingProgress(me: MeResponse): boolean {
   const session = me.onboarding_session;
   const step = migrateOnboardingStep(
-    session?.current_step ?? me.profile?.onboarding_step ?? 1
+    session?.current_step ?? me.profile?.onboarding_step ?? 1,
+    isLegacyStep(session?.current_step, session?.snapshot)
   );
   const snapshot = session?.snapshot;
   const snapshotKeys = snapshot && typeof snapshot === "object" ? Object.keys(snapshot) : [];
   return step > 1 || snapshotKeys.length > 0;
 }
 
-/** Rough ETA weeks from daily goal + uncovered concept count (classroom preview). */
 export function estimateWeeksPreview(
   dailyGoalMinutes: number,
   conceptsRemaining: number

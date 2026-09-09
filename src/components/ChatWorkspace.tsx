@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { useRouter, useSearchParams } from "next/navigation";
 import MarkdownMath from "@/components/MarkdownMath";
 import StudySidebar from "@/components/StudySidebar";
+import AgentRosterPanel from "@/components/AgentRosterPanel";
 import {
   CollapsibleScoreSummary,
   FlashcardDeck,
@@ -14,8 +15,16 @@ import {
 import { AgentChatResponse, PlacementContext, sendChatMessage, fetchChatSessions, fetchChatSessionDetail, fetchConceptProficiency, presentationToAgentResponse, type ChatTurnItem } from "@/lib/agent";
 import ProactiveIntroCard from "@/components/slides/ProactiveIntroCard";
 import PracticeAttemptView from "@/components/PracticeAttemptView";
-import { splitPracticeAttempt } from "@/lib/practiceContent";
-import TheorySlideDeck from "@/components/slides/TheorySlideDeck";
+import InteractivePracticeCanvas from "@/components/InteractivePracticeCanvas";
+import PracticeBatchCanvas from "@/components/PracticeBatchCanvas";
+import {
+  asPracticeBatch,
+  asPracticeData,
+  extractPracticeQuestion,
+  looksLikePracticeDump,
+  splitPracticeAttempt,
+  type InteractivePracticeData,
+} from "@/lib/practiceContent";
 import { getSupabaseUserId } from "@/lib/auth";
 import { getAgentApiBase } from "@/lib/auth";
 import type { FlashcardItem } from "@/lib/agent";
@@ -57,25 +66,41 @@ type Message = {
 type Session = {
   id: string;
   title: string;
+  updatedAt?: string | null;
+  preview?: string | null;
 };
 
 const agentBaseUrl = getAgentApiBase();
 const SESSION_STORAGE_KEY = "agent_active_session_id";
 
-/** Stable across live UUID vs history turn_id so slide progress survives refresh. */
-function slideDeckStorageKey(
-  sessionId: string,
-  mode: string | undefined,
-  slides: { id?: string }[],
-): string {
-  const stamp = slides.map((s) => s.id || "").filter(Boolean).join("~");
-  return `aeropt-slide:${sessionId}:${mode || "deck"}:${stamp.slice(0, 160) || "anon"}`;
-}
-
 const fallbackPrompts = [
   "Explain torque and moment of inertia",
   "Give me a practice question on Newton's 2nd law",
 ];
+
+function isSameCalendarDay(iso: string | null | undefined, now = new Date()): boolean {
+  if (!iso) return false;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return false;
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function formatAgentError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("graphrag") ||
+    lower.includes("retriever") ||
+    lower.includes("dns") ||
+    lower.includes("name or service not known")
+  ) {
+    return "Couldn't fetch sources — try again.";
+  }
+  return raw;
+}
 
 function formatSessionTitle(
   preview: string | null | undefined,
@@ -176,6 +201,14 @@ function ArrowUpIcon() {
   );
 }
 
+function HistoryIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+      <path d="M4 6h16M4 12h10M4 18h16" />
+    </svg>
+  );
+}
+
 function PanelIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
@@ -194,10 +227,11 @@ function XIcon() {
 
 function TypingIndicator() {
   return (
-    <div className="assistant-thinking">
+    <div className="assistant-thinking" role="status" aria-live="polite" aria-label="Assistant is typing">
       <span />
       <span />
       <span />
+      <span className="sr-only">Assistant is typing</span>
     </div>
   );
 }
@@ -209,9 +243,7 @@ function AssistantExtras({
   gradingDisabled,
   suppressPicker,
   isLatest,
-  onSlidesComplete,
-  onSlideChange,
-  slideStorageKey,
+  hideGrade,
 }: {
   agent?: AgentChatResponse | null;
   onGrade: (outcome: "correct" | "incorrect") => void;
@@ -219,9 +251,7 @@ function AssistantExtras({
   gradingDisabled?: boolean;
   suppressPicker?: boolean;
   isLatest?: boolean;
-  onSlidesComplete?: () => void;
-  onSlideChange?: (current: number, total: number) => void;
-  slideStorageKey?: string;
+  hideGrade?: boolean;
 }) {
   if (!agent) return null;
   const showFlashcards =
@@ -240,16 +270,7 @@ function AssistantExtras({
       {agent.card && isLatest && !suppressPicker && (
         <ProactiveIntroCard card={agent.card} />
       )}
-      {agent.slides && agent.slides.slides.length > 0 && (
-        <TheorySlideDeck
-          payload={agent.slides}
-          fallbackMarkdown={agent.response || undefined}
-          onComplete={isLatest ? onSlidesComplete : undefined}
-          onSlideChange={isLatest ? onSlideChange : undefined}
-          storageKey={slideStorageKey}
-        />
-      )}
-      {agent.grading_ui && isLatest && (
+      {agent.grading_ui && isLatest && !hideGrade && (
         <GradingButtons gradingUi={agent.grading_ui} disabled={gradingDisabled} onGrade={onGrade} />
       )}
       {showFlashcards && (
@@ -271,115 +292,123 @@ function AssistantResponse({
   message,
   onGrade,
   onPickCard,
+  onOpenBatchCanvas,
   gradingDisabled,
   suppressPicker,
   isLatest,
-  onSlidesComplete,
-  onSlideChange,
-  slideStorageKey,
+  pinPractice,
 }: {
   message: Message;
   onGrade: (outcome: "correct" | "incorrect") => void;
   onPickCard: (card: FlashcardItem) => void;
+  onOpenBatchCanvas?: (batch: InteractivePracticeData[], messageId: string) => void;
   gradingDisabled?: boolean;
   suppressPicker?: boolean;
   isLatest?: boolean;
-  onSlidesComplete?: () => void;
-  onSlideChange?: (current: number, total: number) => void;
-  slideStorageKey?: string;
+  pinPractice?: boolean;
 }) {
-  const structured = message.structured_response;
-  const hasSlides = Boolean(message.agent?.slides?.slides?.length);
-  const practiceSplit = !hasSlides ? splitPracticeAttempt(message.content) : null;
-  const hidePracticeSolution = Boolean(
-    isLatest && message.agent?.grading_ui?.show_correct_incorrect,
+  const extracted = extractPracticeQuestion(message.content);
+  const practice = asPracticeData(message.agent?.practice_question) ?? extracted.data;
+  const extras = (
+    <AssistantExtras
+      agent={message.agent}
+      onGrade={onGrade}
+      onPickCard={onPickCard}
+      gradingDisabled={gradingDisabled}
+      suppressPicker={suppressPicker}
+      isLatest={isLatest}
+      hideGrade={Boolean(practice)}
+    />
   );
-  const hasStructuredSections =
-    !hasSlides &&
-    structured &&
-    (structured.filling_gap ||
-      structured.solution_steps.length > 0 ||
-      structured.insight);
 
-  if (!hasStructuredSections && !hasSlides) {
+  const practiceBatch = asPracticeBatch(message.agent?.practice_batch);
+  const isPreparing =
+    message.content.includes("[PREPARING]") && practiceBatch.length === 0 && !practice;
+
+  if (isPreparing) {
+    const text = message.content.replace("[PREPARING]", "").trim();
     return (
       <article className="lesson-response assistant-plain">
-        {practiceSplit ? (
-          <PracticeAttemptView
-            question={practiceSplit.question}
-            remainder={practiceSplit.remainder}
-            hideSolution={hidePracticeSolution}
-          />
-        ) : (
-          !hasSlides && <MarkdownMath content={message.content} />
-        )}
-        <AssistantExtras
-          agent={message.agent}
-          onGrade={onGrade}
-          onPickCard={onPickCard}
-          gradingDisabled={gradingDisabled}
-          suppressPicker={suppressPicker}
-          isLatest={isLatest}
-          onSlidesComplete={onSlidesComplete}
-          onSlideChange={onSlideChange}
-          slideStorageKey={slideStorageKey}
-        />
+        <div className="flex items-center gap-3 text-accent">
+          <TypingIndicator />
+          <span className="font-medium animate-pulse">{text || "Preparing questions..."}</span>
+        </div>
       </article>
     );
   }
 
+  if (practice && pinPractice) {
+    return (
+      <article className="lesson-response assistant-plain">
+        <p className="practice-canvas-stub">
+          Practice question is open on the canvas. Attempt it there, then ask here if you want a hint.
+        </p>
+        {extras}
+      </article>
+    );
+  }
+
+  if (practiceBatch.length > 0) {
+    const n = practiceBatch.length;
+    return (
+      <article className="lesson-response assistant-plain">
+        <MarkdownMath content={message.content} />
+        <div className="practice-open-canvas-wrap">
+          <button
+            type="button"
+            onClick={() => onOpenBatchCanvas?.(practiceBatch, message.id)}
+            className="practice-open-canvas-btn"
+          >
+            <span>
+              {n === 1 ? "Open practice canvas" : `Open practice canvas (${n} questions)`}
+            </span>
+            <PanelIcon />
+          </button>
+        </div>
+        {extras}
+      </article>
+    );
+  }
+
+  if (practice) {
+    return (
+      <article className="lesson-response assistant-plain">
+        <InteractivePracticeCanvas
+          data={practice}
+          remainder={extracted.remainder}
+          onGrade={isLatest ? onGrade : undefined}
+          gradingDisabled={gradingDisabled}
+        />
+        {extras}
+      </article>
+    );
+  }
+
+  if (looksLikePracticeDump(message.content)) {
+    return (
+      <article className="lesson-response assistant-plain">
+        <p className="practice-canvas-stub">Opening the practice canvas…</p>
+      </article>
+    );
+  }
+
+  const practiceSplit = splitPracticeAttempt(message.content);
+  const hidePracticeSolution = Boolean(
+    isLatest && message.agent?.grading_ui?.show_correct_incorrect,
+  );
+
   return (
-    <article className="lesson-response">
-      {structured?.filling_gap && (
-        <section className="lesson-gap">
-          <h3>FILLING A GAP FIRST</h3>
-          <MarkdownMath content={structured.filling_gap} />
-        </section>
+    <article className="lesson-response assistant-plain">
+      {practiceSplit ? (
+        <PracticeAttemptView
+          question={practiceSplit.question}
+          remainder={practiceSplit.remainder}
+          hideSolution={hidePracticeSolution}
+        />
+      ) : (
+        <MarkdownMath content={message.content} />
       )}
-
-      {structured && structured.solution_steps.length > 0 && (
-        <section className="lesson-solution">
-          <div className="solution-rule">
-            <span>SOLUTION</span>
-          </div>
-          {structured.solution_steps.map((line, index) => (
-            <div className="solution-step" key={`${index}-${line}`}>
-              <span>{index + 1}</span>
-              <MarkdownMath content={line} />
-            </div>
-          ))}
-        </section>
-      )}
-
-      {structured?.insight && (
-        <div className="lesson-note">
-          <MarkdownMath content={structured.insight} />
-        </div>
-      )}
-      {!hasSlides && !structured?.filling_gap && !structured?.solution_steps.length && (
-        <div className="assistant-plain">
-          {practiceSplit ? (
-            <PracticeAttemptView
-              question={practiceSplit.question}
-              remainder={practiceSplit.remainder}
-              hideSolution={hidePracticeSolution}
-            />
-          ) : (
-            <MarkdownMath content={message.content} />
-          )}
-        </div>
-      )}
-      <AssistantExtras
-        agent={message.agent}
-        onGrade={onGrade}
-        onPickCard={onPickCard}
-        gradingDisabled={gradingDisabled}
-        suppressPicker={suppressPicker}
-        isLatest={isLatest}
-        onSlidesComplete={onSlidesComplete}
-        onSlideChange={onSlideChange}
-        slideStorageKey={slideStorageKey}
-      />
+      {extras}
     </article>
   );
 }
@@ -387,7 +416,6 @@ function AssistantResponse({
 function buildAssistantMessage(response: AgentChatResponse): Message {
   const text = response.response?.trim() || "I could not generate a response.";
   const hasPickerCards = response.flashcards?.mode === "picker";
-  const hasSlides = Boolean(response.slides?.slides?.length);
   const tryNext = hasPickerCards ? [] : normalizeSuggestions(response.follow_up_suggestions);
   const structured = response.structured;
 
@@ -397,34 +425,32 @@ function buildAssistantMessage(response: AgentChatResponse): Message {
     content: text,
     agent: response,
     structured_response:
-      hasSlides
-        ? undefined
-        : structured &&
-            (structured.filling_gap || structured.solution_steps?.length || structured.insight)
-          ? {
-              filling_gap: structured.filling_gap || "",
-              solution_steps: structured.solution_steps || [],
-              insight: structured.insight || "",
-              try_next: tryNext,
-              concepts_mentioned: response.primary_concept_id
-                ? [response.primary_concept_id]
-                : [],
-              prerequisite_chain: [],
-            }
-          : {
-              filling_gap: "",
-              solution_steps: [],
-              insight: "",
-              try_next: tryNext,
-              concepts_mentioned: response.primary_concept_id
-                ? [response.primary_concept_id]
-                : [],
-              prerequisite_chain: [],
-            },
+      structured &&
+      (structured.filling_gap || structured.solution_steps?.length || structured.insight)
+        ? {
+            filling_gap: structured.filling_gap || "",
+            solution_steps: structured.solution_steps || [],
+            insight: structured.insight || "",
+            try_next: tryNext,
+            concepts_mentioned: response.primary_concept_id
+              ? [response.primary_concept_id]
+              : [],
+            prerequisite_chain: [],
+          }
+        : {
+            filling_gap: "",
+            solution_steps: [],
+            insight: "",
+            try_next: tryNext,
+            concepts_mentioned: response.primary_concept_id
+              ? [response.primary_concept_id]
+              : [],
+            prerequisite_chain: [],
+          },
   };
 }
 
-export default function ChatWorkspace() {
+export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roadmapConceptId = searchParams.get("concept_id");
@@ -434,15 +460,26 @@ export default function ChatWorkspace() {
   const forceFreshStart = searchParams.get("fresh") === "1";
 
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isReplying, setIsReplying] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [sessionsReady, setSessionsReady] = useState(false);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [awaitingGrade, setAwaitingGrade] = useState(false);
+  const [canvasPractice, setCanvasPractice] = useState<{
+    data: InteractivePracticeData;
+    remainder: string;
+    messageId: string;
+  } | null>(null);
+  const [batchCanvasPractice, setBatchCanvasPractice] = useState<{
+    batch: InteractivePracticeData[];
+    messageId: string;
+  } | null>(null);
   const [error, setError] = useState("");
   const [placementContext, setPlacementContext] = useState<PlacementContext>({});
   const [roadmapNode, setRoadmapNode] = useState<PathNode | null>(null);
@@ -450,9 +487,11 @@ export default function ChatWorkspace() {
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
   const [conceptComplete, setConceptComplete] = useState(false);
   const [lastProficiencyPct, setLastProficiencyPct] = useState<number | null>(null);
-  const [slideProgress, setSlideProgress] = useState<{ current: number; total: number } | null>(null);
-  const [slidesComplete, setSlidesComplete] = useState(true);
+  const [lastActiveAgent, setLastActiveAgent] = useState<string | null>(null);
+  const [agentPanelCollapsed, setAgentPanelCollapsed] = useState(false);
+  const [agentRefreshKey, setAgentRefreshKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
+  const scrollEndRef = useRef<HTMLDivElement>(null);
   const progressMarkedRef = useRef(false);
   const autoPromptedRef = useRef(false);
   const endingBeaconSentRef = useRef(false);
@@ -471,7 +510,7 @@ export default function ChatWorkspace() {
     [roadmapNodeId, activeSessionId],
   );
 
-  // Strip one-shot fresh=1 so refresh resumes the bound session instead of restarting.
+  // Strip one-shot fresh=1 while staying on /chat/<sessionId> (never bare /chat).
   useEffect(() => {
     if (!forceFreshStart) {
       freshUrlHandledRef.current = false;
@@ -486,8 +525,8 @@ export default function ChatWorkspace() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("fresh");
     const qs = params.toString();
-    router.replace(qs ? `/chat?${qs}` : "/chat", { scroll: false });
-  }, [forceFreshStart, router, searchParams]);
+    router.replace(qs ? `/chat/${sessionId}?${qs}` : `/chat/${sessionId}`, { scroll: false });
+  }, [forceFreshStart, router, searchParams, sessionId]);
 
   useEffect(() => {
     if (!roadmapNodeId) return;
@@ -556,20 +595,9 @@ export default function ChatWorkspace() {
       try {
         const me = await onboarding.fetchMe();
         const placement = me.placement;
-        const baseline = (placement?.diagnostic_baseline || {}) as {
-          chapter_scores?: Record<string, number>;
-        };
-        const chapterScores = baseline.chapter_scores || {};
-        const focusChapters = Object.entries(chapterScores)
-          .filter(([, score]) => score < 0.45)
-          .map(([chapter]) => chapter)
-          .slice(0, 3);
         setPlacementContext({
           journeyType: placement?.journey_type ?? null,
-          focusChapters:
-            focusChapters.length > 0
-              ? focusChapters
-              : (placement?.covered_chapters || []).slice(0, 2),
+          focusChapters: onboarding.focusChaptersFromPlacement(placement),
         });
       } catch {
         setPlacementContext({});
@@ -587,6 +615,26 @@ export default function ChatWorkspace() {
     () => [...messages].reverse().find((message) => message.role === "assistant") ?? null,
     [messages],
   );
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setCanvasPractice(null);
+      setBatchCanvasPractice(null);
+    }
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (!latestAssistant) return;
+    if (asPracticeBatch(latestAssistant.agent?.practice_batch).length > 1) return;
+    const extracted = extractPracticeQuestion(latestAssistant.content);
+    const data = asPracticeData(latestAssistant.agent?.practice_question) ?? extracted.data;
+    if (!data) return;
+    setCanvasPractice({
+      data,
+      remainder: extracted.remainder,
+      messageId: latestAssistant.id,
+    });
+  }, [latestAssistant]);
 
   // Prefer turn proficiency; otherwise load durable Supabase user_concept_state.
   useEffect(() => {
@@ -618,65 +666,6 @@ export default function ChatWorkspace() {
   ]);
 
   const currentStage = isRoadmapSession ? contentSequence[currentStageIndex] : null;
-  const stageUsesSlides = currentStage === "theory" || currentStage === "example";
-  const latestHasSlides = Boolean(latestAssistant?.agent?.slides?.slides?.length);
-  const requiresSlides = stageUsesSlides && latestHasSlides;
-
-  useEffect(() => {
-    if (!stageUsesSlides) {
-      setSlidesComplete(true);
-      setSlideProgress(null);
-      return;
-    }
-    const slides = latestAssistant?.agent?.slides?.slides;
-    if (!slides?.length) {
-      // Waiting for deck / presentation restore — keep Next locked for slide stages.
-      setSlidesComplete(false);
-      setSlideProgress(null);
-      return;
-    }
-    const total = slides.length;
-    let current = latestAssistant?.agent?.slides?.current_index ?? 0;
-    if (activeSessionId && typeof window !== "undefined") {
-      const key = slideDeckStorageKey(
-        activeSessionId,
-        latestAssistant?.agent?.slides?.mode,
-        slides,
-      );
-      const stored = localStorage.getItem(key);
-      if (stored != null) {
-        const parsed = Number.parseInt(stored, 10);
-        if (!Number.isNaN(parsed)) {
-          current = Math.min(Math.max(0, parsed), Math.max(0, total - 1));
-        }
-      }
-    }
-    setSlidesComplete(current >= total - 1);
-    setSlideProgress((prev) =>
-      prev?.current === current && prev?.total === total ? prev : { current, total },
-    );
-  }, [
-    latestAssistant?.id,
-    currentStageIndex,
-    stageUsesSlides,
-    latestAssistant?.agent?.slides?.slides,
-    latestAssistant?.agent?.slides?.mode,
-    latestAssistant?.agent?.slides?.current_index,
-    activeSessionId,
-  ]);
-
-  const handleSlidesComplete = useCallback(() => {
-    setSlidesComplete(true);
-  }, []);
-
-  const handleSlideChange = useCallback((current: number, total: number) => {
-    setSlideProgress((prev) =>
-      prev?.current === current && prev?.total === total ? prev : { current, total },
-    );
-    if (total > 0 && current >= total - 1) {
-      setSlidesComplete(true);
-    }
-  }, []);
 
   const quickPrompts = useMemo(() => {
     if (latestAssistant?.agent?.flashcards?.mode === "picker") return [];
@@ -702,6 +691,7 @@ export default function ChatWorkspace() {
       studyStage?: StudyStage | null;
       gradedOutcome?: "correct" | "incorrect";
     },
+    onToken?: (token: string) => void
   ) {
     const userId = getSupabaseUserId();
     if (!userId) {
@@ -721,7 +711,7 @@ export default function ChatWorkspace() {
       studyStage: stage,
       gradedOutcome: options?.gradedOutcome,
       placement: placementContext,
-    });
+    }, onToken);
   }
 
   function registerSession(sessionId: string, title?: string) {
@@ -729,49 +719,52 @@ export default function ChatWorkspace() {
     localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
     setSessions((current) => {
       if (current.some((session) => session.id === sessionId)) return current;
-      return [{ id: sessionId, title: title || `Session ${current.length + 1}` }, ...current];
+      return [{ id: sessionId, title: title || `Session ${current.length + 1}`, updatedAt: new Date().toISOString() }, ...current];
     });
   }
 
-  const loadSessionHistory = useCallback(async (sessionId: string) => {
+  const loadSessionHistory = useCallback(async (id: string) => {
     const userId = getSupabaseUserId();
     if (!userId) return;
 
     setIsLoadingSession(true);
     setError("");
+    setSessionNotFound(false);
     try {
-      const detail = await fetchChatSessionDetail(userId, sessionId);
-      const loaded = turnsToMessages(detail.turns, sessionId);
+      const detail = await fetchChatSessionDetail(userId, id);
+      const loaded = turnsToMessages(detail.turns, id);
       setMessages(loaded);
-      setActiveSessionId(sessionId);
-      localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+      setActiveSessionId(id);
+      localStorage.setItem(SESSION_STORAGE_KEY, id);
       const lastAssistant = [...loaded].reverse().find((m) => m.role === "assistant");
       setAwaitingGrade(Boolean(lastAssistant?.agent?.grading_ui?.show_correct_incorrect));
       if (typeof lastAssistant?.agent?.proficiency_pct === "number") {
         setLastProficiencyPct(lastAssistant.agent.proficiency_pct);
       }
+      if (lastAssistant?.agent?.active_agent) {
+        setLastActiveAgent(lastAssistant.agent.active_agent);
+      }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load session history.");
+      const message = caught instanceof Error ? caught.message : "Could not load session history.";
+      const missing =
+        message.toLowerCase().includes("not found") || message.toLowerCase().includes("404");
+      setSessionNotFound(missing);
+      setError(message);
+      setMessages([]);
     } finally {
       setIsLoadingSession(false);
     }
   }, []);
 
-  async function selectSession(sessionId: string) {
-    if (sessionId === activeSessionId || isReplying || isLoadingSession) return;
-    setMessages([]);
-    setLastProficiencyPct(null);
-    await loadSessionHistory(sessionId);
+  function selectSession(nextSessionId: string) {
+    if (nextSessionId === sessionId || isReplying || isLoadingSession) return;
+    setHistoryOpen(false);
+    router.push(`/chat/${nextSessionId}`);
   }
 
   function createSession() {
-    setActiveSessionId(null);
-    setMessages([]);
-    setLastProficiencyPct(null);
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-    if (roadmapNodeId) clearRoadmapSessionBind(roadmapNodeId);
-    setError("");
-    autoPromptedRef.current = true; // don't re-fire roadmap auto-prompt after explicit New chat
+    autoPromptedRef.current = true;
+    router.push("/chat");
   }
 
   function flushEndSessionBeacon(sessionId: string) {
@@ -811,9 +804,9 @@ export default function ChatWorkspace() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, session_id: activeSessionId }),
       });
-      setActiveSessionId(null);
       localStorage.removeItem(SESSION_STORAGE_KEY);
       if (roadmapNodeId) clearRoadmapSessionBind(roadmapNodeId);
+      router.push("/chat");
     } catch (caught) {
       endingBeaconSentRef.current = false;
       setError(caught instanceof Error ? caught.message : "Unable to end this session.");
@@ -831,8 +824,24 @@ export default function ChatWorkspace() {
     if (typeof agentResponse.proficiency_pct === "number") {
       setLastProficiencyPct(agentResponse.proficiency_pct);
     }
+    if (agentResponse.active_agent) {
+      setLastActiveAgent(agentResponse.active_agent);
+    }
+    setAgentRefreshKey((k) => k + 1);
     const assistantMessage = buildAssistantMessage(agentResponse);
+    const batch = asPracticeBatch(agentResponse.practice_batch);
+    const single =
+      asPracticeData(agentResponse.practice_question) ?? (batch.length === 1 ? batch[0] : null);
     setMessages((current) => [...current, assistantMessage]);
+    if (batch.length > 1) {
+      setBatchCanvasPractice({ batch, messageId: assistantMessage.id });
+    } else if (single) {
+      setCanvasPractice({
+        data: single,
+        remainder: "",
+        messageId: assistantMessage.id,
+      });
+    }
     return agentResponse;
   }
 
@@ -851,6 +860,11 @@ export default function ChatWorkspace() {
       setCurrentStageIndex(nextIndex);
       persistRoadmapBind(nextIndex);
     }
+  }
+
+  async function submitBatch(results: any[]) {
+    setBatchCanvasPractice(null);
+    await submitMessage("SUBMISSION::" + JSON.stringify(results));
   }
 
   async function advanceStudyStage(nextStage: StudyStage) {
@@ -882,22 +896,39 @@ export default function ChatWorkspace() {
     if (!isGradeTap) setInput("");
     setError("");
     setIsReplying(true);
-    setMessages((current) => [...current, userMessage]);
+    const assistantId = crypto.randomUUID();
+    setMessages((current) => [
+      ...current,
+      userMessage,
+      { id: assistantId, role: "assistant", content: "" },
+    ]);
 
     try {
       // graded_outcome is the contract; query mirrors 1/0 for transcript/diagnostics only.
       const agentResponse = await sendAgentMessage(
         isGradeTap ? (gradedOutcome === "correct" ? "1" : "0") : trimmed,
-        activeSessionId,
+        activeSessionId ?? sessionId,
         {
           gradedOutcome,
           studyStage,
         },
+        (token) => {
+          setMessages((current) =>
+            current.map((msg) =>
+              msg.id === assistantId
+                ? { ...msg, content: msg.content + token }
+                : msg
+            )
+          );
+        }
       );
+      
+      // Remove the temporary assistant message since handleAgentResponse appends the finalized one
+      setMessages((current) => current.filter((m) => m.id !== assistantId));
       return await handleAgentResponse(agentResponse);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
-      setMessages((current) => current.filter((message) => message.id !== userMessage.id));
+      setMessages((current) => current.filter((message) => message.id !== userMessage.id && message.id !== assistantId));
       return null;
     } finally {
       setIsReplying(false);
@@ -929,97 +960,53 @@ export default function ChatWorkspace() {
       }
 
       setSessionsReady(false);
-      const isRoadmapEntry = Boolean(roadmapNodeId);
+      setSessionNotFound(false);
+      setActiveSessionId(sessionId);
+      localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
 
       try {
         const list = await fetchChatSessions(userId);
         const mapped: Session[] = list.map((session, index) => ({
           id: session.session_id,
           title: formatSessionTitle(session.preview, session.updated_at, index),
+          updatedAt: session.updated_at,
+          preview: session.preview ?? null,
         }));
+        if (!mapped.some((session) => session.id === sessionId)) {
+          mapped.unshift({
+            id: sessionId,
+            title: "New chat",
+            updatedAt: new Date().toISOString(),
+            preview: null,
+          });
+        }
         setSessions(mapped);
 
-        // Roadmap Start/Continue (fresh=1): never overlay an unrelated prior transcript.
-        if (isRoadmapEntry && startFreshRef.current) {
+        // Roadmap Start/Continue (fresh=1): empty transcript at URL/bound stage; keep this session id.
+        if (roadmapNodeId && startFreshRef.current) {
           startFreshRef.current = false;
-          localStorage.removeItem(SESSION_STORAGE_KEY);
           const defaultSeq = ["theory", "example", "practice", "pyq"] as StudyStage[];
           const stageIdx = Math.max(0, defaultSeq.indexOf(initialStage));
-          writeRoadmapSessionBind(roadmapNodeId!, {
-            sessionId: null,
+          writeRoadmapSessionBind(roadmapNodeId, {
+            sessionId,
             stageIndex: stageIdx,
           });
           setCurrentStageIndex(stageIdx);
-          setActiveSessionId(null);
           setMessages([]);
           setAwaitingGrade(false);
+          setLastProficiencyPct(null);
           return;
         }
 
-        // Roadmap resume (refresh / mid-lesson): restore bound session + leave messages for gating.
-        if (isRoadmapEntry && roadmapNodeId) {
-          const bind = readRoadmapSessionBind(roadmapNodeId);
-          const boundId =
-            bind?.sessionId && mapped.some((session) => session.id === bind.sessionId)
-              ? bind.sessionId
-              : null;
-          if (boundId) {
-            if (typeof bind?.stageIndex === "number") {
-              setCurrentStageIndex(bind.stageIndex);
-            }
-            await loadSessionHistory(boundId);
-            return;
-          }
-          // No bind — start clean so we don't show a stale free-chat transcript.
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-          setActiveSessionId(null);
-          setMessages([]);
-          setAwaitingGrade(false);
-          return;
-        }
-
-        // Free chat: restore last active session.
-        const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-        const targetId =
-          savedSessionId && mapped.some((session) => session.id === savedSessionId)
-            ? savedSessionId
-            : mapped[0]?.id ?? null;
-
-        if (targetId) {
-          await loadSessionHistory(targetId);
-        }
+        await loadSessionHistory(sessionId);
       } catch (caught) {
-        if (isRoadmapEntry && roadmapNodeId) {
-          const bind = readRoadmapSessionBind(roadmapNodeId);
-          if (bind?.sessionId && !startFreshRef.current) {
-            setActiveSessionId(bind.sessionId);
-            setSessions([{ id: bind.sessionId, title: "Current session" }]);
-            try {
-              await loadSessionHistory(bind.sessionId);
-              return;
-            } catch {
-              /* fall through */
-            }
-          }
-          setActiveSessionId(null);
-          setMessages([]);
-          return;
-        }
-        const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-        if (savedSessionId) {
-          setActiveSessionId(savedSessionId);
-          setSessions([{ id: savedSessionId, title: "Current session" }]);
-          try {
-            await loadSessionHistory(savedSessionId);
-          } catch {
-            setError(
-              caught instanceof Error ? caught.message : "Could not load your previous sessions.",
-            );
-          }
-        } else {
-          setError(
-            caught instanceof Error ? caught.message : "Could not load your previous sessions.",
-          );
+        setError(
+          caught instanceof Error ? caught.message : "Could not load your previous sessions.",
+        );
+        try {
+          await loadSessionHistory(sessionId);
+        } catch {
+          /* loadSessionHistory sets error / not-found */
         }
       } finally {
         setSessionsReady(true);
@@ -1030,7 +1017,7 @@ export default function ChatWorkspace() {
     };
 
     void bootstrapSessions();
-  }, [loadSessionHistory, roadmapNodeId, entryNonce, initialStage]);
+  }, [loadSessionHistory, roadmapNodeId, entryNonce, initialStage, sessionId]);
 
   useEffect(() => {
     if (!sessionsReady || messages.length > 0 || isReplying || isLoadingSession) {
@@ -1071,8 +1058,59 @@ export default function ChatWorkspace() {
     return () => window.removeEventListener("pagehide", onPageHide);
   }, [activeSessionId]);
 
+  useEffect(() => {
+    scrollEndRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, isReplying]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setHistoryOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const closeBtn = document.querySelector<HTMLButtonElement>(".chat-history-close");
+    closeBtn?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [historyOpen]);
+
+  const emptyThread = !isLoadingSession && messages.length === 0;
+
+  const conceptsCoveredToday = (() => {
+    const ids = new Set<string>();
+    for (const message of messages) {
+      const id = message.agent?.primary_concept_id;
+      if (id) ids.add(id);
+    }
+    for (const session of visibleSessions) {
+      if (isSameCalendarDay(session.updatedAt) && session.preview) ids.add(session.id);
+    }
+    return ids.size;
+  })();
+
+  const sessionHeading =
+    isRoadmapSession && roadmapNode?.concept_name
+      ? roadmapNode.concept_name
+      : latestAssistant?.agent?.primary_concept_id
+        ? latestAssistant.agent.primary_concept_id.replace(/_/g, " ")
+        : activeSession?.title && !/^session\b/i.test(activeSession.title)
+          ? activeSession.title
+          : "Study session";
+
+  const sessionSubline = isRoadmapSession && roadmapNode
+    ? roadmapNode.chapter
+    : conceptsCoveredToday > 0
+      ? `${conceptsCoveredToday} concept${conceptsCoveredToday === 1 ? "" : "s"} covered today`
+      : emptyThread
+        ? null
+        : null;
+
+  const showSelfGradeHint =
+    !canvasPractice &&
+    (awaitingGrade || Boolean(latestAssistant?.agent?.grading_ui?.show_correct_incorrect));
+  const supabaseUserId = getSupabaseUserId();
+
   return (
-    <main className="chat-page">
+    <>
       <StudySidebar
         studyContext={{
           conceptName: roadmapNode?.concept_name,
@@ -1081,32 +1119,89 @@ export default function ChatWorkspace() {
           stage: currentStage,
           stageIndex: currentStageIndex,
           stageTotal: contentSequence.length,
-          slideProgress,
           proficiencyPct: lastProficiencyPct ?? roadmapNode?.proficiency_pct ?? null,
           weakPrereq: latestAssistant?.agent?.card?.weak_prereq ?? null,
           journeyType: placementContext.journeyType ?? null,
         }}
       />
+    <main className="chat-page">
+      {historyOpen ? (
+        <button
+          type="button"
+          className="chat-history-scrim"
+          aria-label="Close chat history"
+          onClick={() => setHistoryOpen(false)}
+        />
+      ) : null}
+      <aside className={`chat-history ${historyOpen ? "chat-history-open" : ""}`} aria-hidden={!historyOpen}>
+        <div className="chat-history-head">
+          <p>Chat history</p>
+          <button type="button" className="chat-history-close" onClick={() => setHistoryOpen(false)} aria-label="Close history">
+            <XIcon />
+          </button>
+        </div>
+        <div className="chat-history-list">
+          {visibleSessions.length === 0 ? (
+            <p className="chat-history-empty">No past sessions yet.</p>
+          ) : (
+            visibleSessions.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                className={`chat-history-item ${session.id === activeSessionId ? "chat-history-item-active" : ""}`}
+                onClick={() => {
+                  selectSession(session.id);
+                }}
+                title={session.title}
+              >
+                {session.title}
+              </button>
+            ))
+          )}
+        </div>
+      </aside>
 
+    <div className="chat-page-layout">
       <section className={`chat-main ${isRoadmapSession && roadmapNode ? "chat-main--roadmap" : ""}`}>
         <header className="chat-header">
-          <h1>
-            {isRoadmapSession && roadmapNode?.concept_name
-              ? roadmapNode.concept_name
-              : activeSession?.title ?? "Study Session"}
-          </h1>
+          <div className="chat-header-start">
+            <button
+              type="button"
+              className="chat-history-toggle"
+              onClick={() => setHistoryOpen(true)}
+              aria-label="Open chat history"
+            >
+              <HistoryIcon />
+            </button>
+            <div className="chat-header-copy">
+              <h1>{sessionHeading}</h1>
+              {sessionSubline ? <p className="chat-header-sub">{sessionSubline}</p> : null}
+            </div>
+          </div>
           <div className="header-actions">
             <button type="button" className="header-action-button" onClick={createSession}>
               New chat
             </button>
-            <button
-              type="button"
-              className="end-session"
-              onClick={() => void endSession()}
-              disabled={!activeSessionId || isEndingSession}
-            >
-              {isEndingSession ? "Ending..." : "End Session"}
-            </button>
+            {!emptyThread ? (
+              <>
+                <button
+                  type="button"
+                  className="end-session"
+                  onClick={() => void endSession()}
+                  disabled={!activeSessionId || isEndingSession}
+                >
+                  {isEndingSession ? "Ending..." : "End Session"}
+                </button>
+                <button
+                  type="button"
+                  className="concept-toggle"
+                  onClick={() => setPanelCollapsed((current) => !current)}
+                  aria-label="Toggle concepts panel"
+                >
+                  {panelCollapsed ? <PanelIcon /> : <XIcon />}
+                </button>
+              </>
+            ) : null}
           </div>
         </header>
 
@@ -1118,131 +1213,15 @@ export default function ChatWorkspace() {
               conceptName={roadmapNode.concept_name}
               loading={isReplying}
               conceptComplete={conceptComplete}
-              slideProgress={requiresSlides ? slideProgress : null}
-              slidesComplete={slidesComplete}
-              requiresSlides={requiresSlides}
+              slidesComplete
+              requiresSlides={false}
               onAdvance={(stage) => void advanceStudyStage(stage)}
             />
           </div>
         )}
 
-        <div className="chat-scroll">
-          {!isRoadmapSession && visibleSessions.length > 0 && (
-            <div className="session-list-wrap">
-              <div className="session-list">
-                {visibleSessions.map((session) => (
-                  <button
-                    key={session.id}
-                    type="button"
-                    className={`session-pill ${session.id === activeSessionId ? "session-pill-active" : ""}`}
-                    onClick={() => void selectSession(session.id)}
-                    title={session.title}
-                  >
-                    {session.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isLoadingSession && messages.length === 0 && (
-            <p className="chat-error">Loading your last session…</p>
-          )}
-
-          {!isRoadmapSession && !isLoadingSession && messages.length === 0 && (
-            <p className="chat-error">
-              Ask a doubt, request practice, or say &quot;quiz me on torque&quot; to start.
-            </p>
-          )}
-
-          {isRoadmapSession && isReplying && messages.length === 0 && (
-            <p className="chat-status">Loading lesson…</p>
-          )}
-
-          {messages.map((message) =>
-            message.role === "user" ? (
-              <div className="user-bubble" key={message.id}>
-                {message.content}
-              </div>
-            ) : (
-              <AssistantResponse
-                key={message.id}
-                message={message}
-                onGrade={(outcome) => void submitGrade(outcome)}
-                onPickCard={(card) => void submitPickerCard(card)}
-                gradingDisabled={isReplying}
-                suppressPicker={isRoadmapSession}
-                isLatest={message.id === latestAssistant?.id}
-                onSlidesComplete={handleSlidesComplete}
-                onSlideChange={handleSlideChange}
-                slideStorageKey={
-                  activeSessionId && message.agent?.slides?.slides?.length
-                    ? slideDeckStorageKey(
-                        activeSessionId,
-                        message.agent.slides.mode,
-                        message.agent.slides.slides,
-                      )
-                    : undefined
-                }
-              />
-            ),
-          )}
-
-          {isReplying && <TypingIndicator />}
-          {error && <p className="chat-error">{error}</p>}
-
-          <div className="quick-prompts">
-            {!awaitingGrade && !isRoadmapSession && quickPrompts.length > 0 && (
-              <div className="quick-prompts-row">
-                <span className="quick-prompts-label">Try next</span>
-                <div className="quick-prompts-chips">
-                  {quickPrompts.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="quick-prompt-chip"
-                      onClick={() => void submitMessage(prompt)}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <form ref={formRef} className="chat-input" onSubmit={onSubmit}>
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="Ask anything from Laws of Motion, Work Energy & Power, or Rotational Motion..."
-            rows={2}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                formRef.current?.requestSubmit();
-              }
-            }}
-          />
-          <button type="submit" disabled={isReplying || !input.trim()} aria-label="Send message">
-            <ArrowUpIcon />
-          </button>
-          <p>After practice questions, use the Correct / Incorrect buttons to self-grade.</p>
-        </form>
-      </section>
-
-      <aside className={`concept-panel ${panelCollapsed ? "concept-panel-collapsed" : ""}`}>
-        <button
-          type="button"
-          className="concept-toggle"
-          onClick={() => setPanelCollapsed((current) => !current)}
-          aria-label="Toggle concepts panel"
-        >
-          {panelCollapsed ? <PanelIcon /> : <XIcon />}
-        </button>
-        {!panelCollapsed && (
-          <div className="concept-content">
+        {!panelCollapsed && !emptyThread && (
+          <div className="concept-inline">
             <h2>Live proficiency</h2>
             {(roadmapNode?.concept_name ||
               roadmapConceptId ||
@@ -1265,22 +1244,177 @@ export default function ChatWorkspace() {
                 % mastery
               </p>
             )}
-            {latestAssistant?.agent?.content_type_requested && (
-              <p className="concept-meta">
-                Stage: {latestAssistant.agent.content_type_requested}
-              </p>
-            )}
-            {lastProficiencyPct == null &&
-              typeof latestAssistant?.agent?.proficiency_pct !== "number" &&
-              typeof roadmapNode?.proficiency_pct !== "number" && (
-                <p className="concept-empty">
-                  Scores update as you grade practice and PYQ. Full concept health lives on the
-                  dashboard.
-                </p>
-              )}
           </div>
         )}
-      </aside>
+
+        <div className={`chat-workspace-body${canvasPractice ? " chat-workspace-body--split" : ""}`}>
+        <div className="chat-column">
+        <div className={`chat-scroll ${emptyThread ? "chat-scroll-empty" : ""}`}>
+          <div className="chat-thread">
+            {isLoadingSession && messages.length === 0 && !sessionNotFound && (
+              <p className="chat-status" role="status">Loading session…</p>
+            )}
+
+            {sessionNotFound && (
+              <div className="chat-empty">
+                <h2>Session not found</h2>
+                <p className="chat-status">This chat may have been deleted or belongs to another account.</p>
+                <button type="button" className="header-action-button" onClick={createSession}>
+                  New chat
+                </button>
+              </div>
+            )}
+
+            {emptyThread && !isRoadmapSession && !sessionNotFound && !isLoadingSession && (
+              <div className="chat-empty">
+                <h2>What do you want to study?</h2>
+                <p className="chat-status">Pick a starter or type below.</p>
+                <div className="chat-empty-chips">
+                  <button
+                    type="button"
+                    className="quick-prompt-chip"
+                    onClick={() => void submitMessage("Teach me a short Laws of Motion warm-up from the basics.")}
+                  >
+                    Laws of Motion intro
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-prompt-chip"
+                    onClick={() =>
+                      void submitMessage(
+                        "Give me a 10-minute mixed JEE drill across Physics, Chemistry and Maths."
+                      )
+                    }
+                  >
+                    10-min PCM drill
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-prompt-chip"
+                    onClick={() =>
+                      void submitMessage(
+                        "Give me one JEE PYQ and walk me through the solution after I attempt it."
+                      )
+                    }
+                  >
+                    One PYQ
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isRoadmapSession && isReplying && messages.length === 0 && (
+              <p className="chat-status">Loading lesson…</p>
+            )}
+
+            {messages.map((message) =>
+              message.role === "user" ? (
+                <div className="user-bubble" key={message.id}>
+                  {message.content}
+                </div>
+              ) : (
+                <AssistantResponse
+                  key={message.id}
+                  message={message}
+                  onGrade={(outcome) => void submitGrade(outcome)}
+                  onPickCard={(card) => void submitPickerCard(card)}
+                  onOpenBatchCanvas={(batch, msgId) =>
+                    setBatchCanvasPractice({ batch: asPracticeBatch(batch), messageId: msgId })
+                  }
+                  gradingDisabled={isReplying}
+                  suppressPicker={isRoadmapSession}
+                  isLatest={message.id === latestAssistant?.id}
+                  pinPractice={Boolean(canvasPractice) && message.id === canvasPractice?.messageId}
+                />
+              ),
+            )}
+
+            {isReplying && <TypingIndicator />}
+
+            {!awaitingGrade && !isRoadmapSession && quickPrompts.length > 0 && !emptyThread && (
+              <div className="quick-prompts-row">
+                <span className="quick-prompts-label">Try next</span>
+                <div className="quick-prompts-chips">
+                  {quickPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="quick-prompt-chip"
+                      onClick={() => void submitMessage(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div ref={scrollEndRef} />
+          </div>
+        </div>
+
+        <form ref={formRef} className="chat-input" onSubmit={onSubmit}>
+          <div className="chat-composer">
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Ask anything from Laws of Motion, Work Energy & Power, or Rotational Motion..."
+              rows={1}
+              disabled={sessionNotFound || isLoadingSession}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  formRef.current?.requestSubmit();
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={sessionNotFound || isReplying || isLoadingSession || !input.trim()}
+              aria-label="Send message"
+            >
+              <ArrowUpIcon />
+            </button>
+          </div>
+          {showSelfGradeHint ? (
+            <p>After practice questions, use the Correct / Incorrect buttons to self-grade.</p>
+          ) : error && !sessionNotFound ? (
+            <p className="chat-error">{formatAgentError(error)}</p>
+          ) : null}
+        </form>
+        </div>
+        {canvasPractice ? (
+          <aside className="practice-canvas-pane">
+            <InteractivePracticeCanvas
+              data={canvasPractice.data}
+              remainder={canvasPractice.remainder}
+              onGrade={(outcome) => void submitGrade(outcome)}
+              gradingDisabled={isReplying}
+            />
+          </aside>
+        ) : null}
+        </div>
+      </section>
+      <AgentRosterPanel
+        userId={supabaseUserId}
+        sessionId={activeSessionId}
+        roadmapConceptId={roadmapConceptId}
+        primaryConceptId={latestAssistant?.agent?.primary_concept_id ?? roadmapConceptId}
+        focusChapters={placementContext.focusChapters}
+        activeAgent={lastActiveAgent}
+        refreshKey={agentRefreshKey}
+        collapsed={agentPanelCollapsed}
+        onToggle={() => setAgentPanelCollapsed((c) => !c)}
+      />
+      {batchCanvasPractice && (
+        <PracticeBatchCanvas
+          batch={batchCanvasPractice.batch}
+          onClose={() => setBatchCanvasPractice(null)}
+          onSubmitBatch={(results) => void submitBatch(results)}
+          isSubmitting={isReplying}
+        />
+      )}
+    </div>
     </main>
+    </>
   );
 }

@@ -36,6 +36,19 @@ export type Chapter = {
   concepts: Concept[];
 };
 
+export type PeerChapter = {
+  chapter: string;
+  ready: boolean;
+  percentile: number | null;
+  cohortSize: number;
+  yourScore: number | null;
+};
+
+export type PeerComparison = {
+  minCohort: number;
+  chapters: PeerChapter[];
+};
+
 export type ChatMessage = {
   id: string;
   sender: "user" | "bot";
@@ -86,6 +99,7 @@ export type AppDataState = {
       tabs: string[];
       chapters: Chapter[];
     };
+    peerComparison?: PeerComparison;
   };
   chat: {
     header: { title: string; concept: string; secondaryConcept: string };
@@ -172,7 +186,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedPracticeType, setSelectedPracticeType] = useState<string>("All");
   const [prioritizeWeak, setPrioritizeWeak] = useState<boolean>(false);
 
-  const [appTheme, setAppTheme] = useState<"light" | "dark">("dark");
+  const [appTheme, setAppTheme] = useState<"light" | "dark">("light");
+  const [themeReady, setThemeReady] = useState(false);
 
   const refreshOnboardingStatus = useCallback(async () => {
     if (!auth.isAuthenticated()) {
@@ -216,14 +231,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAuthLoading(false);
     };
     void restore();
-    const savedTheme = localStorage.getItem("prepwise_theme") as "light" | "dark" | null;
-    if (savedTheme) {
-      setAppTheme(savedTheme);
-    }
   }, [refreshOnboardingStatus]);
 
-  // Apply theme to DOM
   useEffect(() => {
+    const savedTheme = localStorage.getItem("prepwise_theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setAppTheme(savedTheme);
+    }
+    setThemeReady(true);
+  }, []);
+
+  // Apply theme to DOM after restore so a first-paint default cannot wipe a saved preference.
+  useEffect(() => {
+    if (!themeReady) return;
     localStorage.setItem("prepwise_theme", appTheme);
     document.documentElement.setAttribute("data-theme", appTheme);
     if (appTheme === "dark") {
@@ -233,7 +253,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.classList.add("light");
       document.documentElement.classList.remove("dark");
     }
-  }, [appTheme]);
+  }, [appTheme, themeReady]);
 
   const login = useCallback(async (email: string, password: string) => {
     await auth.login(email, password);

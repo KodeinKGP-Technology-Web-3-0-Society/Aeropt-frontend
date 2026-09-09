@@ -1,5 +1,7 @@
 import { invalidateCache } from "@/lib/apiCache";
 
+/** Django (:8000) is the only auth authority. Do not call the agent for login/register. */
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
   (process.env.NEXT_PUBLIC_CHAT_API_BASE?.replace(/\/chat\/?$/, "") ?? "http://127.0.0.1:8000/api/v1");

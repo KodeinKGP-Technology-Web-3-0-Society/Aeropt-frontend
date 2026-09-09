@@ -134,7 +134,7 @@ export type NodeEntry = {
   mode: NodeEntryMode;
   stage: StudyStage;
   stageIndex: number;
-  /** When true, ChatWorkspace starts a clean session then strips `fresh`. */
+  /** When true, open a new empty transcript then strip `fresh` from `/chat/<id>?…`. */
   fresh: boolean;
   /** Card CTA, e.g. "Resume · Example" */
   label: string;
@@ -188,7 +188,8 @@ export function stagePrompt(conceptName: string, stage: StudyStage): string {
 
 /**
  * Decide Start vs Resume vs Review for a roadmap node.
- * Resume uses local bind (stage + session) and omits `fresh` so chat does not restart.
+ * Resume keeps the bound stage but always uses `fresh=1` so Study Session opens a
+ * new empty transcript (ChatGPT-style) instead of restoring prior turns.
  */
 export function resolveNodeEntry(node: PathNode): NodeEntry {
   const sequence = nodeContentSequence(node);
@@ -216,7 +217,7 @@ export function resolveNodeEntry(node: PathNode): NodeEntry {
       mode: "resume",
       stage,
       stageIndex,
-      fresh: false,
+      fresh: true,
       label: `Resume · ${formatStageLabel(stage)}`,
       heroLabel: `Resume · ${formatStageLabel(stage)}`,
     };
@@ -258,9 +259,9 @@ export function nodeStageProgress(node: PathNode): StageProgressItem[] {
 }
 
 /**
- * Build /chat URL for a roadmap node.
- * - No second arg: uses {@link resolveNodeEntry} (resume-aware).
- * - `StudyStage` string: force that stage with `fresh=1` (legacy / explicit restart).
+ * Build /chat URL for a roadmap node (create-then-redirect lands on /chat/<id>).
+ * - No second arg: uses {@link resolveNodeEntry} (bound stage + always fresh transcript).
+ * - `StudyStage` string: force that stage with `fresh=1`.
  * - Options object: explicit stage + fresh.
  */
 export function buildContinueChatUrl(
@@ -289,7 +290,7 @@ export function buildContinueChatUrl(
     prompt: stagePrompt(node.concept_name, stage),
   });
   if (fresh) {
-    // One-shot: ChatWorkspace starts a clean session then strips this param.
+    // One-shot: ChatWorkspace applies lesson setup then strips this from /chat/<id>.
     params.set("fresh", "1");
   }
   return `/chat?${params.toString()}`;

@@ -2,48 +2,192 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useApp, Chapter, Concept } from "@/components/AppContext";
+import { useApp } from "@/components/AppContext";
 import { apiRequest, getApiBaseUrl } from "@/lib/auth";
 import { CacheTTL, cacheKey, cachedGet, peekCache } from "@/lib/apiCache";
 import {
   LearningPath,
-  ALMOST_MASTERED_THRESHOLD_PCT,
-  MASTERY_THRESHOLD_PCT,
-  WEAK_THRESHOLD_PCT,
   buildContinueChatUrl,
   fetchRoadmap,
   resolveNodeEntry,
 } from "@/lib/roadmap";
 import { fetchReadiness, fetchSandboxQueue, type SandboxAction } from "@/lib/sandbox";
+import { fetchDailyBriefing } from "@/lib/agent";
+import DashboardHeatmap from "@/components/DashboardHeatmap";
 import SandboxCardDeck from "@/components/SandboxCardDeck";
 
-function scoreColorClasses(score: number): { text: string; bar: string } {
-  if (score < WEAK_THRESHOLD_PCT) {
-    return { text: "text-red-400", bar: "bg-red-400" };
+type StudyIntent = "learn" | "revise" | "practice";
+
+const STUDY_INTENTS: { id: StudyIntent; label: string; hint: string }[] = [
+  { id: "learn", label: "Learn", hint: "New topic from scratch" },
+  { id: "revise", label: "Revise", hint: "Quick recap" },
+  { id: "practice", label: "Practice", hint: "Questions now" },
+];
+
+const SUBJECTS = [
+  { id: "physics", label: "Physics" },
+  { id: "chemistry", label: "Chemistry" },
+  { id: "maths", label: "Maths" },
+] as const;
+
+/** Same PCM accents as progress charts (`DEFAULT_CHART_COLORS`). */
+const SUBJECT_ACCENT: Record<(typeof SUBJECTS)[number]["id"], string> = {
+  physics: "var(--physics)",
+  chemistry: "var(--chemistry)",
+  maths: "var(--maths)",
+};
+
+/** Placeholder until per-subject analytics are wired. */
+const SUBJECT_METRICS: Record<(typeof SUBJECTS)[number]["id"], { accuracy: number; attempted: number }> = {
+  physics: { accuracy: 0, attempted: 0 },
+  chemistry: { accuracy: 0, attempted: 0 },
+  maths: { accuracy: 0, attempted: 0 },
+};
+
+function parseStatNumber(value: string): number {
+  const n = parseFloat(value.replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+const TOPICS_BY_SUBJECT: Record<(typeof SUBJECTS)[number]["id"], string[]> = {
+  physics: [
+    "Kinematics",
+    "Laws of Motion",
+    "Work, Energy and Power",
+    "Rotational Motion",
+    "Gravitation",
+    "Thermodynamics",
+    "Oscillations and Waves",
+    "Electrostatics",
+    "Current Electricity",
+    "Magnetism",
+    "Ray Optics",
+    "Modern Physics",
+  ],
+  chemistry: [
+    "Atomic Structure",
+    "Chemical Bonding",
+    "Thermodynamics",
+    "Equilibrium",
+    "Electrochemistry",
+    "Chemical Kinetics",
+    "p-Block",
+    "d-Block",
+    "Coordination Compounds",
+    "Hydrocarbons",
+    "Organic Reaction Mechanisms",
+    "Biomolecules",
+  ],
+  maths: [
+    "Quadratic Equations",
+    "Sequences and Series",
+    "Trigonometry",
+    "Straight Lines",
+    "Circles",
+    "Limits and Continuity",
+    "Differentiation",
+    "Integration",
+    "Differential Equations",
+    "Vectors",
+    "3D Geometry",
+    "Probability",
+  ],
+};
+
+const SELECT_CLASS =
+  "w-full bg-surface border border-line focus:border-accent text-sm text-ink rounded-xl px-3 py-2.5 outline-none transition-colors cursor-pointer min-h-11";
+
+const STRENGTH_BRIEFING =
+  "You're making solid progress in Kinematics. Today, we should sharpen your projectile motion problem-solving to bridge the gap into Work-Power-Energy.";
+
+function daysUntil(dateIso: string): number {
+  const target = new Date(dateIso).getTime();
+  return Math.max(0, Math.ceil((target - Date.now()) / 86_400_000));
+}
+
+function SubjectGlyph({ id }: { id: string }) {
+  if (id === "chemistry") {
+    return (
+      <svg viewBox="0 0 32 32" className="h-5 w-5" aria-hidden="true">
+        <path d="M13 4h6v8l6 11a5 5 0 01-4.4 7H11.4A5 5 0 017 23l6-11V4z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M12 20h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
   }
-  if (score < ALMOST_MASTERED_THRESHOLD_PCT) {
-    return { text: "text-yellow-400", bar: "bg-yellow-400" };
+  if (id === "maths") {
+    return (
+      <svg viewBox="0 0 32 32" className="h-5 w-5" aria-hidden="true">
+        <path d="M6 22c4-12 16-12 20 0" fill="none" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M8 10h4M20 10h4M10 8v4M22 8v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
   }
-  if (score < MASTERY_THRESHOLD_PCT) {
-    return { text: "text-amber-400", bar: "bg-amber-400" };
-  }
-  return { text: "text-emerald-400", bar: "bg-emerald-400" };
+  return (
+    <svg viewBox="0 0 32 32" className="h-5 w-5" aria-hidden="true">
+      <circle cx="16" cy="16" r="3" fill="currentColor" />
+      <ellipse cx="16" cy="16" rx="12" ry="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <ellipse cx="16" cy="16" rx="12" ry="5" fill="none" stroke="currentColor" strokeWidth="1.6" transform="rotate(60 16 16)" />
+      <ellipse cx="16" cy="16" rx="12" ry="5" fill="none" stroke="currentColor" strokeWidth="1.6" transform="rotate(-60 16 16)" />
+    </svg>
+  );
+}
+
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function WeekStreakDots({ dots, streakValue }: { dots?: boolean[]; streakValue: number }) {
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const week = dots && dots.length === 7 ? dots : Array.from({ length: 7 }, (_, i) => i < streakValue);
+  return (
+    <div className="flex gap-1.5" role="list" aria-label="Session days this week">
+      {week.map((active, idx) => {
+        const isToday = idx === todayIdx;
+        const day = WEEKDAY_LABELS[idx];
+        const status = isToday ? "today" : active ? "studied" : "missed";
+        return (
+          <span
+            key={idx}
+            role="listitem"
+            title={`${day}: ${status}`}
+            aria-label={`${day}: ${status}`}
+            className={`h-2.5 w-2.5 rounded-full ${
+              isToday
+                ? "bg-accent ring-2 ring-accent/35 ring-offset-1 ring-offset-canvas"
+                : active
+                  ? "bg-accent/55"
+                  : "border border-dashed dark:border-white/20 border-slate-300 bg-transparent"
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 export default function DashboardContent() {
   const router = useRouter();
   const { data, setData, setQuizActive } = useApp();
-  const [activeTab, setActiveTab] = useState("Laws of Motion");
   const cachedRoadmap = peekCache<LearningPath>(cacheKey(["roadmap"]));
   const [loading, setLoading] = useState(!cachedRoadmap);
   const [error, setError] = useState<string | null>(null);
   const [roadmap, setRoadmap] = useState<LearningPath | null>(cachedRoadmap);
-  const [sandboxQueue, setSandboxQueue] = useState<SandboxAction[]>([]);
   const [readiness, setReadiness] = useState<number | null>(null);
-  const [studyGoal, setStudyGoal] = useState<{
-    minutes: number;
-    depth: string;
-  } | null>(null);
+  const [studyIntent, setStudyIntent] = useState<StudyIntent | "">("");
+  const [studySubject, setStudySubject] = useState<"" | (typeof SUBJECTS)[number]["id"]>("");
+  const [studyTopic, setStudyTopic] = useState("");
+  const [showStrengthBriefing, setShowStrengthBriefing] = useState(false);
+  const [coachBriefing, setCoachBriefing] = useState<string | null>(null);
+  const [sandboxQueue, setSandboxQueue] = useState<SandboxAction[]>([]);
+  const [sandboxLoading, setSandboxLoading] = useState(true);
+
+  useEffect(() => {
+    void fetchDailyBriefing().then((payload) => {
+      if (payload?.briefing_text) setCoachBriefing(payload.briefing_text);
+    });
+    void fetchSandboxQueue()
+      .then((payload) => setSandboxQueue(payload.queue ?? []))
+      .catch(() => setSandboxQueue([]))
+      .finally(() => setSandboxLoading(false));
+  }, []);
 
   const fetchDashboard = useCallback(() => {
     const warm =
@@ -59,27 +203,14 @@ export default function DashboardContent() {
         apiRequest<typeof data.dashboard>(url)
       ),
       fetchRoadmap().catch(() => null),
-      fetchSandboxQueue().catch(() => ({ queue: [], count: 0 })),
       fetchReadiness().catch(() => null),
     ])
-      .then(([resData, roadmapData, queueData, readinessData]) => {
+      .then(([resData, roadmapData, readinessData]) => {
         setData((prev) => ({
           ...prev,
           dashboard: resData,
         }));
         setRoadmap(roadmapData);
-        setSandboxQueue(queueData.queue || []);
-        if (queueData.daily_goal_minutes) {
-          setStudyGoal({
-            minutes: queueData.daily_goal_minutes,
-            depth: queueData.preferred_depth || "standard",
-          });
-        } else if (roadmapData?.daily_goal_minutes) {
-          setStudyGoal({
-            minutes: roadmapData.daily_goal_minutes,
-            depth: "standard",
-          });
-        }
         setReadiness(readinessData?.overall ?? null);
         setLoading(false);
       })
@@ -94,16 +225,22 @@ export default function DashboardContent() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  const { stats, conceptHealth } = data.dashboard;
-
-  const currentChapter =
-    conceptHealth.chapters.find((ch) => ch.name === activeTab) ||
-    conceptHealth.chapters[0];
-
+  const { stats } = data.dashboard;
   const currentNode = roadmap?.current_node ?? null;
-  const upcomingNodes = roadmap?.nodes.filter(
-    (n) => n.status === "pending" && n.sequence_index > (currentNode?.sequence_index ?? -1)
-  ).slice(0, 2) ?? [];
+  const firstName = (() => {
+    const raw = data.user.name.trim().split(/\s+/)[0] || "there";
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  })();
+  const jeeDays = daysUntil("2027-01-22");
+  const primaryLabel = currentNode ? resolveNodeEntry(currentNode).heroLabel : "Start theory";
+  const proficiencyStat = stats.find((s) => s.id === "proficiency");
+  const weakStat = stats.find((s) => s.id === "weak_concepts");
+  const streakStat = stats.find((s) => s.id === "streak");
+  const proficiencyN = proficiencyStat ? parseStatNumber(proficiencyStat.value) : 0;
+  const weakN = weakStat ? parseStatNumber(weakStat.value) : 0;
+  const streakN = streakStat ? parseStatNumber(streakStat.value) : 0;
+  const subjectsEmpty = SUBJECTS.every((s) => SUBJECT_METRICS[s.id].attempted === 0);
+  const overviewEmpty = proficiencyN === 0 && weakN === 0 && streakN === 0 && !(weakStat?.list?.length);
 
   const handleContinueLearning = () => {
     if (currentNode) {
@@ -114,7 +251,6 @@ export default function DashboardContent() {
   };
 
   const handleStartSession = () => {
-    // Navigate to chat and activate diagnostic quiz
     setQuizActive(true);
     router.push("/chat");
   };
@@ -124,129 +260,76 @@ export default function DashboardContent() {
     const node = roadmap?.nodes.find((n) => n.concept_name === conceptName) ?? null;
     const stage = weak ? "practice" : "theory";
     const params = new URLSearchParams({
-      prompt: weak
-        ? `Help me improve at ${conceptName}`
-        : `Explain ${conceptName}`,
+      prompt: weak ? `Help me improve at ${conceptName}` : `Explain ${conceptName}`,
       stage,
       fresh: "1",
     });
     if (node) {
       params.set("concept_id", node.concept_id);
       params.set("node_id", node.id);
-      params.set("prompt", weak
-        ? `Give me a practice question on ${conceptName}`
-        : `Explain ${conceptName}`);
+      params.set(
+        "prompt",
+        weak ? `Give me a practice question on ${conceptName}` : `Explain ${conceptName}`
+      );
     }
     router.push(`/chat?${params.toString()}`);
   };
 
-  const handleConceptClick = (concept: Concept) => {
-    openConceptChat(concept.name, concept.tag === "WEAK");
+  const topicOptions = studySubject ? TOPICS_BY_SUBJECT[studySubject] : [];
+  const canPromptAgent = Boolean(studyIntent && studySubject && studyTopic);
+
+  const handlePromptAgent = () => {
+    if (!studyIntent || !studySubject || !studyTopic) return;
+    const subjectLabel = SUBJECTS.find((s) => s.id === studySubject)?.label ?? studySubject;
+    const stage =
+      studyIntent === "practice" ? "practice" : studyIntent === "revise" ? "example" : "theory";
+    const prompt =
+      studyIntent === "learn"
+        ? `Teach me ${studyTopic} in ${subjectLabel} from the beginning as a complete new topic.`
+        : studyIntent === "revise"
+          ? `Help me revise ${studyTopic} in ${subjectLabel}. Cover the key ideas and a short recap.`
+          : `Give me practice questions on ${studyTopic} in ${subjectLabel}.`;
+    const node = roadmap?.nodes.find(
+      (n) => n.concept_name.toLowerCase() === studyTopic.toLowerCase()
+    );
+    const params = new URLSearchParams({ prompt, stage, fresh: "1" });
+    if (node) {
+      params.set("concept_id", node.concept_id);
+      params.set("node_id", node.id);
+    }
+    if (studyIntent === "practice") setQuizActive(true);
+    router.push(`/chat?${params.toString()}`);
   };
 
-  // ── Loading Skeleton ─────────────────────────────────────────────────
+  const startQuickPrompt = (prompt: string, stage: string) => {
+    const params = new URLSearchParams({ prompt, stage, fresh: "1" });
+    router.push(`/chat?${params.toString()}`);
+  };
+
   if (loading) {
     return (
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen animate-pulse">
-        {/* Header skeleton */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <div className="h-7 w-56 dark:bg-[#1b1c2b] bg-slate-200 rounded-lg" />
-            <div className="h-4 w-72 dark:bg-[#1b1c2b] bg-slate-200/60 rounded mt-2" />
-          </div>
-          <div className="h-10 w-36 dark:bg-[#1b1c2b] bg-slate-200 rounded-lg" />
-        </div>
-        {/* Stats cards skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse">
+        <div className="h-40 rounded-3xl bg-hover mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg h-[120px]"
-            >
-              <div className="h-3 w-28 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-4" />
-              <div className="h-8 w-16 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-2" />
-              <div className="h-3 w-40 dark:bg-[#1b1c2b] bg-slate-200/60 rounded" />
-            </div>
+            <div key={i} className="h-36 rounded-2xl bg-hover" />
           ))}
-        </div>
-        {/* Concept health skeleton */}
-        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-xl">
-          <div className="flex justify-between items-center border-b dark:border-[#1b1c2b] border-slate-200 pb-4 mb-6">
-            <div>
-              <div className="h-4 w-48 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-2" />
-              <div className="h-3 w-64 dark:bg-[#1b1c2b] bg-slate-200/60 rounded" />
-            </div>
-            <div className="flex gap-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-8 w-28 dark:bg-[#1b1c2b] bg-slate-200 rounded-md"
-                />
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="p-4 border dark:border-[#1b1c2b] border-slate-200 rounded-xl dark:bg-[#080911]/50 bg-slate-50 h-[105px]"
-              >
-                <div className="h-4 w-32 dark:bg-[#1b1c2b] bg-slate-200 rounded mb-4" />
-                <div className="flex justify-between items-end">
-                  <div className="h-3 w-16 dark:bg-[#1b1c2b] bg-slate-200/60 rounded" />
-                  <div className="h-3 w-10 dark:bg-[#1b1c2b] bg-slate-200 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     );
   }
 
-  // ── Error State ──────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen flex items-center justify-center">
-        <div className="dark:bg-[#0d0e16] bg-white border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-950/40 flex items-center justify-center">
-            <svg
-              className="h-7 w-7 text-red-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-base font-bold dark:text-white text-slate-900 mb-2">
-            Failed to Load Dashboard
-          </h3>
-          <p className="text-xs dark:text-slate-400 text-slate-500 mb-5 leading-relaxed">
-            {error}. Make sure the backend server is running.
-          </p>
+      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto flex items-center justify-center">
+        <div className="bg-surface border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
+          <h3 className="text-base font-bold text-ink mb-2">Failed to load dashboard</h3>
+          <p className="text-sm text-muted mb-5">{error}</p>
           <button
+            type="button"
             onClick={fetchDashboard}
-            className="inline-flex items-center gap-2 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-lg shadow-[0_4px_18px_rgba(98,88,255,0.25)] transition-all cursor-pointer active:scale-[0.98]"
+            className="inline-flex items-center min-h-11 px-5 bg-accent hover:bg-accent-hover text-white text-xs font-semibold uppercase tracking-wider rounded-lg cursor-pointer"
           >
-            <svg
-              className="h-3.5 w-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"
-              />
-            </svg>
             Retry
           </button>
         </div>
@@ -254,294 +337,220 @@ export default function DashboardContent() {
     );
   }
 
-  // ── Dashboard Content ────────────────────────────────────────────────
   return (
-    <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold tracking-tight dark:text-white text-slate-900 select-none">
-            Good morning, {data.user.name.split(" ")[0]}
-          </h1>
-          <p className="text-xs dark:text-slate-400 text-slate-500 font-medium mt-1">
-            {currentNode
-              ? `Up next: ${currentNode.concept_name} (${currentNode.chapter})`
-              : "Let's cover your prerequisite gaps today."}
-            {readiness !== null ? ` · Readiness ${readiness}%` : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => router.push("/roadmap")}
-            className="inline-flex items-center justify-center gap-2 border dark:border-[#1b1c2b] border-slate-200 dark:text-slate-300 text-slate-600 hover:border-[#6258ff]/40 font-semibold text-xs tracking-wider uppercase px-4 py-2.5 rounded-lg transition-all cursor-pointer"
-          >
-            View roadmap
-          </button>
-          <button
-            onClick={handleContinueLearning}
-            className="inline-flex items-center justify-center gap-2 bg-[#6258ff] hover:bg-[#5045ff] active:scale-[0.98] text-white font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-lg shadow-[0_4px_18px_rgba(98,88,255,0.25)] transition-all cursor-pointer"
-          >
-            <svg
-              aria-hidden="true"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="h-3.5 w-3.5"
+    <div className="relative mx-auto max-w-7xl px-4 pb-8 pt-20 sm:px-5 lg:px-6">
+      <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-12">
+        <section className="flex flex-col justify-between rounded-2xl border border-line bg-surface p-5 lg:col-span-5">
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Today</p>
+              <span className="text-xs tabular-nums text-muted">{jeeDays}d to JEE Main</span>
+            </div>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+              {firstName}, pick up where you left off
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-ink-2">
+              {currentNode
+                ? `Resume ${currentNode.concept_name} in ${currentNode.chapter}.`
+                : "Learn, revise, or drill — the agent takes it from here."}
+              {readiness !== null ? ` Readiness ${readiness}%.` : ""}
+            </p>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleContinueLearning}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg bg-accent px-5 text-sm font-semibold text-accent-on hover:bg-accent-hover"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-            </svg>
-            {currentNode ? resolveNodeEntry(currentNode).heroLabel : "Start Session"}
-          </button>
+              {primaryLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/roadmap")}
+              className="inline-flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-ink-2 hover:text-accent"
+            >
+              View roadmap
+            </button>
+          </div>
+        </section>
+        <div className="lg:col-span-7">
+          <SandboxCardDeck queue={sandboxQueue} loading={sandboxLoading} />
         </div>
       </div>
 
-      <SandboxCardDeck queue={sandboxQueue} loading={loading} />
-
-      {studyGoal && (
-        <p className="text-xs dark:text-slate-400 text-slate-500 mb-6 -mt-2">
-          Today&apos;s goal: {studyGoal.minutes} min · {studyGoal.depth} depth
-          {roadmap ? ` · ~${roadmap.estimated_weeks} weeks at this pace` : ""}
-        </p>
-      )}
-
-      {currentNode && (
-        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#6258ff]/30 border-indigo-200 rounded-xl p-5 shadow-lg mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold text-[#8584ff] uppercase tracking-wider">Classroom position</p>
-              <h2 className="text-base font-bold dark:text-white text-slate-900 mt-1">{currentNode.concept_name}</h2>
-              <p className="text-xs dark:text-slate-500 text-slate-500 mt-0.5">
-                {currentNode.chapter} · {currentNode.node_type} · {currentNode.estimated_minutes} min
-                {roadmap ? ` · ${roadmap.progress_pct}% path complete` : ""}
-              </p>
-            </div>
-            {upcomingNodes.length > 0 && (
-              <div className="text-xs dark:text-slate-400 text-slate-500">
-                Then: {upcomingNodes.map((n) => n.concept_name).join(" → ")}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-        {stats.map((stat) => {
-          if (stat.id === "proficiency") {
-            return (
-              <div
-                key={stat.id}
-                className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{stat.label}</span>
-                    <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-1">{stat.value}</h2>
-                    <p className="text-xs dark:text-slate-500 text-slate-500 font-medium">{stat.subtext}</p>
-                  </div>
-                  <div className="h-14 w-14 rounded-full border-4 border-[#121126] border-t-[#6258ff] flex items-center justify-center text-[11px] font-bold dark:text-white text-slate-900 shadow-[0_0_15px_rgba(98,88,255,0.15)]">
-                    {stat.value}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          if (stat.id === "weak_concepts") {
-            return (
-              <div
-                key={stat.id}
-                className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
-              >
-                <div>
-                  <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{stat.label}</span>
-                  <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-2">{stat.value}</h2>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {stat.list?.map((concept) => (
-                      <button
-                        key={concept}
-                        type="button"
-                        onClick={() => openConceptChat(concept, true)}
-                        aria-label={`Practise ${concept}`}
-                        className="cursor-pointer text-[9px] font-bold text-[#f87171] border border-[#f87171]/20 bg-[#f87171]/5 px-2 py-0.5 rounded hover:bg-[#f87171]/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f87171]"
-                      >
-                        {concept}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          // Streak Card — 7 dots per the spec (one per day of the week)
-          const streakValue = parseInt(stat.value) || 0;
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {SUBJECTS.map((subject) => {
+          const metrics = SUBJECT_METRICS[subject.id];
+          const empty = metrics.attempted === 0;
           return (
-            <div
-              key={stat.id}
-              className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-5 shadow-lg relative overflow-hidden"
+            <article
+              key={subject.id}
+              className="relative overflow-hidden rounded-xl border border-line bg-surface px-3 py-3"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{stat.label}</span>
-                  <h2 className="text-3xl font-extrabold dark:text-white text-slate-900 mt-2 mb-1 flex items-center gap-1.5">
-                    {stat.value}
-                    <span className="text-orange-500 animate-pulse text-2xl">🔥</span>
-                  </h2>
-                  <p className="text-xs dark:text-slate-500 text-slate-500 font-medium">{stat.subtext}</p>
+              <span
+                className="absolute inset-y-2.5 left-0 w-[3px] rounded-full"
+                style={{ background: SUBJECT_ACCENT[subject.id] }}
+                aria-hidden="true"
+              />
+              <div className="pl-2">
+                <div className="flex items-center gap-1.5 text-ink-2">
+                  <SubjectGlyph id={subject.id} />
+                  <h2 className="text-[11px] font-semibold uppercase tracking-wider">{subject.label}</h2>
                 </div>
-                {/* Visual streak dots — 7 dots (one per day of the week) */}
-                <div className="flex gap-1.5 mt-1.5">
-                  {(stat.dots || [false, false, false, false, false, false, false]).map((active, idx) => {
-                    const isActive = stat.dots ? active : (idx + 1) <= streakValue;
-                    return (
-                      <span
-                        key={idx}
-                        className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
-                          isActive
-                            ? "bg-gradient-to-br from-orange-400 to-red-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]"
-                            : "dark:bg-[#1b1c2b] bg-slate-200 border border-[#2a2b3d]"
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
+                {empty ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      startQuickPrompt(`Teach me a short ${subject.label} warm-up from the basics.`, "theory")
+                    }
+                    className="mt-2 cursor-pointer text-left text-xs leading-relaxed text-accent hover:underline"
+                  >
+                    Start a warm-up
+                  </button>
+                ) : (
+                  <p className="mt-2 text-lg font-semibold tabular-nums text-ink">
+                    {metrics.accuracy}%
+                    <span className="ml-1 text-[11px] font-medium text-muted">{metrics.attempted} Q</span>
+                  </p>
+                )}
               </div>
-            </div>
+            </article>
           );
         })}
+        <article className="rounded-xl border border-line bg-surface px-3 py-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Proficiency</p>
+          <p className="mt-1.5 text-xl font-semibold tabular-nums text-ink">
+            {overviewEmpty && subjectsEmpty ? "—" : (proficiencyStat?.value ?? "0%")}
+          </p>
+        </article>
+        <article className="rounded-xl border border-line bg-surface px-3 py-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Flagged weak</p>
+          <p className="mt-1.5 text-xl font-semibold tabular-nums text-ink">
+            {overviewEmpty && subjectsEmpty ? "—" : weakN}
+          </p>
+        </article>
+        <article className="rounded-xl border border-line bg-surface px-3 py-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Streak</p>
+          <p className="mt-1.5 text-xl font-semibold tabular-nums text-ink">
+            {streakN}
+            <span className="ml-1 text-[11px] font-medium text-muted">days</span>
+          </p>
+          <div className="mt-2">
+            <WeekStreakDots dots={streakStat?.dots} streakValue={streakN} />
+          </div>
+        </article>
       </div>
 
-      {/* Physics Concept Health */}
-      <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b dark:border-[#1b1c2b] border-slate-200 pb-4 mb-6 gap-3">
-          <div>
-            <h3 className="text-sm font-bold dark:text-white text-slate-900 uppercase tracking-wider">{conceptHealth.title}</h3>
-            <div className="flex items-center gap-1.5 text-[11px] dark:text-slate-400 text-slate-500 mt-1 font-medium">
-              <span>Chapters:</span>
-              <span className="dark:text-slate-300 text-slate-700 font-semibold">{conceptHealth.tabs.join(" · ")}</span>
-            </div>
-          </div>
-          <div className="flex dark:bg-[#07080d] bg-white p-1 border dark:border-[#1b1c2b] border-slate-200 rounded-lg">
-            {conceptHealth.tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  activeTab === tab
-                    ? "dark:bg-[#121126] bg-slate-100 border dark:border-[#3d3d91] border-indigo-200/50 text-[#8584ff]"
-                    : "dark:text-slate-400 text-slate-500 dark:hover:text-slate-200 hover:text-slate-700"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+        <div className="xl:col-span-8">
+          <DashboardHeatmap onOpenConcept={openConceptChat} />
         </div>
-
-        {/* Active Chapter Details */}
-        {currentChapter && (
-          <div className="mb-5 flex justify-between items-center dark:bg-[#07080d] bg-white/50 p-4 border dark:border-[#1b1c2b] border-slate-200/50 rounded-xl">
-            <div className="min-w-0">
-              <h4 className="text-sm font-bold dark:text-white text-slate-900 truncate">{currentChapter.name}</h4>
-              <p className="text-xs dark:text-slate-500 text-slate-500 font-medium mt-0.5">{currentChapter.conceptCount} concepts inside</p>
+        <div className="flex flex-col gap-3 xl:col-span-4">
+          <section className="flex-1 rounded-2xl border border-line bg-surface p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Custom session</h2>
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {STUDY_INTENTS.map((intent) => {
+                const active = studyIntent === intent.id;
+                return (
+                  <button
+                    key={intent.id}
+                    type="button"
+                    onClick={() => setStudyIntent(intent.id)}
+                    className={`min-h-14 cursor-pointer rounded-lg border px-2 py-1.5 text-left ${
+                      active
+                        ? "border-accent bg-accent-soft text-ink"
+                        : "border-line text-muted hover:border-accent/40"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-bold uppercase tracking-wider">{intent.label}</span>
+                    <span className="mt-0.5 block text-[10px] text-muted">{intent.hint}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">Chapter Proficiency</span>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-base font-extrabold ${scoreColorClasses(currentChapter.overallScore).text}`}>
-                  {currentChapter.overallScore}%
-                </span>
-                <div className="w-16 dark:bg-[#121126] bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${scoreColorClasses(currentChapter.overallScore).bar}`}
-                    style={{ width: `${currentChapter.overallScore}%` }}
-                  />
-                </div>
-              </div>
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <label className="sr-only" htmlFor="study-subject">Subject</label>
+              <select
+                id="study-subject"
+                value={studySubject}
+                onChange={(e) => {
+                  setStudySubject(e.target.value as "" | (typeof SUBJECTS)[number]["id"]);
+                  setStudyTopic("");
+                }}
+                className={SELECT_CLASS}
+              >
+                <option value="">Choose subject</option>
+                {SUBJECTS.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.label}
+                  </option>
+                ))}
+              </select>
+              <label className="sr-only" htmlFor="study-topic">Topic</label>
+              <select
+                id="study-topic"
+                value={studyTopic}
+                onChange={(e) => setStudyTopic(e.target.value)}
+                disabled={!studySubject}
+                className={`${SELECT_CLASS} disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                <option value="">{studySubject ? "Choose topic" : "Pick a subject first"}</option>
+                {topicOptions.map((topic) => (
+                  <option key={topic} value={topic}>
+                    {topic}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handlePromptAgent}
+                disabled={!canPromptAgent}
+                className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-accent text-xs font-semibold uppercase tracking-wider text-accent-on hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Start session
+              </button>
             </div>
-          </div>
-        )}
+          </section>
 
-        {/* Concept Cards Grid */}
-        {currentChapter && currentChapter.concepts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentChapter.concepts.map((concept) => {
-              const isNotStarted = Boolean(concept.not_started);
-              const isWeak = !isNotStarted && (concept.tag === "WEAK" || concept.score < WEAK_THRESHOLD_PCT);
-              const isAlmostMastered =
-                !isNotStarted &&
-                concept.score >= ALMOST_MASTERED_THRESHOLD_PCT &&
-                concept.score < MASTERY_THRESHOLD_PCT;
-              const isStrong = !isNotStarted && concept.score >= MASTERY_THRESHOLD_PCT;
-              const colors = isNotStarted
-                ? { text: "dark:text-slate-500 text-slate-500", bar: "bg-slate-500/40" }
-                : scoreColorClasses(concept.score);
-              return (
+          <section className="rounded-2xl border border-line bg-accent-soft p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Coach note</p>
+            {weakStat?.list && weakStat.list.length > 0 && !showStrengthBriefing ? (
+              <div className="mt-2">
+                <p className="text-sm leading-relaxed text-ink-2">
+                  Focus next on {weakStat.list[0]}
+                  {weakStat.list.length > 1 ? ` (also ${weakStat.list[1]})` : ""}.
+                </p>
                 <button
-                  key={concept.name}
                   type="button"
-                  onClick={() => handleConceptClick(concept)}
-                  aria-label={`${concept.name}${isNotStarted ? " — not started" : `, ${concept.score}% proficiency`}. Open in chat.`}
-                  className={`text-left w-full p-4 border rounded-xl dark:bg-[#080911]/50 bg-white dark:hover:bg-[#101021] hover:bg-slate-50 cursor-pointer transition-all hover:scale-[1.01] flex flex-col justify-between h-[105px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] ${
-                    isWeak
-                      ? "border-red-950/40 hover:border-red-900/60 shadow-[0_0_15px_rgba(239,68,68,0.03)]"
-                      : isStrong
-                      ? "border-emerald-950/40 hover:border-emerald-900/60"
-                      : "dark:border-[#1b1c2b] border-slate-200 dark:hover:border-[#3d3d91] hover:border-indigo-200"
-                  }`}
+                  onClick={() => openConceptChat(weakStat.list![0], true)}
+                  className="mt-2 cursor-pointer text-sm font-semibold text-accent hover:underline"
                 >
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="text-xs font-bold dark:text-slate-200 text-slate-700 tracking-wide dark:group-hover:text-white group-hover:text-slate-900 transition-colors truncate">
-                      {concept.name}
-                    </span>
-                    {isWeak && (
-                      <span className="text-[8px] font-extrabold text-red-400 border border-red-500/20 bg-red-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse flex-none">
-                        Weak
-                      </span>
-                    )}
-                    {isAlmostMastered && (
-                      <span className="text-[8px] font-extrabold text-amber-400 border border-amber-500/20 bg-amber-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider flex-none">
-                        Almost mastered
-                      </span>
-                    )}
-                    {isStrong && (
-                      <span className="text-[8px] font-extrabold text-emerald-400 border border-emerald-500/20 bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase tracking-wider flex-none">
-                        Strong
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-end mt-4">
-                    <div className="text-[10px] dark:text-slate-500 text-slate-500 font-semibold">
-                      {concept.attempts} attempts
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span
-                        className={`text-xs font-extrabold ${colors.text}`}
-                      >
-                        {isNotStarted ? "Not started" : `${concept.score}%`}
-                      </span>
-                      <div className="w-12 dark:bg-[#121126] bg-slate-100 h-1 rounded-full overflow-hidden mt-1">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
-                          style={{ width: isNotStarted ? "0%" : `${concept.score}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  Practise {weakStat.list[0]}
                 </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-sm dark:text-slate-500 text-slate-500 font-medium">No concept data yet. Start a study session to begin tracking your progress.</p>
-          </div>
-        )}
+              </div>
+            ) : !showStrengthBriefing ? (
+              <div className="mt-2">
+                <p className="text-sm leading-relaxed text-ink-2">
+                  {coachBriefing ?? "A short read on where you stand today."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowStrengthBriefing(true)}
+                  className="mt-2 cursor-pointer text-sm font-semibold text-accent hover:underline"
+                >
+                  Check your strength
+                </button>
+              </div>
+            ) : (
+              <p
+                role="status"
+                className="mt-2 text-sm leading-relaxed text-ink-2 motion-safe:[animation:strengthMorph_480ms_cubic-bezier(0.22,1,0.36,1)_both]"
+              >
+                {coachBriefing ?? STRENGTH_BRIEFING}
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

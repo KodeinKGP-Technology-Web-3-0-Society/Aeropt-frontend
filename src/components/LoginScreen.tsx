@@ -6,7 +6,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 // Premium Isometric 3D Cube Logo
 const PrepwiseLogo = () => (
-  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#6366f1] to-[#3b82f6] text-white shadow-md shadow-indigo-500/20">
+  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-accent to-accent-hover text-white shadow-md shadow-accent/20">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
       {/* Top Face */}
       <path d="M12 2L2 7l10 5 10-5-10-5z" fill="rgba(255,255,255,0.15)"/>
@@ -55,10 +55,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-8 font-sans bg-[#f8fafc] dark:bg-[#090a0f] bg-grid-pattern transition-colors duration-300 relative overflow-hidden">
-      {/* Background glow graphics */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full pointer-events-none blur-[120px] bg-[#6258ff]/[0.06] dark:bg-[#6258ff]/[0.12] transition-colors duration-300" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full pointer-events-none blur-[120px] bg-[#1c6f32]/[0.03] dark:bg-[#1c6f32]/[0.08] transition-colors duration-300" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-4 py-8 font-sans">
 
       <div className="z-10 relative w-full flex flex-col items-center max-w-[1200px]">
         <div className="w-full flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
@@ -74,15 +71,15 @@ export default function LoginScreen() {
             {/* Logo and Brand Title Centered Above Card */}
             <div className="flex items-center justify-center gap-3 mb-6 select-none animate-fade-in">
               <PrepwiseLogo />
-              <span className="text-3xl font-extrabold tracking-tight dark:text-white text-[#0f172a] font-sans">
+              <span className="font-display text-3xl font-extrabold tracking-tight text-ink">
                 Prepwise
               </span>
             </div>
 
             {/* Card Box */}
-            <div className="w-full dark:bg-[#13141a] bg-white border dark:border-[#1d1f2b] border-slate-200/80 rounded-[28px] p-8 shadow-xl transition-all duration-300">
+            <div className="w-full rounded-[28px] border border-line bg-surface p-8 shadow-[var(--shadow-card)]">
               
-              <h2 className="text-xl font-bold dark:text-white text-[#0f172a] text-center mb-6 tracking-tight">
+              <h2 className="text-xl font-bold text-ink text-center mb-6 tracking-tight">
                 {activeTab === "signin" 
                   ? "Sign in to continue your journey" 
                   : "Create an account to begin your journey"}
@@ -97,7 +94,7 @@ export default function LoginScreen() {
 
                 {activeTab === "signup" && (
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">
+                    <label className="block text-[10px] font-bold text-muted uppercase tracking-wider">
                       Full name
                     </label>
                     <input
@@ -105,14 +102,14 @@ export default function LoginScreen() {
                       placeholder="Your name"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full dark:bg-[#1a1b24] bg-slate-100 border border-transparent dark:focus:border-indigo-500/50 focus:border-blue-500/50 dark:text-white text-slate-900 placeholder-slate-400 dark:placeholder-slate-600 rounded-2xl px-5 py-3.5 text-[15px] outline-none transition-all shadow-inner"
+                      className="w-full rounded-2xl border border-line bg-hover px-5 py-3.5 text-[15px] text-ink outline-none transition-colors placeholder:text-muted focus:border-accent"
                     />
                   </div>
                 )}
 
                 {/* Email field */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">
+                  <label className="block text-[10px] font-bold text-muted uppercase tracking-wider">
                     Email Address
                   </label>
                   <input
@@ -120,21 +117,21 @@ export default function LoginScreen() {
                     placeholder="student@jee-elite.ai"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full dark:bg-[#1a1b24] bg-slate-100 border border-transparent dark:focus:border-indigo-500/50 focus:border-blue-500/50 dark:text-white text-slate-900 placeholder-slate-400 dark:placeholder-slate-600 rounded-2xl px-5 py-3.5 text-[15px] outline-none transition-all shadow-inner"
+                    className="w-full rounded-2xl border border-line bg-hover px-5 py-3.5 text-[15px] text-ink outline-none transition-colors placeholder:text-muted focus:border-accent"
                   />
                 </div>
 
                 {/* Password field */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[10px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">
+                    <label className="block text-[10px] font-bold text-muted uppercase tracking-wider">
                       Password
                     </label>
                     {activeTab === "signin" && (
                       <button
                         type="button"
                         onClick={() => alert("Password reset option is currently not configured.")}
-                        className="text-xs text-[#65a30d] dark:text-[#bef264] hover:underline font-semibold cursor-pointer select-none"
+                        className="cursor-pointer select-none text-xs font-semibold text-accent hover:underline"
                       >
                         Forgot?
                       </button>
@@ -145,7 +142,7 @@ export default function LoginScreen() {
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full dark:bg-[#1a1b24] bg-slate-100 border border-transparent dark:focus:border-indigo-500/50 focus:border-blue-500/50 dark:text-white text-slate-900 placeholder-slate-400 dark:placeholder-slate-600 rounded-2xl px-5 py-3.5 text-[15px] outline-none transition-all shadow-inner"
+                    className="w-full rounded-2xl border border-line bg-hover px-5 py-3.5 text-[15px] text-ink outline-none transition-colors placeholder:text-muted focus:border-accent"
                   />
                 </div>
 
@@ -153,7 +150,7 @@ export default function LoginScreen() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#006bff] dark:bg-[#b4c6ff] hover:bg-[#005cd6] dark:hover:bg-[#c3d5ff] text-white dark:text-[#0c0d12] font-bold text-sm tracking-wider py-4 rounded-full transition-all shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none"
+                  className="w-full select-none rounded-full bg-accent py-4 text-sm font-bold tracking-wider text-accent-on transition-all hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting 
                     ? "PLEASE WAIT..." 
@@ -165,11 +162,11 @@ export default function LoginScreen() {
 
               {/* Divider: OR CONTINUE WITH */}
               <div className="flex items-center my-6">
-                <div className="flex-1 border-t border-slate-200 dark:border-[#20212f]" />
-                <span className="px-3 text-[10px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase select-none">
+                <div className="flex-1 border-t border-line border-line" />
+                <span className="px-3 text-[10px] font-bold tracking-wider text-muted dark:text-muted uppercase select-none">
                   OR CONTINUE WITH
                 </span>
-                <div className="flex-1 border-t border-slate-200 dark:border-[#20212f]" />
+                <div className="flex-1 border-t border-line border-line" />
               </div>
 
               {/* Social Login Buttons */}
@@ -177,7 +174,7 @@ export default function LoginScreen() {
                 <button
                   type="button"
                   onClick={() => alert("Google Login simulation")}
-                  className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 dark:border-[#2d303f] hover:bg-slate-50 dark:hover:bg-[#1a1b24] rounded-full dark:text-white text-slate-800 text-sm font-semibold transition-all active:scale-[0.97]"
+                  className="flex items-center justify-center gap-2 rounded-full border border-line py-3 px-4 text-sm font-semibold text-ink transition-all hover:bg-hover active:scale-[0.97]"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -190,7 +187,7 @@ export default function LoginScreen() {
                 <button
                   type="button"
                   onClick={() => alert("Apple Login simulation")}
-                  className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 dark:border-[#2d303f] hover:bg-slate-50 dark:hover:bg-[#1a1b24] rounded-full dark:text-white text-slate-800 text-sm font-semibold transition-all active:scale-[0.97]"
+                  className="flex items-center justify-center gap-2 rounded-full border border-line py-3 px-4 text-sm font-semibold text-ink transition-all hover:bg-hover active:scale-[0.97]"
                 >
                   <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.21.67-2.93 1.49-.62.69-1.16 1.84-1.01 2.96 1.12.09 2.27-.58 2.95-1.39z"/>
@@ -201,8 +198,8 @@ export default function LoginScreen() {
 
               {/* Bottom Switch Link and Button */}
               {activeTab === "signin" ? (
-                <div className="mt-8 text-center border-t border-slate-100 dark:border-[#1d1f2b] pt-6 transition-all duration-300">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium select-none">
+                <div className="mt-8 border-t border-line pt-6 text-center">
+                  <p className="text-xs text-muted font-medium select-none">
                     New here?{" "}
                     <button
                       type="button"
@@ -210,7 +207,7 @@ export default function LoginScreen() {
                         setError("");
                         setActiveTab("signup");
                       }}
-                      className="text-[#65a30d] dark:text-[#bef264] hover:underline font-bold cursor-pointer"
+                      className="cursor-pointer font-bold text-accent hover:underline"
                     >
                       Create an account
                     </button>
@@ -221,14 +218,14 @@ export default function LoginScreen() {
                       setError("");
                       setActiveTab("signup");
                     }}
-                    className="w-full mt-4 bg-transparent border border-slate-200 dark:border-[#2d303f] hover:bg-slate-50 dark:hover:bg-[#1a1b24] text-slate-800 dark:text-white font-bold text-xs tracking-wider py-4 rounded-full transition-all active:scale-[0.98] select-none"
+                    className="w-full mt-4 bg-transparent border border-line border-line-strong hover:bg-hover hover:bg-hover text-ink font-bold text-xs tracking-wider py-4 rounded-full transition-all active:scale-[0.98] select-none"
                   >
                     CREATE ACCOUNT
                   </button>
                 </div>
               ) : (
-                <div className="mt-8 text-center border-t border-slate-100 dark:border-[#1d1f2b] pt-6 transition-all duration-300">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium select-none">
+                <div className="mt-8 border-t border-line pt-6 text-center">
+                  <p className="text-xs text-muted font-medium select-none">
                     Already have an account?{" "}
                     <button
                       type="button"
@@ -236,7 +233,7 @@ export default function LoginScreen() {
                         setError("");
                         setActiveTab("signin");
                       }}
-                      className="text-[#65a30d] dark:text-[#bef264] hover:underline font-bold cursor-pointer"
+                      className="cursor-pointer font-bold text-accent hover:underline"
                     >
                       Sign in
                     </button>
@@ -247,7 +244,7 @@ export default function LoginScreen() {
                       setError("");
                       setActiveTab("signin");
                     }}
-                    className="w-full mt-4 bg-transparent border border-slate-200 dark:border-[#2d303f] hover:bg-slate-50 dark:hover:bg-[#1a1b24] text-slate-800 dark:text-white font-bold text-xs tracking-wider py-4 rounded-full transition-all active:scale-[0.98] select-none"
+                    className="w-full mt-4 bg-transparent border border-line border-line-strong hover:bg-hover hover:bg-hover text-ink font-bold text-xs tracking-wider py-4 rounded-full transition-all active:scale-[0.98] select-none"
                   >
                     SIGN IN
                   </button>
@@ -257,10 +254,10 @@ export default function LoginScreen() {
             </div>
 
             {/* Footer Terms */}
-            <p className="mt-6 text-[10px] text-center text-slate-400 dark:text-slate-500 font-medium leading-relaxed tracking-wider uppercase select-none">
+            <p className="mt-6 text-[10px] text-center text-muted dark:text-muted font-medium leading-relaxed tracking-wider uppercase select-none">
               By continuing you agree to our <br className="sm:hidden" />
-              <span className="text-[#006bff] dark:text-indigo-400 cursor-pointer hover:underline">Terms</span> &amp;{" "}
-              <span className="text-[#006bff] dark:text-indigo-400 cursor-pointer hover:underline">Privacy Policy</span>
+              <span className="cursor-pointer text-accent hover:underline">Terms</span> &amp;{" "}
+              <span className="cursor-pointer text-accent hover:underline">Privacy Policy</span>
             </p>
           </div>
         </div>

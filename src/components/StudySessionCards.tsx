@@ -53,8 +53,8 @@ export function StudyStepBar({
           done
             ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-400"
             : active
-              ? "border-[#6258ff]/50 bg-[#6258ff]/15 text-[#8584ff]"
-              : "border-slate-500/20 text-slate-500"
+              ? "border-accent/50 bg-accent/15 text-accent"
+              : "border-slate-500/20 text-muted"
         }`}
       >
         {STAGE_LABELS[stage] ?? stage}
@@ -83,7 +83,7 @@ export function StudyStepBar({
               <p>Concept complete!</p>
               <Link
                 href="/roadmap"
-                className="inline-flex items-center justify-center rounded-lg bg-[#6258ff] hover:bg-[#5045ff] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5"
+                className="inline-flex items-center justify-center rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5"
               >
                 Back to roadmap
               </Link>
@@ -108,18 +108,18 @@ export function StudyStepBar({
   }
 
   return (
-    <div className="mt-4 rounded-xl border dark:border-[#6258ff]/30 border-indigo-200 dark:bg-[#121126]/50 bg-indigo-50/40 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8584ff] mb-3">
+    <div className="mt-4 rounded-xl border border-accent/30 bg-accent-soft p-4">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-3">
         Study path · {conceptName}
       </p>
       <div className="flex flex-wrap gap-2 mb-4">{stageChips}</div>
       {requiresSlides && slideProgress && slideProgress.total > 0 && !slidesComplete && (
-        <p className="text-xs dark:text-slate-400 text-slate-500 mb-3">
+        <p className="text-xs text-muted mb-3">
           Slide {slideProgress.current + 1} of {slideProgress.total} — finish slides to continue
         </p>
       )}
       {requiresSlides && !slidesComplete && !(slideProgress && slideProgress.total > 0) && (
-        <p className="text-xs dark:text-slate-400 text-slate-500 mb-3">
+        <p className="text-xs text-muted mb-3">
           Finish the slide deck to continue
         </p>
       )}
@@ -128,7 +128,7 @@ export function StudyStepBar({
           <p className="text-sm font-semibold text-emerald-400 flex-1">Concept complete!</p>
           <Link
             href="/roadmap"
-            className="inline-flex items-center justify-center rounded-lg bg-[#6258ff] hover:bg-[#5045ff] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5"
+            className="inline-flex items-center justify-center rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5"
           >
             Back to roadmap
           </Link>
@@ -139,14 +139,14 @@ export function StudyStepBar({
             type="button"
             disabled={loading || nextBlocked}
             onClick={() => onAdvance(stages[currentStageIndex + 1] as StudyStage)}
-            className="w-full rounded-lg bg-[#6258ff] hover:bg-[#5045ff] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider py-2.5 cursor-pointer"
+            className="w-full rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider py-2.5 cursor-pointer"
           >
             Next: {STAGE_LABELS[stages[currentStageIndex + 1]] ?? stages[currentStageIndex + 1]} →
           </button>
         )
       )}
       {!conceptComplete && currentStageIndex >= stages.length - 1 && (
-        <p className="text-xs dark:text-slate-400 text-slate-500">
+        <p className="text-xs text-muted">
           Complete the final question above, then grade your answer to finish this concept.
         </p>
       )}
@@ -164,8 +164,8 @@ export function GradingButtons({
   onGrade: (outcome: "correct" | "incorrect") => void;
 }) {
   return (
-    <div className="mt-4 flex flex-col gap-2 rounded-xl border dark:border-[#6258ff]/30 border-indigo-200 dark:bg-[#121126]/40 bg-indigo-50/40 p-4">
-      <p className="text-xs font-semibold dark:text-slate-300 text-slate-700">{gradingUi.prompt}</p>
+    <div className="mt-4 flex flex-col gap-2 rounded-xl border border-accent/30 bg-accent-soft p-4">
+      <p className="text-xs font-semibold text-ink-2">{gradingUi.prompt}</p>
       <div className="flex gap-2">
         <button
           type="button"
@@ -240,23 +240,23 @@ function PickerCard({
       type="button"
       onClick={() => onSelect(card)}
       aria-label={`Select ${plainPreviewText(card.front, 80)}`}
-      className="group flex h-full min-h-[168px] max-h-[220px] w-full flex-col rounded-xl border dark:border-[#1b1c2b] border-slate-200 dark:bg-[#0d0e16] bg-white p-4 text-left shadow-lg transition-all hover:border-[#6258ff]/50 hover:shadow-[0_0_20px_rgba(98,88,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff]"
+      className="group flex h-full min-h-[168px] max-h-[220px] w-full flex-col rounded-xl border border-line bg-surface p-4 text-left shadow-lg transition-all hover:border-accent/50 hover:shadow-[0_0_20px_rgba(98,88,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <span className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff]">
+      <span className="text-[9px] font-bold uppercase tracking-wider text-accent">
         {cardTypeBadge(card.card_type, false)}
       </span>
-      <div className="mt-2 flex-1 overflow-hidden text-xs leading-relaxed dark:text-slate-300 text-slate-700 max-h-[120px]">
+      <div className="mt-2 flex-1 overflow-hidden text-xs leading-relaxed text-ink-2 max-h-[120px]">
         <MarkdownMath content={preview} className="markdown-math markdown-math--card" />
       </div>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t dark:border-[#1b1c2b] border-slate-200 pt-3">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
         {difficulty ? (
           <span className="text-[10px] dark:text-amber-400/80 text-amber-600" aria-label={`Difficulty ${difficulty.length} of 5`}>
             {difficulty}
           </span>
         ) : (
-          <span className="text-[10px] dark:text-slate-600 text-slate-400">Tap to open</span>
+          <span className="text-[10px] dark:text-ink-2 text-muted">Tap to open</span>
         )}
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8584ff] group-hover:text-white">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-accent group-hover:text-white">
           Select →
         </span>
       </div>
@@ -283,7 +283,7 @@ function FlipCard({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full [perspective:1000px] cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff]"
+        className="w-full [perspective:1000px] cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-pressed={flipped}
         aria-label={flipped ? "Show question" : "Show answer"}
       >
@@ -292,26 +292,26 @@ function FlipCard({
             flipped ? "[transform:rotateY(180deg)]" : ""
           }`}
         >
-          <div className="absolute inset-0 overflow-hidden rounded-xl border dark:border-[#1b1c2b] border-slate-200 dark:bg-[#0d0e16] bg-white p-4 shadow-lg [backface-visibility:hidden]">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff]">
+          <div className="absolute inset-0 overflow-hidden rounded-xl border border-line bg-surface p-4 shadow-lg [backface-visibility:hidden]">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-accent">
               {cardTypeBadge(card.card_type, false)}
             </span>
-            <div className="mt-2 max-h-[220px] overflow-y-auto text-sm dark:text-slate-200 text-slate-800">
+            <div className="mt-2 max-h-[220px] overflow-y-auto text-sm text-ink-2">
               <MarkdownMath content={card.front} className="markdown-math markdown-math--card" />
             </div>
             {card.hint && !card.selectable && (
-              <p className="text-[10px] dark:text-slate-500 text-slate-500 mt-2 truncate">Hint: {card.hint}</p>
+              <p className="text-[10px] dark:text-muted text-muted mt-2 truncate">Hint: {card.hint}</p>
             )}
-            <p className="mt-2 text-[9px] dark:text-slate-600 text-slate-400">Tap to flip</p>
+            <p className="mt-2 text-[9px] dark:text-ink-2 text-muted">Tap to flip</p>
           </div>
-          <div className="absolute inset-0 overflow-hidden rounded-xl border dark:border-[#6258ff]/30 border-indigo-200 dark:bg-[#121126] bg-indigo-50 p-4 shadow-lg [backface-visibility:hidden] [transform:rotateY(180deg)]">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff]">
+          <div className="absolute inset-0 overflow-hidden rounded-xl border border-accent/30 bg-accent-soft p-4 shadow-lg [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-accent">
               {cardTypeBadge(card.card_type, true)}
             </span>
-            <div className="mt-2 max-h-[220px] overflow-y-auto text-sm dark:text-slate-200 text-slate-800">
+            <div className="mt-2 max-h-[220px] overflow-y-auto text-sm text-ink-2">
               <MarkdownMath content={card.back} className="markdown-math markdown-math--card" />
             </div>
-            <p className="mt-2 text-[9px] dark:text-slate-600 text-slate-400">Tap to flip back</p>
+            <p className="mt-2 text-[9px] dark:text-ink-2 text-muted">Tap to flip back</p>
           </div>
         </div>
       </button>
@@ -319,7 +319,7 @@ function FlipCard({
         <button
           type="button"
           onClick={() => onExpand(faceContent, faceTitle)}
-          className="mt-2 text-[10px] font-bold uppercase tracking-wider text-[#8584ff] hover:text-white"
+          className="mt-2 text-[10px] font-bold uppercase tracking-wider text-accent hover:text-white"
         >
           Expand
         </button>
@@ -345,13 +345,13 @@ function QuizCarousel({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
+      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted">
         <button
           type="button"
           disabled={index === 0}
           aria-label="Previous card"
           onClick={() => setIndex((value) => Math.max(0, value - 1))}
-          className="disabled:opacity-30 hover:text-[#8584ff] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] rounded px-1"
+          className="disabled:opacity-30 hover:text-accent cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1"
         >
           ← Prev
         </button>
@@ -363,7 +363,7 @@ function QuizCarousel({
           disabled={index >= cards.length - 1}
           aria-label="Next card"
           onClick={() => setIndex((value) => Math.min(cards.length - 1, value + 1))}
-          className="disabled:opacity-30 hover:text-[#8584ff] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] rounded px-1"
+          className="disabled:opacity-30 hover:text-accent cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1"
         >
           Next →
         </button>
@@ -398,7 +398,7 @@ export function FlashcardDeck({
 
   return (
     <div className="mt-4 space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8584ff]">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
         {mode === "remediation" ? "Remediation cards" : mode === "picker" ? "Pick your next step" : "Quiz deck"}
       </p>
       {mode === "quiz" ? (
@@ -424,7 +424,7 @@ export function FlashcardDeck({
                   type="button"
                   onClick={() => onSelect(card)}
                   aria-label={`Select ${card.front}`}
-                  className="text-[10px] font-bold uppercase tracking-wider text-[#8584ff] hover:text-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] rounded px-1"
+                  className="text-[10px] font-bold uppercase tracking-wider text-accent hover:text-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1"
                 >
                   Select →
                 </button>
@@ -447,17 +447,17 @@ export function FlashcardDeck({
 export function CollapsibleScoreSummary({ summary }: { summary: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mt-3 rounded-xl border dark:border-[#1b1c2b] border-slate-200 overflow-hidden">
+    <div className="mt-3 rounded-xl border border-line overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider dark:bg-[#07080d] bg-slate-50 dark:text-slate-300 text-slate-600 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff]"
+        className="w-full cursor-pointer bg-hover px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-ink-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         {open ? "Hide" : "Show"} score summary
       </button>
       {open && (
-        <div className="px-4 py-3 text-sm dark:text-slate-300 text-slate-700 border-t dark:border-[#1b1c2b] border-slate-200">
+        <div className="px-4 py-3 text-sm text-ink-2 border-t border-line">
           <MarkdownMath content={summary} />
         </div>
       )}
@@ -471,7 +471,7 @@ export function QuizAssessmentNotice({
   batchSize: number;
 }) {
   return (
-    <div className="mt-3 rounded-lg border dark:border-[#6258ff]/30 border-indigo-200 dark:bg-[#121126]/30 bg-indigo-50/30 px-4 py-3 text-xs dark:text-slate-300 text-slate-600">
+    <div className="mt-3 rounded-lg border border-accent/30 bg-accent-soft px-4 py-3 text-xs text-ink-2">
       Review all {batchSize} cards, then use Correct / Incorrect for each question as you work through the quiz.
     </div>
   );

@@ -38,17 +38,17 @@ function statusLabel(status: PathNode["status"], isUpNext: boolean): string {
 
 function statusClasses(status: PathNode["status"], isUpNext: boolean): string {
   if (isUpNext && status === "pending") {
-    return "border-[#6258ff]/40 bg-[#6258ff]/10 text-[#8584ff]";
+    return "border-accent/40 bg-accent/10 text-accent";
   }
   switch (status) {
     case "in_progress":
-      return "border-[#6258ff]/40 bg-[#6258ff]/10 text-[#8584ff]";
+      return "border-accent/40 bg-accent/10 text-accent";
     case "completed":
       return "border-emerald-500/30 bg-emerald-950/30 text-emerald-400";
     case "skipped":
-      return "border-slate-500/20 bg-slate-900/20 text-slate-500";
+      return "border-slate-500/20 bg-slate-900/20 text-muted";
     default:
-      return "border-slate-500/20 bg-transparent text-slate-400";
+      return "border-slate-500/20 bg-transparent text-muted";
   }
 }
 
@@ -69,7 +69,7 @@ function StageStrip({ items }: { items: StageProgressItem[] }) {
       {items.map((item, index) => (
         <li key={item.stage} className="flex items-center gap-1.5">
           {index > 0 && (
-            <span className="text-[10px] dark:text-slate-600 text-slate-300" aria-hidden>
+            <span className="text-[10px] dark:text-ink-2 text-slate-300" aria-hidden>
               →
             </span>
           )}
@@ -78,8 +78,8 @@ function StageStrip({ items }: { items: StageProgressItem[] }) {
               item.state === "done"
                 ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
                 : item.state === "current"
-                  ? "border-[#6258ff]/50 bg-[#6258ff]/15 text-[#8584ff]"
-                  : "border-slate-500/20 dark:text-slate-500 text-slate-400"
+                  ? "border-accent/50 bg-accent/15 text-accent"
+                  : "border-slate-500/20 dark:text-muted text-muted"
             }`}
           >
             {item.label}
@@ -112,25 +112,25 @@ function NodeCard({
     <div
       className={`relative flex gap-3 p-3.5 rounded-xl border transition-all ${
         isCurrent
-          ? "dark:border-[#6258ff]/50 border-indigo-300 dark:bg-[#121126]/60 bg-indigo-50/50 shadow-[0_0_20px_rgba(98,88,255,0.08)]"
-          : "dark:border-[#1b1c2b] border-slate-200 dark:bg-[#080911]/40 bg-white"
+          ? "border-accent/50 bg-accent-soft shadow-none"
+          : "border-line bg-surface"
       }`}
     >
       <div
         className={`mt-1.5 h-3 w-3 rounded-full flex-none ${
           node.status === "in_progress" || isUpNext
-            ? "bg-[#6258ff] shadow-[0_0_10px_rgba(98,88,255,0.6)]"
+            ? "bg-accent shadow-none"
             : node.status === "completed"
               ? "bg-emerald-400"
               : node.status === "skipped"
                 ? "bg-slate-600"
-                : "dark:bg-[#1b1c2b] bg-slate-300"
+                : "bg-hover bg-slate-300"
         }`}
         aria-hidden
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-bold dark:text-slate-200 text-slate-800 leading-snug">
+          <p className="text-sm font-bold text-ink-2 leading-snug">
             {node.concept_name}
           </p>
           <span
@@ -147,7 +147,7 @@ function NodeCard({
                 ? "text-emerald-500"
                 : node.proficiency_display === "weak"
                   ? "text-red-400"
-                  : "dark:text-slate-500 text-slate-500"
+                  : "dark:text-muted text-muted"
           }`}
         >
           {formatNodeType(node.node_type)} · {node.estimated_minutes} min · Mastery:{" "}
@@ -160,10 +160,10 @@ function NodeCard({
               type="button"
               onClick={() => onContinue(node)}
               aria-label={`${entry.label} for ${node.concept_name}`}
-              className={`min-h-10 px-4 rounded-lg text-xs font-bold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0d0e16] ${
+              className={`min-h-10 px-4 rounded-lg text-xs font-bold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
                 isPrimary
-                  ? "bg-[#6258ff] hover:bg-[#5045ff] text-white shadow-[0_2px_12px_rgba(98,88,255,0.25)]"
-                  : "border dark:border-[#2a2b3d] border-slate-200 text-[#8584ff] hover:border-[#6258ff]/50 dark:hover:bg-[#121126] hover:bg-indigo-50/80"
+                  ? "bg-accent hover:bg-accent-hover text-white shadow-none"
+                  : "border border-line text-accent hover:border-accent/50 dark:hover:bg-[#121126] hover:bg-accent-soft"
               }`}
             >
               {entry.label}
@@ -292,15 +292,15 @@ export default function RoadmapContent() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen animate-pulse">
-        <div className="h-7 w-48 dark:bg-[#1b1c2b] bg-slate-200 rounded-lg mb-2" />
-        <div className="h-4 w-72 dark:bg-[#1b1c2b] bg-slate-200/60 rounded mb-8" />
-        <div className="h-24 dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl mb-6" />
+      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse">
+        <div className="h-7 w-48 bg-hover rounded-lg mb-2" />
+        <div className="h-4 w-72 bg-hover/60 rounded mb-8" />
+        <div className="h-24 bg-surface border border-line rounded-xl mb-6" />
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-32 dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-xl"
+              className="h-32 bg-surface border border-line rounded-xl"
             />
           ))}
         </div>
@@ -310,14 +310,14 @@ export default function RoadmapContent() {
 
   if (error) {
     return (
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen flex items-center justify-center">
-        <div className="dark:bg-[#0d0e16] bg-white border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
-          <h3 className="text-base font-bold dark:text-white text-slate-900 mb-2">Failed to Load Roadmap</h3>
-          <p className="text-xs dark:text-slate-400 text-slate-500 mb-5">{error}</p>
+      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto flex items-center justify-center">
+        <div className="bg-surface border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
+          <h3 className="text-base font-bold text-ink mb-2">Failed to Load Roadmap</h3>
+          <p className="text-xs text-muted mb-5">{error}</p>
           <button
             type="button"
             onClick={() => loadRoadmap()}
-            className="min-h-10 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs px-5 py-2.5 rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff]"
+            className="min-h-10 bg-accent hover:bg-accent-hover text-white font-semibold text-xs px-5 py-2.5 rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Retry
           </button>
@@ -328,10 +328,10 @@ export default function RoadmapContent() {
 
   if (!roadmap || roadmap.nodes.length === 0) {
     return (
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen flex items-center justify-center">
-        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
-          <h3 className="text-base font-bold dark:text-white text-slate-900 mb-2">No path yet</h3>
-          <p className="text-xs dark:text-slate-400 text-slate-500 mb-5">
+      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto flex items-center justify-center">
+        <div className="bg-surface border border-line rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
+          <h3 className="text-base font-bold text-ink mb-2">No path yet</h3>
+          <p className="text-xs text-muted mb-5">
             We couldn&apos;t find a learning path for your account. Try generating one, or return to the
             dashboard after onboarding.
           </p>
@@ -340,13 +340,13 @@ export default function RoadmapContent() {
               type="button"
               onClick={handleRebuildPath}
               disabled={regenerating}
-              className="min-h-10 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs px-5 py-2.5 rounded-lg cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff]"
+              className="min-h-10 bg-accent hover:bg-accent-hover text-white font-semibold text-xs px-5 py-2.5 rounded-lg cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {regenerating ? "Building..." : "Build path"}
             </button>
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center min-h-10 text-xs font-semibold px-5 py-2.5 rounded-lg border dark:border-[#1b1c2b] border-slate-200 dark:text-slate-300 text-slate-700"
+              className="inline-flex items-center justify-center min-h-10 text-xs font-semibold px-5 py-2.5 rounded-lg border border-line text-ink-2"
             >
               Back to dashboard
             </Link>
@@ -360,13 +360,13 @@ export default function RoadmapContent() {
   const currentEntry = current ? resolveNodeEntry(current) : null;
 
   return (
-    <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen">
+    <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-xl lg:text-2xl font-bold tracking-tight dark:text-white text-slate-900">
+          <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-ink">
             Your Roadmap
           </h1>
-          <p className="text-xs dark:text-slate-400 text-slate-500 font-medium mt-1">
+          <p className="text-xs text-muted font-medium mt-1">
             {roadmap.active_nodes} concepts · ~{roadmap.estimated_weeks} weeks at{" "}
             {roadmap.daily_goal_minutes} min/day
           </p>
@@ -376,7 +376,7 @@ export default function RoadmapContent() {
             type="button"
             onClick={handleRebuildPath}
             disabled={regenerating}
-            className="min-h-10 text-xs font-semibold px-4 py-2 rounded-lg border dark:border-[#1b1c2b] border-slate-200 dark:text-slate-400 text-slate-600 hover:border-[#6258ff]/40 transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff]"
+            className="min-h-10 text-xs font-semibold px-4 py-2 rounded-lg border border-line dark:text-muted text-ink-2 hover:border-accent/40 transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             {regenerating ? "Rebuilding..." : "Rebuild path"}
           </button>
@@ -384,7 +384,7 @@ export default function RoadmapContent() {
             <button
               type="button"
               onClick={() => handleContinue(current)}
-              className="inline-flex items-center justify-center min-h-10 gap-2 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs tracking-wide px-5 py-2.5 rounded-lg shadow-[0_4px_18px_rgba(98,88,255,0.25)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8584ff] focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center min-h-10 gap-2 bg-accent hover:bg-accent-hover text-white font-semibold text-xs tracking-wide px-5 py-2.5 rounded-lg shadow-none transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               {currentEntry.heroLabel}
             </button>
@@ -392,36 +392,36 @@ export default function RoadmapContent() {
         </div>
       </div>
 
-      <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-xl mb-8">
+      <div className="bg-surface border border-line rounded-2xl p-6 shadow-xl mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <p className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wider">
               Journey progress
             </p>
-            <p className="text-2xl font-extrabold dark:text-white text-slate-900 mt-1">
+            <p className="text-2xl font-extrabold text-ink mt-1">
               {roadmap.progress_pct}%
             </p>
           </div>
           {current && (
-            <div className="dark:bg-[#07080d] bg-slate-50 border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-4 flex-1 max-w-xl">
-              <p className="text-[11px] font-bold text-[#8584ff] uppercase tracking-wider mb-1">
+            <div className="flex-1 max-w-xl rounded-xl border border-line bg-hover p-4">
+              <p className="text-[11px] font-bold text-accent uppercase tracking-wider mb-1">
                 {heroFocusLabel(current)}
               </p>
-              <p className="text-sm font-bold dark:text-white text-slate-900">{current.concept_name}</p>
-              <p className="text-xs dark:text-slate-500 text-slate-500 mt-0.5">
+              <p className="text-sm font-bold text-ink">{current.concept_name}</p>
+              <p className="text-xs dark:text-muted text-muted mt-0.5">
                 {current.chapter} · {formatNodeType(current.node_type)}
               </p>
               <StageStrip items={nodeStageProgress(current)} />
             </div>
           )}
         </div>
-        <div className="w-full dark:bg-[#121126] bg-slate-100 h-2 rounded-full overflow-hidden">
+        <div className="w-full bg-hover h-2 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[#6258ff] to-[#8584ff] rounded-full transition-all duration-700"
+            className="h-full bg-gradient-to-r from-accent to-accent rounded-full transition-all duration-700"
             style={{ width: `${roadmap.progress_pct}%` }}
           />
         </div>
-        <p className="text-[10px] dark:text-slate-500 text-slate-500 mt-2 font-medium">
+        <p className="text-[10px] dark:text-muted text-muted mt-2 font-medium">
           {roadmap.total_nodes} nodes total · {roadmap.active_nodes} on your active path
         </p>
       </div>
@@ -432,32 +432,32 @@ export default function RoadmapContent() {
           return (
             <section
               key={chapter.name}
-              className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl shadow-lg overflow-hidden"
+              className="bg-surface border border-line rounded-2xl shadow-lg overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() => toggleChapter(chapter.name)}
                 aria-expanded={expanded}
-                className="w-full flex items-center justify-between gap-3 p-5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8584ff]"
+                className="w-full flex items-center justify-between gap-3 p-5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
               >
                 <div>
-                  <h2 className="text-sm font-bold dark:text-white text-slate-900">{chapter.name}</h2>
-                  <p className="text-[11px] dark:text-slate-500 text-slate-500 font-medium mt-0.5">
+                  <h2 className="text-sm font-bold text-ink">{chapter.name}</h2>
+                  <p className="text-[11px] dark:text-muted text-muted font-medium mt-0.5">
                     {chapter.activeCount} concepts on path
                     {chapter.fullyDone ? " · completed" : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-xs font-extrabold dark:text-slate-300 text-slate-700">
+                    <span className="text-xs font-extrabold text-ink-2">
                       {chapter.completePct}%
                     </span>
-                    <p className="text-[10px] dark:text-slate-500 text-slate-500 uppercase tracking-wider">
+                    <p className="text-[10px] dark:text-muted text-muted uppercase tracking-wider">
                       Chapter complete
                     </p>
                   </div>
                   <span
-                    className="text-sm dark:text-slate-400 text-slate-500 w-5 text-center"
+                    className="text-sm text-muted w-5 text-center"
                     aria-hidden
                   >
                     {expanded ? "▾" : "▸"}
@@ -465,7 +465,7 @@ export default function RoadmapContent() {
                 </div>
               </button>
               {expanded && (
-                <div className="px-5 pb-5 space-y-2 border-t dark:border-[#1b1c2b] border-slate-200 pt-4">
+                <div className="px-5 pb-5 space-y-2 border-t border-line pt-4">
                   {chapter.nodes.map((node) => {
                     const isUpNext = node.id === upNextNodeId && node.status === "pending";
                     const isPrimary =
@@ -489,9 +489,9 @@ export default function RoadmapContent() {
         })}
       </div>
 
-      <p className="text-center text-[10px] dark:text-slate-600 text-slate-400 mt-8">
+      <p className="text-center text-[10px] dark:text-ink-2 text-muted mt-8">
         Chemistry and Mathematics roadmaps are coming soon.{" "}
-        <Link href="/dashboard" className="text-[#8584ff] hover:underline">
+        <Link href="/dashboard" className="text-accent hover:underline">
           Back to dashboard
         </Link>
       </p>

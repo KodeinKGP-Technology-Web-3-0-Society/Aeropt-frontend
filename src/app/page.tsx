@@ -17,8 +17,8 @@ export default function Home() {
 
   if (authLoading || (isLoggedIn && onboardingLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50">
-        <p className="text-sm dark:text-slate-400 text-slate-500">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <p className="text-sm text-muted">Loading...</p>
       </div>
     );
   }
@@ -28,8 +28,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center dark:bg-[#05060c] bg-slate-50">
-      <p className="text-sm dark:text-slate-400 text-slate-500">Loading...</p>
+    <div className="flex min-h-screen items-center justify-center bg-canvas">
+      <p className="text-sm text-muted">Loading...</p>
     </div>
   );
 }

@@ -74,13 +74,13 @@ export default function PracticeContent() {
   };
 
   return (
-    <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-screen">
+    <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
       {/* Filters Area */}
-      <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-5 shadow-lg mb-6">
+      <div className="bg-surface border border-line rounded-2xl p-5 shadow-lg mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Chapter Filter */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
               Chapter
             </label>
             <select
@@ -91,7 +91,7 @@ export default function PracticeContent() {
                 setSelectedOption(null);
                 setIsAnswerChecked(false);
               }}
-              className="w-full dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 text-xs dark:text-white text-slate-900 rounded-lg p-2.5 outline-none transition-colors cursor-pointer"
+              className="w-full bg-canvas border border-line focus:border-accent/80 text-xs text-ink rounded-lg p-2.5 outline-none transition-colors cursor-pointer"
             >
               {filters.chapters.map((ch) => (
                 <option key={ch} value={ch}>
@@ -103,7 +103,7 @@ export default function PracticeContent() {
 
           {/* Difficulty Filter */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
               Difficulty
             </label>
             <select
@@ -114,7 +114,7 @@ export default function PracticeContent() {
                 setSelectedOption(null);
                 setIsAnswerChecked(false);
               }}
-              className="w-full dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 text-xs dark:text-white text-slate-900 rounded-lg p-2.5 outline-none transition-colors cursor-pointer"
+              className="w-full bg-canvas border border-line focus:border-accent/80 text-xs text-ink rounded-lg p-2.5 outline-none transition-colors cursor-pointer"
             >
               {filters.difficulties.map((diff) => (
                 <option key={diff} value={diff}>
@@ -126,7 +126,7 @@ export default function PracticeContent() {
 
           {/* Type Filter */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
               Type
             </label>
             <select
@@ -137,7 +137,7 @@ export default function PracticeContent() {
                 setSelectedOption(null);
                 setIsAnswerChecked(false);
               }}
-              className="w-full dark:bg-[#07080d] bg-white border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 text-xs dark:text-white text-slate-900 rounded-lg p-2.5 outline-none transition-colors cursor-pointer"
+              className="w-full bg-canvas border border-line focus:border-accent/80 text-xs text-ink rounded-lg p-2.5 outline-none transition-colors cursor-pointer"
             >
               {filters.types.map((t) => (
                 <option key={t} value={t}>
@@ -149,8 +149,8 @@ export default function PracticeContent() {
         </div>
 
         {/* Toggle prioritize weak concepts */}
-        <div className="flex items-center justify-between border-t dark:border-[#1b1c2b] border-slate-200/50 pt-4 mt-4">
-          <span className="text-[11px] font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wide">
+        <div className="flex items-center justify-between border-t border-line/50 pt-4 mt-4">
+          <span className="text-[11px] font-bold text-muted uppercase tracking-wide">
             Prioritise weak concepts
           </span>
           <button
@@ -161,7 +161,7 @@ export default function PracticeContent() {
               setIsAnswerChecked(false);
             }}
             className={`w-10 h-5.5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
-              prioritizeWeak ? "bg-[#1c6f32]" : "dark:bg-[#1b1c2b] bg-slate-200"
+              prioritizeWeak ? "bg-success" : "bg-hover"
             }`}
           >
             <span
@@ -177,39 +177,39 @@ export default function PracticeContent() {
         <>
           {/* Question Meta Header */}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-[11px] font-bold text-[#6258ff] uppercase tracking-widest">
+            <span className="text-[11px] font-bold text-accent uppercase tracking-widest">
               Question {activeQuestion.questionNumber} of {activeQuestion.totalQuestions}
             </span>
-            <div className="h-1.5 w-32 dark:bg-[#111124] bg-slate-100 border dark:border-[#212239] border-slate-300 rounded-full overflow-hidden">
+            <div className="h-1.5 w-32 bg-hover border border-line rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#6258ff]"
+                className="h-full bg-accent"
                 style={{ width: `${(activeQuestion.questionNumber / activeQuestion.totalQuestions) * 100}%` }}
               />
             </div>
           </div>
 
           {/* Question Card Box */}
-          <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="bg-surface border border-line rounded-2xl p-6 shadow-xl space-y-6">
             
             {/* Meta tags (Difficulty, Chapter, Type, Source) */}
             <div className="flex flex-wrap gap-2 select-none">
-              <span className="text-[9px] font-bold dark:text-slate-400 text-slate-500 border dark:border-[#212239] border-slate-300 dark:bg-[#111124] bg-slate-100 px-2 py-0.5 rounded">
+              <span className="text-[9px] font-bold text-muted border border-line bg-hover px-2 py-0.5 rounded">
                 Level {activeQuestion.difficulty}
               </span>
-              <span className="text-[9px] font-bold text-[#8584ff] border dark:border-[#3d3d91] border-indigo-200/35 dark:bg-[#121126] bg-slate-100/60 px-2 py-0.5 rounded">
+              <span className="text-[9px] font-bold text-accent border border-accent/30 bg-hover/60 px-2 py-0.5 rounded">
                 {activeQuestion.chapter}
               </span>
               <span className="text-[9px] font-bold text-emerald-400 border border-emerald-950 bg-emerald-950/20 px-2 py-0.5 rounded">
                 {activeQuestion.type}
               </span>
-              <span className="text-[9px] font-bold dark:text-slate-400 text-slate-500 border dark:border-[#212239] border-slate-300 dark:bg-[#111124] bg-slate-100 px-2 py-0.5 rounded ml-auto">
+              <span className="text-[9px] font-bold text-muted border border-line bg-hover px-2 py-0.5 rounded ml-auto">
                 Source: {activeQuestion.source}
               </span>
             </div>
 
             {/* Question Text */}
             <div className="p-1">
-              <p className="text-sm font-semibold dark:text-slate-100 text-slate-900 leading-relaxed">
+              <p className="text-sm font-semibold dark:text-slate-100 text-ink leading-relaxed">
                 {activeQuestion.text}
               </p>
             </div>
@@ -219,7 +219,7 @@ export default function PracticeContent() {
               {activeQuestion.options.map((opt) => {
                 const isSelected = selectedOption === opt.label;
                 const isCorrect = opt.label === activeQuestion.correctAnswer;
-                let optionClass = "dark:border-[#1b1c2b] border-slate-200 dark:bg-[#07080d] bg-white/40 dark:text-slate-300 text-slate-700 dark:hover:border-[#3d3d91] border-indigo-200/50 dark:hover:bg-[#101021] bg-slate-100/30";
+                let optionClass = "border-line bg-canvas/40 text-ink-2 dark:hover:border-[#3d3d91] border-line/50 dark:hover:bg-[#101021] bg-hover/30";
                 
                 if (isAnswerChecked) {
                   if (isCorrect) {
@@ -228,7 +228,7 @@ export default function PracticeContent() {
                     optionClass = "border-red-500/40 bg-red-950/25 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.08)]";
                   }
                 } else if (isSelected) {
-                  optionClass = "border-[#6258ff] dark:bg-[#121126] bg-slate-100 dark:text-white text-slate-900 shadow-[0_0_15px_rgba(98,88,255,0.1)]";
+                  optionClass = "border-accent bg-hover text-ink shadow-none";
                 }
 
                 return (
@@ -240,8 +240,8 @@ export default function PracticeContent() {
                   >
                     <span className={`h-6 w-6 rounded-lg flex items-center justify-center font-bold text-xs ${
                       isSelected 
-                        ? "bg-[#6258ff] text-white" 
-                        : "dark:bg-[#111124] bg-slate-100 dark:text-slate-500 text-slate-500 border dark:border-[#212239] border-slate-300"
+                        ? "bg-accent text-white" 
+                        : "bg-hover dark:text-muted text-muted border border-line"
                     }`}>
                       {opt.label}
                     </span>
@@ -255,12 +255,12 @@ export default function PracticeContent() {
             </div>
 
             {/* Actions: Check Answer, Ask, Next Question */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t dark:border-[#1b1c2b] border-slate-200/50">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-line/50">
               {!isAnswerChecked ? (
                 <button
                   disabled={!selectedOption}
                   onClick={handleCheckAnswer}
-                  className="w-full sm:flex-1 bg-[#6258ff] hover:bg-[#5045ff] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-[0_4px_15px_rgba(98,88,255,0.2)] cursor-pointer"
+                  className="w-full sm:flex-1 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-none cursor-pointer"
                 >
                   Check Answer
                 </button>
@@ -268,16 +268,16 @@ export default function PracticeContent() {
                 <>
                   <button
                     onClick={handleAskAboutThis}
-                    className="w-full sm:flex-1 dark:bg-[#121126] bg-slate-100 border dark:border-[#3d3d91] border-indigo-200/50 dark:text-white text-slate-900 font-semibold text-xs uppercase tracking-wider py-3 rounded-xl hover:bg-[#171635] transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full sm:flex-1 bg-hover border border-accent/30 text-ink font-semibold text-xs uppercase tracking-wider py-3 rounded-xl hover:bg-hover transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="h-4.5 w-4.5 text-[#8584ff]">
+                    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="h-4.5 w-4.5 text-accent">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                     Ask about this
                   </button>
                   <button
                     onClick={handleNextQuestion}
-                    className="w-full sm:flex-1 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-[0_4px_15px_rgba(98,88,255,0.2)] cursor-pointer"
+                    className="w-full sm:flex-1 bg-accent hover:bg-accent-hover text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-none cursor-pointer"
                   >
                     Next Question
                   </button>
@@ -287,7 +287,7 @@ export default function PracticeContent() {
 
             {/* Answer Feedbacks & Explanation Blocks */}
             {isAnswerChecked && (
-              <div className="space-y-4 pt-4 border-t dark:border-[#1b1c2b] border-slate-200/50 animate-fadeIn">
+              <div className="space-y-4 pt-4 border-t border-line/50 animate-fadeIn">
                 <div className="flex items-center gap-2">
                   <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     selectedOption === activeQuestion.correctAnswer 
@@ -296,26 +296,26 @@ export default function PracticeContent() {
                   }`}>
                     {selectedOption === activeQuestion.correctAnswer ? "✓" : "✗"}
                   </span>
-                  <span className="text-xs font-bold dark:text-slate-200 text-slate-800">
+                  <span className="text-xs font-bold text-ink-2">
                     {selectedOption === activeQuestion.correctAnswer ? "Correct!" : "Incorrect Answer."}{" "}
-                    <span className="text-[10px] dark:text-slate-500 text-slate-500 font-semibold uppercase ml-2 tracking-wider">
+                    <span className="text-[10px] dark:text-muted text-muted font-semibold uppercase ml-2 tracking-wider">
                       Time spent: {activeQuestion.timeSpent}
                     </span>
                   </span>
                 </div>
 
-                <div className="dark:bg-[#07080d] bg-white/60 border dark:border-[#1b1c2b] border-slate-200 rounded-xl p-4.5 space-y-3">
-                  <h4 className="text-[11px] font-bold dark:text-white text-slate-900 uppercase tracking-wider">Solution</h4>
+                <div className="bg-canvas/60 border border-line rounded-xl p-4.5 space-y-3">
+                  <h4 className="text-[11px] font-bold text-ink uppercase tracking-wider">Solution</h4>
                   <div className="space-y-2.5">
                     {activeQuestion.solution.map((step, idx) => (
-                      <div key={idx} className="flex gap-2.5 items-start text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-medium">
-                        <span className="h-4.5 w-4.5 rounded dark:bg-[#111124] bg-slate-100 border dark:border-[#212239] border-slate-300 text-[#8584ff] text-[9.5px] font-bold flex items-center justify-center flex-none">
+                      <div key={idx} className="flex gap-2.5 items-start text-xs text-muted leading-relaxed font-medium">
+                        <span className="h-4.5 w-4.5 rounded bg-hover border border-line text-accent text-[9.5px] font-bold flex items-center justify-center flex-none">
                           {idx + 1}
                         </span>
                         <div className="flex-1 mt-0.5">
                           <MarkdownMath
                             content={step}
-                            className="markdown-math text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-medium"
+                            className="markdown-math text-xs text-muted leading-relaxed font-medium"
                           />
                         </div>
                       </div>
@@ -323,11 +323,11 @@ export default function PracticeContent() {
                   </div>
                 </div>
 
-                <div className="bg-[#6258ff]/5 border border-[#6258ff]/15 rounded-xl p-4">
-                  <h4 className="text-[10px] font-bold text-[#8584ff] uppercase tracking-wider mb-1 flex items-center gap-1.5 select-none">
+                <div className="bg-accent/5 border border-accent/15 rounded-xl p-4">
+                  <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider mb-1 flex items-center gap-1.5 select-none">
                     <span>💡</span> KEY INSIGHT
                   </h4>
-                  <p className="text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-semibold">
+                  <p className="text-xs text-muted leading-relaxed font-semibold">
                     {activeQuestion.keyInsight}
                   </p>
                 </div>
@@ -336,10 +336,10 @@ export default function PracticeContent() {
           </div>
         </>
       ) : (
-        <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-10 text-center shadow-lg">
+        <div className="bg-surface border border-line rounded-2xl p-10 text-center shadow-lg">
           <span className="text-2xl">🔍</span>
-          <h3 className="text-sm font-bold dark:text-white text-slate-900 uppercase mt-4 mb-2">No Questions Match Filters</h3>
-          <p className="text-xs dark:text-slate-500 text-slate-500 max-w-[320px] mx-auto leading-relaxed">
+          <h3 className="text-sm font-bold text-ink uppercase mt-4 mb-2">No Questions Match Filters</h3>
+          <p className="text-xs dark:text-muted text-muted max-w-[320px] mx-auto leading-relaxed">
             Try resetting your chapter, difficulty level, or question type filters.
           </p>
         </div>

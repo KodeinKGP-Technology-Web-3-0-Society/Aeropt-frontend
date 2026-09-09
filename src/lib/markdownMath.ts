@@ -9,6 +9,22 @@
  * - Formula slides use `preprocessFormulaSlideMath` — do NOT re-wrap aggressively.
  */
 
+const PRACTICE_FENCE_RE = /```interactive-practice[\s\S]*?```/gi;
+
+function protectPracticeFences(raw: string): { text: string; blocks: string[] } {
+  const blocks: string[] = [];
+  const text = raw.replace(PRACTICE_FENCE_RE, (full) => {
+    const idx = blocks.length;
+    blocks.push(full);
+    return `\uE010PRAC${idx}\uE011`;
+  });
+  return { text, blocks };
+}
+
+function restorePracticeFences(text: string, blocks: string[]): string {
+  return text.replace(/\uE010PRAC(\d+)\uE011/g, (_, i) => blocks[Number(i)] ?? "");
+}
+
 const UNICODE_MATH: Record<string, string> = {
   ω: "\\omega",
   Ω: "\\Omega",
@@ -384,7 +400,8 @@ export function preprocessFormulaSlideMath(raw: string): string {
 export function preprocessMarkdownMath(raw: string): string {
   if (!raw?.trim()) return raw;
 
-  const { text: protectedText, images } = protectImages(raw);
+  const { text: withoutPractice, blocks: practiceBlocks } = protectPracticeFences(raw);
+  const { text: protectedText, images } = protectImages(withoutPractice);
   let text = protectedText;
 
   text = collapseDoubleEscapedMacros(text);
@@ -402,6 +419,7 @@ export function preprocessMarkdownMath(raw: string): string {
   text = cleanDisplayMathBlocks(text);
   text = wrapUndelimitedLatex(text);
   text = restoreImages(text, images);
+  text = restorePracticeFences(text, practiceBlocks);
   return text;
 }
 
@@ -462,6 +480,14 @@ export const MATH_GOLDEN_FIXTURES: MathFixture[] = [
       "Analyzing system from Non Inertial frame of reference of block M_1\nThe acceleration of block M_1, a_1 = \\frac{F}{M_1+M_2+M_3}",
     mustInclude: ["Analyzing system", "$a_1 = \\frac{F}{M_1+M_2+M_3}$"],
     mustNotInclude: ["$$\nThe acceleration"],
+  },
+  {
+    id: "practice-fence-not-split-by-display-math",
+    surface: "chat",
+    input:
+      "```interactive-practice\n{\"type\":\"mcq\",\"question_text\":\"mass $m$\",\"solution_walkthrough\":\"$$\\\\tau = I\\\\alpha$$\",\"correct_answer\":\"A\"}\n```",
+    mustInclude: ["```interactive-practice", "question_text"],
+    mustNotInclude: ["\uE010PRAC"],
   },
   {
     id: "diagram-label-lines-collapsed",

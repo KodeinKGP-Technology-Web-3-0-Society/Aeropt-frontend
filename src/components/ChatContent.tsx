@@ -66,13 +66,13 @@ export default function ChatContent() {
     // Replace block math $$...$$
     formatted = formatted.replace(/\$\$(.*?)\$\$/g, (_, match) => {
       let math = cleanMathSymbols(match);
-      return `<div class="my-3 py-2 px-3.5 dark:bg-[#05060a] bg-slate-50 border dark:border-[#1b1c2b] border-slate-200 rounded-lg text-center font-mono text-sm text-[#8584ff] overflow-x-auto shadow-inner select-all">${math}</div>`;
+      return `<div class="my-3 py-2 px-3.5 dark:bg-[#05060a] bg-slate-50 border border-line rounded-lg text-center font-mono text-sm text-accent overflow-x-auto shadow-inner select-all">${math}</div>`;
     });
 
     // Replace inline math $...$
     formatted = formatted.replace(/\$(.*?)\$/g, (_, match) => {
       let math = cleanMathSymbols(match);
-      return `<span class="px-1.5 py-0.5 dark:bg-[#0d0e16] bg-white border dark:border-[#212239] border-slate-300 rounded font-mono text-xs text-[#8584ff] select-all">${math}</span>`;
+      return `<span class="px-1.5 py-0.5 bg-surface border border-line rounded font-mono text-xs text-accent select-all">${math}</span>`;
     });
 
     return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
@@ -102,18 +102,18 @@ export default function ChatContent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen dark:bg-[#05060c] bg-slate-50 dark:text-white text-slate-900">
+    <div className="flex-1 flex flex-col min-h-screen bg-canvas text-ink">
       {/* Session Top Nav Bar */}
-      <header className="h-[56px] border-b dark:border-[#1b1c2b] border-slate-200 flex items-center justify-between px-6 dark:bg-[#07080d] bg-white select-none flex-none">
+      <header className="h-[56px] border-b border-line flex items-center justify-between px-6 bg-canvas select-none flex-none">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-bold dark:text-slate-400 text-slate-500 uppercase tracking-wider">{header.title}</span>
+          <span className="text-xs font-bold text-muted uppercase tracking-wider">{header.title}</span>
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
-            <span className="text-xs font-bold dark:text-white text-slate-900 border border-[#f87171]/20 bg-[#f87171]/5 px-2 py-0.5 rounded uppercase tracking-wider">
+            <span className="text-xs font-bold text-ink border border-[#f87171]/20 bg-[#f87171]/5 px-2 py-0.5 rounded uppercase tracking-wider">
               {header.concept} (WEAK)
             </span>
-            <span className="text-[10px] font-bold dark:text-slate-500 text-slate-500">·</span>
-            <span className="text-xs font-bold dark:text-slate-400 text-slate-500 border dark:border-[#1b1c2b] border-slate-200 dark:bg-[#111124] bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider">
+            <span className="text-[10px] font-bold dark:text-muted text-muted">·</span>
+            <span className="text-xs font-bold text-muted border border-line bg-hover px-2 py-0.5 rounded uppercase tracking-wider">
               {header.secondaryConcept}
             </span>
           </div>
@@ -123,7 +123,7 @@ export default function ChatContent() {
             setQuizActive(false);
             router.push("/dashboard");
           }}
-          className="text-xs font-semibold dark:text-slate-400 text-slate-500 hover:text-red-400 border dark:border-[#212239] border-slate-300 hover:border-red-950 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          className="text-xs font-semibold text-muted hover:text-red-400 border border-line hover:border-red-950 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
         >
           End Session
         </button>
@@ -133,7 +133,7 @@ export default function ChatContent() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         
         {/* Left Side: Chat Workspace or Diagnostic Quiz */}
-        <div className="flex-1 flex flex-col min-h-0 border-r dark:border-[#15162a] border-slate-200/80 dark:bg-[#06070e] bg-slate-50">
+        <div className="flex-1 flex flex-col min-h-0 border-r dark:border-[#15162a] border-line dark:bg-[#06070e] bg-slate-50">
           
           {quizActive ? (
             /* DIAGNOSTIC QUIZ PANEL */
@@ -143,19 +143,19 @@ export default function ChatContent() {
                   {/* Active Quiz steps */}
                   <div>
                     <div className="flex justify-between items-center mb-6">
-                      <span className="text-[11px] font-bold text-[#6258ff] uppercase tracking-widest">{diagnosticQuiz.title}</span>
-                      <span className="text-xs font-bold dark:text-slate-400 text-slate-500 dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 px-2.5 py-1 rounded-full">
+                      <span className="text-[11px] font-bold text-accent uppercase tracking-widest">{diagnosticQuiz.title}</span>
+                      <span className="text-xs font-bold text-muted bg-surface border border-line px-2.5 py-1 rounded-full">
                         Step {quizStep} of {diagnosticQuiz.totalSteps}
                       </span>
                     </div>
 
                     <div className="mb-2">
-                      <h2 className="text-base font-extrabold dark:text-white text-slate-900 tracking-wide">{diagnosticQuiz.topic}</h2>
-                      <p className="text-xs text-[#8584ff] font-semibold mt-1 uppercase tracking-wider">{diagnosticQuiz.subTitle}</p>
+                      <h2 className="text-base font-extrabold text-ink tracking-wide">{diagnosticQuiz.topic}</h2>
+                      <p className="text-xs text-accent font-semibold mt-1 uppercase tracking-wider">{diagnosticQuiz.subTitle}</p>
                     </div>
 
-                    <div className="my-6 p-5 dark:bg-[#0d0e16] bg-white/80 border dark:border-[#1b1c2b] border-slate-200 rounded-2xl shadow-xl">
-                      <p className="text-sm font-medium dark:text-slate-200 text-slate-800 leading-relaxed">
+                    <div className="my-6 p-5 bg-surface/80 border border-line rounded-2xl shadow-xl">
+                      <p className="text-sm font-medium text-ink-2 leading-relaxed">
                         {diagnosticQuiz.questionText}
                       </p>
                     </div>
@@ -165,7 +165,7 @@ export default function ChatContent() {
                       {diagnosticQuiz.options.map((opt) => {
                         const isSelected = selectedOption === opt.label;
                         const isCorrect = opt.label === diagnosticQuiz.correctAnswer;
-                        let optionClass = "dark:border-[#1b1c2b] border-slate-200 dark:bg-[#07080d] bg-white/40 dark:text-slate-300 text-slate-700 dark:hover:border-[#3d3d91] border-indigo-200/50 dark:hover:bg-[#101021] bg-slate-100/30";
+                        let optionClass = "border-line bg-canvas/40 text-ink-2 dark:hover:border-[#3d3d91] border-line/50 dark:hover:bg-[#101021] bg-hover/30";
                         
                         if (quizSubmitted) {
                           if (isCorrect) {
@@ -174,7 +174,7 @@ export default function ChatContent() {
                             optionClass = "border-red-500/40 bg-red-950/20 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.08)]";
                           }
                         } else if (isSelected) {
-                          optionClass = "border-[#6258ff] dark:bg-[#121126] bg-slate-100 dark:text-white text-slate-900 shadow-[0_0_15px_rgba(98,88,255,0.1)]";
+                          optionClass = "border-accent bg-hover text-ink shadow-none";
                         }
 
                         return (
@@ -186,8 +186,8 @@ export default function ChatContent() {
                           >
                             <span className={`h-6 w-6 rounded-lg flex items-center justify-center font-bold text-xs ${
                               isSelected 
-                                ? "bg-[#6258ff] text-white" 
-                                : "dark:bg-[#111124] bg-slate-100 dark:text-slate-500 text-slate-500 border dark:border-[#212239] border-slate-300"
+                                ? "bg-accent text-white" 
+                                : "bg-hover dark:text-muted text-muted border border-line"
                             }`}>
                               {opt.label}
                             </span>
@@ -209,19 +209,19 @@ export default function ChatContent() {
                   </div>
 
                   {/* Submission triggers */}
-                  <div className="mt-8 pt-4 border-t dark:border-[#1b1c2b] border-slate-200/50">
+                  <div className="mt-8 pt-4 border-t border-line/50">
                     {!quizSubmitted ? (
                       <button
                         onClick={handleQuizSubmit}
                         disabled={!selectedOption}
-                        className="w-full bg-[#6258ff] hover:bg-[#5045ff] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-[0_4px_15px_rgba(98,88,255,0.2)]"
+                        className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-none"
                       >
                         Submit Answer
                       </button>
                     ) : (
                       <button
                         onClick={handleQuizNext}
-                        className="w-full bg-[#1c6f32] hover:bg-[#155326] dark:text-white text-slate-900 font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-[0_4px_15px_rgba(28,111,50,0.2)]"
+                        className="w-full rounded-xl bg-success py-3 text-xs font-semibold uppercase tracking-wider text-accent-on transition-all hover:opacity-90"
                       >
                         {quizStep < 4 ? "Next Step" : "Complete Quiz"}
                       </button>
@@ -236,23 +236,23 @@ export default function ChatContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   </div>
-                  <h2 className="text-xl font-bold tracking-tight dark:text-white text-slate-900 mb-2">Quiz Complete!</h2>
+                  <h2 className="text-xl font-bold tracking-tight text-ink mb-2">Quiz Complete!</h2>
                   
                   {/* Step dots */}
                   <div className="flex gap-2.5 my-4">
                     {[1, 2, 3, 4].map((s) => (
                       <div key={s} className="flex flex-col items-center gap-1">
-                        <span className="h-6 w-6 rounded-full bg-[#1c6f32] dark:text-white text-slate-900 text-[10px] font-bold flex items-center justify-center border border-emerald-500/30">✓</span>
-                        <span className="text-[9px] dark:text-slate-500 text-slate-500 font-semibold uppercase">Step {s}</span>
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-success/30 bg-success text-[10px] font-bold text-accent-on">✓</span>
+                        <span className="text-[9px] dark:text-muted text-muted font-semibold uppercase">Step {s}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 rounded-2xl p-5 my-6 max-w-[480px]">
+                  <div className="bg-surface border border-line rounded-2xl p-5 my-6 max-w-[480px]">
                     <h3 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">
                       Your weak point: {diagnosticQuiz.weakPoint.title}
                     </h3>
-                    <p className="text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-medium">
+                    <p className="text-xs text-muted leading-relaxed font-medium">
                       {diagnosticQuiz.weakPoint.description}
                     </p>
                   </div>
@@ -260,7 +260,7 @@ export default function ChatContent() {
                   <div className="flex flex-col sm:flex-row gap-3.5 w-full max-w-[400px]">
                     <button
                       onClick={resetQuiz}
-                      className="flex-1 dark:bg-[#121126] bg-slate-100 border dark:border-[#3d3d91] border-indigo-200/50 dark:text-white text-slate-900 font-semibold text-xs uppercase tracking-wider py-3 rounded-xl hover:bg-[#171635] transition-all cursor-pointer"
+                      className="flex-1 bg-hover border border-accent/30 text-ink font-semibold text-xs uppercase tracking-wider py-3 rounded-xl hover:bg-hover transition-all cursor-pointer"
                     >
                       Review this concept
                     </button>
@@ -269,7 +269,7 @@ export default function ChatContent() {
                         setQuizActive(false);
                         router.push("/dashboard");
                       }}
-                      className="flex-1 bg-[#6258ff] hover:bg-[#5045ff] text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-[0_4px_15px_rgba(98,88,255,0.2)] cursor-pointer"
+                      className="flex-1 bg-accent hover:bg-accent-hover text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-none cursor-pointer"
                     >
                       Back to Dashboard
                     </button>
@@ -291,8 +291,8 @@ export default function ChatContent() {
                     >
                       <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4.5 shadow-lg transition-all ${
                         isUser
-                          ? "bg-[#6258ff] text-white rounded-br-none"
-                          : "dark:bg-[#0d0e16] bg-white border dark:border-[#1b1c2b] border-slate-200 dark:text-slate-200 text-slate-800 rounded-bl-none"
+                          ? "bg-accent text-white rounded-br-none"
+                          : "bg-surface border border-line text-ink-2 rounded-bl-none"
                       }`}>
                         
                         {/* Text component */}
@@ -308,17 +308,17 @@ export default function ChatContent() {
                               <h4 className="text-[10px] font-bold text-[#eab308] uppercase tracking-wider mb-1">
                                 {msg.gapTitle}
                               </h4>
-                              <p className="text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-semibold">
+                              <p className="text-xs text-muted leading-relaxed font-semibold">
                                 {msg.gapDescription}
                               </p>
                             </div>
 
                             {/* Solution steps */}
                             <div className="space-y-3">
-                              <h4 className="text-[11px] font-bold dark:text-white text-slate-900 uppercase tracking-widest mt-4">Solution</h4>
+                              <h4 className="text-[11px] font-bold text-ink uppercase tracking-widest mt-4">Solution</h4>
                               {msg.steps?.map((step, idx) => (
-                                <div key={idx} className="flex gap-3 items-start text-xs sm:text-[13px] dark:text-slate-300 text-slate-700 font-medium">
-                                  <span className="h-5 w-5 rounded-md dark:bg-[#121126] bg-slate-100 border dark:border-[#3d3d91] border-indigo-200/35 text-[#8584ff] text-[10px] font-bold flex items-center justify-center flex-none">
+                                <div key={idx} className="flex gap-3 items-start text-xs sm:text-[13px] text-ink-2 font-medium">
+                                  <span className="h-5 w-5 rounded-md bg-hover border border-accent/30 text-accent text-[10px] font-bold flex items-center justify-center flex-none">
                                     {idx + 1}
                                   </span>
                                   <div className="flex-1 leading-relaxed mt-0.5">{renderMath(step)}</div>
@@ -328,11 +328,11 @@ export default function ChatContent() {
 
                             {/* Key Insight */}
                             {msg.keyInsight && (
-                              <div className="bg-[#6258ff]/5 border border-[#6258ff]/15 rounded-xl p-3.5 mt-4">
-                                <h4 className="text-[10px] font-bold text-[#8584ff] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                              <div className="bg-accent/5 border border-accent/15 rounded-xl p-3.5 mt-4">
+                                <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                                   <span>💡</span> KEY INSIGHT
                                 </h4>
-                                <p className="text-xs dark:text-slate-400 text-slate-500 leading-relaxed font-semibold">
+                                <p className="text-xs text-muted leading-relaxed font-semibold">
                                   {msg.keyInsight}
                                 </p>
                               </div>
@@ -340,14 +340,14 @@ export default function ChatContent() {
 
                             {/* Try next suggested prompts */}
                             {msg.tryNext && msg.tryNext.length > 0 && (
-                              <div className="pt-3 border-t dark:border-[#1b1c2b] border-slate-200/65 mt-4">
-                                <p className="text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-widest mb-2.5">Try next:</p>
+                              <div className="pt-3 border-t border-line/65 mt-4">
+                                <p className="text-[10px] font-bold dark:text-muted text-muted uppercase tracking-widest mb-2.5">Try next:</p>
                                 <div className="space-y-2">
                                   {msg.tryNext.map((q, idx) => (
                                     <button
                                       key={idx}
                                       onClick={() => handleSuggestClick(q)}
-                                      className="w-full text-left px-3.5 py-2.5 dark:bg-[#07080d] bg-white dark:hover:bg-[#111124] bg-slate-100 border dark:border-[#1b1c2b] border-slate-200 dark:hover:border-[#3d3d91] border-indigo-200/50 text-xs font-semibold text-[#8584ff] rounded-lg transition-colors cursor-pointer flex items-center justify-between"
+                                      className="w-full text-left px-3.5 py-2.5 bg-canvas dark:hover:bg-[#111124] bg-hover border border-line dark:hover:border-[#3d3d91] border-line/50 text-xs font-semibold text-accent rounded-lg transition-colors cursor-pointer flex items-center justify-between"
                                     >
                                       <span>{q}</span>
                                       <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5 opacity-60">
@@ -368,20 +368,20 @@ export default function ChatContent() {
               </div>
 
               {/* Chat Form Area */}
-              <form onSubmit={handleSend} className="p-4 border-t dark:border-[#1b1c2b] border-slate-200 dark:bg-[#07080d] bg-white select-none flex-none">
+              <form onSubmit={handleSend} className="p-4 border-t border-line bg-canvas select-none flex-none">
                 <div className="relative flex items-center">
                   <input
                     type="text"
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
                     placeholder={`Ask anything from Laws of Motion, Work Energy & Power...`}
-                    className="w-full dark:bg-[#050609] bg-slate-50 border dark:border-[#1b1c2b] border-slate-200 focus:border-[#6258ff]/80 text-xs sm:text-sm dark:text-white text-slate-900 placeholder-slate-600 rounded-xl pl-4 pr-[85px] py-3.5 outline-none transition-colors"
+                    className="w-full dark:bg-[#050609] bg-slate-50 border border-line focus:border-accent/80 text-xs sm:text-sm text-ink placeholder-slate-600 rounded-xl pl-4 pr-[85px] py-3.5 outline-none transition-colors"
                   />
                   <div className="absolute right-3 flex items-center gap-1.5">
                     <button
                       type="submit"
                       disabled={!inputVal.trim()}
-                      className="bg-[#6258ff] hover:bg-[#5045ff] disabled:opacity-30 p-2 rounded-lg transition-colors cursor-pointer text-white flex items-center justify-center"
+                      className="bg-accent hover:bg-accent-hover disabled:opacity-30 p-2 rounded-lg transition-colors cursor-pointer text-white flex items-center justify-center"
                     >
                       <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
@@ -389,7 +389,7 @@ export default function ChatContent() {
                     </button>
                   </div>
                 </div>
-                <div className="mt-2.5 flex items-center justify-between text-[9.5px] font-bold dark:text-slate-600 text-slate-400 tracking-wider uppercase">
+                <div className="mt-2.5 flex items-center justify-between text-[9.5px] font-bold dark:text-ink-2 text-muted tracking-wider uppercase">
                   <span>KaTeX supported. Type $F = ma$ for inline math.</span>
                   <span>Press enter to send</span>
                 </div>
@@ -399,10 +399,10 @@ export default function ChatContent() {
         </div>
 
         {/* Right Side: Concept Panel */}
-        <aside className="w-full lg:w-[280px] p-6 dark:bg-[#07080d] bg-white flex flex-col gap-6 overflow-y-auto select-none flex-none">
+        <aside className="w-full lg:w-[280px] p-6 bg-canvas flex flex-col gap-6 overflow-y-auto select-none flex-none">
           {/* Section 1: Concepts in Response */}
           <div>
-            <h3 className="text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-widest mb-3.5">
+            <h3 className="text-[10px] font-bold dark:text-muted text-muted uppercase tracking-widest mb-3.5">
               Concepts in this response
             </h3>
             <div className="space-y-2.5">
@@ -414,12 +414,12 @@ export default function ChatContent() {
                     className={`p-3 border rounded-xl flex items-center justify-between transition-colors ${
                       isWeak
                         ? "border-red-950 bg-red-950/10 hover:bg-red-950/20"
-                        : "dark:border-[#1b1c2b] border-slate-200 dark:bg-[#0d0e16] bg-white/60 dark:hover:bg-[#101021] bg-slate-100/30"
+                        : "border-line bg-surface/60 dark:hover:bg-[#101021] bg-hover/30"
                     }`}
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold dark:text-slate-200 text-slate-800 truncate">{concept.name}</p>
-                      <span className="text-[8.5px] font-semibold dark:text-slate-500 text-slate-500 uppercase mt-0.5 block">State</span>
+                      <p className="text-xs font-semibold text-ink-2 truncate">{concept.name}</p>
+                      <span className="text-[8.5px] font-semibold dark:text-muted text-muted uppercase mt-0.5 block">State</span>
                     </div>
                     <div className="text-right">
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
@@ -438,10 +438,10 @@ export default function ChatContent() {
 
           {/* Section 2: Prerequisite Chain Flow chart */}
           <div>
-            <h3 className="text-[10px] font-bold dark:text-slate-500 text-slate-500 uppercase tracking-widest mb-4">
+            <h3 className="text-[10px] font-bold dark:text-muted text-muted uppercase tracking-widest mb-4">
               Prerequisite chain
             </h3>
-            <div className="relative pl-4 border-l dark:border-[#1b1c2b] border-slate-200 ml-1.5 space-y-7">
+            <div className="relative pl-4 border-l border-line ml-1.5 space-y-7">
               {sidebar.prerequisites.map((prereq, index) => {
                 const isWeak = prereq.status === "WEAK";
                 const isStrong = prereq.status === "STRONG";
@@ -450,22 +450,22 @@ export default function ChatContent() {
                     {/* Circle Node */}
                     <span className={`absolute left-[-21px] top-1 h-3 w-3 rounded-full border-2 ${
                       isWeak
-                        ? "dark:bg-[#05060c] bg-slate-50 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                        ? "bg-canvas border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
                         : isStrong
-                        ? "dark:bg-[#05060c] bg-slate-50 border-emerald-500"
-                        : "dark:bg-[#05060c] bg-slate-50 border-yellow-500"
+                        ? "bg-canvas border-emerald-500"
+                        : "bg-canvas border-yellow-500"
                     }`} />
                     
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 justify-between">
-                        <span className="text-xs font-bold dark:text-slate-300 text-slate-700 truncate">{prereq.name}</span>
+                        <span className="text-xs font-bold text-ink-2 truncate">{prereq.name}</span>
                         <span className={`text-[10px] font-extrabold ${
                           isWeak ? "text-red-400" : isStrong ? "text-emerald-400" : "text-yellow-400"
                         }`}>
                           {prereq.score}%
                         </span>
                       </div>
-                      <span className="text-[8px] font-bold dark:text-slate-600 text-slate-400 uppercase tracking-wide block mt-0.5">
+                      <span className="text-[8px] font-bold dark:text-ink-2 text-muted uppercase tracking-wide block mt-0.5">
                         {isWeak ? "Weak Area" : "Verified Prereq"}
                       </span>
                     </div>

@@ -36,7 +36,7 @@ export default function DiagramSlide({
       {bodyMd ? (
         <MarkdownMath content={bodyMd} className="markdown-math markdown-math--slide text-sm" />
       ) : (
-        <p className="text-sm dark:text-slate-400 text-slate-500">
+        <p className="text-sm text-muted">
           Sketch the setup from the problem statement if needed.
         </p>
       )}

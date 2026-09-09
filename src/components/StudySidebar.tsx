@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ComponentType, SVGProps } from "react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { useApp } from "@/components/AppContext";
+import NavLiquidGlass from "@/components/NavLiquidGlass";
 
 export type StudySidebarContext = {
   conceptName?: string | null;
@@ -18,22 +19,10 @@ export type StudySidebarContext = {
   journeyType?: string | null;
 };
 
-type SidebarUser = {
-  name: string;
-  badge: string;
-};
-
 type NavItem = {
   label: string;
   href: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-};
-
-const STAGE_LABELS: Record<string, string> = {
-  theory: "Theory",
-  example: "Worked example",
-  practice: "Practice",
-  pyq: "PYQ",
 };
 
 const navItems: NavItem[] = [
@@ -42,29 +31,12 @@ const navItems: NavItem[] = [
   { label: "Study Session", href: "/chat", icon: ChatIcon },
   { label: "Practice", href: "/practice", icon: LayersIcon },
   { label: "Progress", href: "/progress", icon: ChartIcon },
-  { label: "Settings", href: "/settings", icon: SettingsIcon },
+  { label: "Settings", href: "/settings", icon: GearIcon },
 ];
-
-function BrandIcon() {
-  return (
-    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#6258ff] text-white shadow-[0_0_18px_rgba(98,88,255,0.35)]">
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-        <path
-          d="M7 13.8a2.8 2.8 0 1 0 2.65 1.9h4.7A2.8 2.8 0 1 0 17 12.1V9.65A2.8 2.8 0 1 0 14.35 6H9.65A2.8 2.8 0 1 0 7 9.65v4.15Zm3-6.3h4m1.5 1.55v3.9m-6.2 3.25h5.4M7 9.65v4.15"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-      </svg>
-    </span>
-  );
-}
 
 function HomeIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="m4 11 8-7 8 7v8.5a.5.5 0 0 1-.5.5H15v-5H9v5H4.5a.5.5 0 0 1-.5-.5V11Z" />
     </svg>
   );
@@ -72,7 +44,7 @@ function HomeIcon(props: SVGProps<SVGSVGElement>) {
 
 function MapIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M3 6.5 9 4.5l6 2 6-2v13l-6 2-6-2-6 2V6.5Zm6-1.3v13m6-11v13" />
     </svg>
   );
@@ -80,7 +52,7 @@ function MapIcon(props: SVGProps<SVGSVGElement>) {
 
 function ChatIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M5 6.5h14v10H8.7L5 19.5v-13Z" />
     </svg>
   );
@@ -88,7 +60,7 @@ function ChatIcon(props: SVGProps<SVGSVGElement>) {
 
 function LayersIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="m12 4 8 4-8 4-8-4 8-4Zm-6 8 6 3 6-3m-12 4 6 3 6-3" />
     </svg>
   );
@@ -96,141 +68,195 @@ function LayersIcon(props: SVGProps<SVGSVGElement>) {
 
 function ChartIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M4 19h16M7 16V9m5 7V5m5 11v-4" />
     </svg>
   );
 }
 
-function SettingsIcon(props: SVGProps<SVGSVGElement>) {
+function GearIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" {...props}>
-      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm0-4v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4m-7.8 7.8-1.4 1.4m0-10.6 1.4 1.4m7.8 7.8 1.4 1.4" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 4.5v1.6m0 11.8v1.6m7.5-7.5h-1.6m-11.8 0H4.5m12.8-5.3-1.1 1.1M8.3 15.7 7.2 16.8m0-9.6 1.1 1.1m7.4 7.4 1.1 1.1" />
     </svg>
   );
 }
 
-function SidebarUserCard({ user, onLogout }: { user: SidebarUser; onLogout: () => void | Promise<void> }) {
+function SunIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <div className="group flex items-center justify-between gap-2 px-1 pb-4 border-t dark:border-[#1b1c2b] border-slate-200/50 pt-4 mt-2">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#58d36f] to-[#1c6f32] relative shadow-[0_0_12px_rgba(88,211,111,0.2)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#0b3317]" />
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold dark:text-white text-slate-900 tracking-wide">{user.name}</p>
-          <p className="mt-0.5 inline-flex rounded border dark:border-[#3d3d91] border-indigo-200/50 dark:bg-[#11113a]/80 bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-semibold text-[#8584ff] uppercase tracking-wider">
-            {user.badge}
-          </p>
-        </div>
-      </div>
-      <button
-        onClick={() => void onLogout()}
-        title="Sign Out"
-        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-red-950/20 hover:text-red-400 dark:text-slate-500 text-slate-500 transition-all cursor-pointer"
-      >
-        <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="h-3.5 w-3.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-        </svg>
-      </button>
-    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v1.6M12 19.4V21M4.2 4.2l1.1 1.1M18.7 18.7l1.1 1.1M3 12h1.6M19.4 12H21M4.2 19.8l1.1-1.1M18.7 5.3l1.1-1.1" />
+    </svg>
   );
 }
 
-function StudyContextPanel({ context }: { context: StudySidebarContext }) {
-  const hasConcept = Boolean(context.conceptName);
-  if (!hasConcept && context.proficiencyPct == null) return null;
-
-  const stageLabel = context.stage ? STAGE_LABELS[context.stage] ?? context.stage : null;
-
+function MoonIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <div className="mb-4 rounded-xl border dark:border-[#6258ff]/25 border-indigo-200/60 dark:bg-[#121126]/40 bg-indigo-50/30 p-3">
-      <p className="text-[9px] font-bold uppercase tracking-wider text-[#8584ff] mb-2">Now studying</p>
-      {context.conceptName && (
-        <p className="text-xs font-semibold dark:text-white text-slate-900 leading-snug">{context.conceptName}</p>
-      )}
-      {typeof context.proficiencyPct === "number" && (
-        <div className="mt-2">
-          <div className="flex justify-between text-[10px] dark:text-slate-400 text-slate-500 mb-1">
-            <span>Proficiency</span>
-            <span>{context.proficiencyPct}%</span>
-          </div>
-          <div className="h-1.5 rounded-full dark:bg-slate-800 bg-slate-200 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[#6258ff]"
-              style={{ width: `${Math.min(100, context.proficiencyPct)}%` }}
-            />
-          </div>
-        </div>
-      )}
-      {stageLabel && typeof context.stageIndex === "number" && typeof context.stageTotal === "number" && (
-        <p className="mt-2 text-[10px] dark:text-slate-400 text-slate-500">
-          Stage {context.stageIndex + 1}/{context.stageTotal}: {stageLabel}
-        </p>
-      )}
-      {context.slideProgress && context.slideProgress.total > 0 && (
-        <p className="mt-1 text-[10px] dark:text-slate-400 text-slate-500">
-          Slide {context.slideProgress.current + 1}/{context.slideProgress.total}
-        </p>
-      )}
-      {context.weakPrereq && (
-        <p className="mt-2 text-[10px] text-amber-400/90">Weak prereq: {context.weakPrereq}</p>
-      )}
-      {context.journeyType && (
-        <p className="mt-1 text-[9px] uppercase tracking-wider dark:text-slate-600 text-slate-400">
-          {context.journeyType.replace(/_/g, " ")}
-        </p>
-      )}
-      {context.conceptId && (
-        <Link
-          href={`/chat?concept_id=${encodeURIComponent(context.conceptId)}${
-            context.nodeId ? `&node_id=${encodeURIComponent(context.nodeId)}` : ""
-          }&stage=practice&fresh=1&prompt=${encodeURIComponent(
-            `Give me a practice question on ${context.conceptName || context.conceptId}`,
-          )}`}
-          className="mt-3 inline-block text-[10px] font-bold uppercase tracking-wider text-[#8584ff] hover:text-white"
-        >
-          Jump to practice →
-        </Link>
-      )}
-    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M20 14.5A7.5 7.5 0 1 1 9.5 4 6.2 6.2 0 0 0 20 14.5Z" />
+    </svg>
   );
+}
+
+function formatStage(stage?: string | null): string {
+  if (!stage) return "";
+  return stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function StudySidebar({ studyContext }: { studyContext?: StudySidebarContext }) {
   const pathname = usePathname();
-  const { data, logout } = useApp();
+  const { data, logout, appTheme, setAppTheme } = useApp();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const menuFirstRef = useRef<HTMLAnchorElement>(null);
   const user = data.user;
+  const initials = user.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+  const onChat = pathname.startsWith("/chat");
+  const contextLabel = studyContext?.conceptName
+    ? [
+        studyContext.conceptName,
+        studyContext.stage ? formatStage(studyContext.stage) : null,
+        studyContext.proficiencyPct != null ? `${studyContext.proficiencyPct}%` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (!profileRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setProfileOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (profileOpen) {
+      menuFirstRef.current?.focus();
+    } else {
+      profileButtonRef.current?.blur();
+    }
+  }, [profileOpen]);
 
   return (
-    <aside className="study-sidebar flex min-h-screen w-[204px] flex-col px-3 py-5 dark:text-slate-100 text-slate-900 border-r dark:border-[#15162a] border-slate-200/80 select-none flex-none">
-      <div className="mb-8 flex items-center gap-2.5 px-1.5">
-        <BrandIcon />
-        <span className="text-base font-bold tracking-tight dark:text-white text-slate-900">Prepwise</span>
-      </div>
+    <header className="pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-3">
+      <div className="pointer-events-auto relative flex h-12 w-[min(72rem,calc(100%-1.5rem))] items-center justify-between gap-2 overflow-visible rounded-full px-2">
+        <NavLiquidGlass />
+        <nav className="relative z-10 flex min-w-0 items-center gap-0.5 overflow-x-auto" aria-label="Primary">
+          {navItems.map((item) => {
+            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={item.label}
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
+                className={`group flex h-11 shrink-0 items-center rounded-full px-2.5 text-xs font-semibold tracking-wide transition-[color,background-color,gap] duration-300 ${
+                  active
+                    ? "gap-2 bg-accent-soft text-accent"
+                    : "gap-2 text-muted hover:bg-hover hover:text-ink max-xl:gap-0 max-xl:hover:gap-2"
+                } focus-visible:gap-2`}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span
+                  className={`grid overflow-hidden transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                    active
+                      ? "grid-cols-[1fr]"
+                      : "grid-cols-[1fr] max-xl:grid-cols-[0fr] max-xl:group-hover:grid-cols-[1fr] max-xl:group-focus-visible:grid-cols-[1fr]"
+                  }`}
+                >
+                  <span className="min-w-0 overflow-hidden whitespace-nowrap">{item.label}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      {studyContext && pathname === "/chat" && <StudyContextPanel context={studyContext} />}
-
-      <nav className="space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`sidebar-item flex items-center gap-2.5 h-[34px] px-2.5 text-xs font-semibold rounded-lg border-l-2 transition-all cursor-pointer ${
-              pathname === item.href
-                ? "border-[#6258ff] dark:bg-[#121126] bg-slate-100/60 text-[#8584ff] shadow-[inset_0_1px_1px_rgba(98,88,255,0.08)]"
-                : "border-transparent dark:text-slate-400 text-slate-500 dark:hover:bg-[#101021] hover:bg-slate-100 dark:hover:text-slate-200 hover:text-slate-700"
-            }`}
+        <div className="relative z-10 flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setAppTheme(appTheme === "dark" ? "light" : "dark")}
+            title={appTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={appTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-hover cursor-pointer"
           >
-            <item.icon className="h-[14px] w-[14px]" />
-            <span>{item.label}</span>
-          </Link>
-        ))}
-      </nav>
+            {appTheme === "dark" ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+          </button>
 
-      <div className="mt-auto">
-        <SidebarUserCard user={user} onLogout={logout} />
+          <div className="relative" ref={profileRef}>
+            <button
+              ref={profileButtonRef}
+              type="button"
+              onClick={() => setProfileOpen((open) => !open)}
+              aria-expanded={profileOpen}
+              aria-haspopup="menu"
+              aria-label="Account menu"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-[10px] font-bold tracking-wide text-accent-on cursor-pointer"
+            >
+              {initials || "U"}
+            </button>
+            {profileOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-[calc(100%+10px)] w-52 overflow-hidden rounded-2xl border border-line bg-surface py-1.5 shadow-[var(--shadow-card)]"
+              >
+                <div className="px-3 py-2">
+                  <p className="truncate text-xs font-semibold text-ink">{user.name}</p>
+                  <p className="truncate text-[11px] text-muted">{user.email}</p>
+                </div>
+                <Link
+                  ref={menuFirstRef}
+                  href="/settings"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                  className="block px-3 py-2.5 text-xs font-medium text-ink-2 hover:bg-hover"
+                >
+                  Profile & settings
+                </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void logout()}
+                  className="block w-full px-3 py-2.5 text-left text-xs font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </aside>
+
+      {onChat && contextLabel ? (
+        <div
+          className="app-nav-context pointer-events-auto max-w-[min(64rem,100%)] truncate rounded-full px-3 py-1.5 text-[11px] font-medium"
+          title={contextLabel}
+        >
+          {contextLabel}
+          {studyContext?.slideProgress
+            ? ` · slide ${studyContext.slideProgress.current}/${studyContext.slideProgress.total}`
+            : ""}
+        </div>
+      ) : null}
+    </header>
   );
 }

@@ -75,7 +75,7 @@ export default function TheorySlideDeck({
         <button
           type="button"
           onClick={() => setShowFullText(false)}
-          className="text-xs font-bold uppercase tracking-wider text-[#8584ff]"
+          className="text-xs font-bold uppercase tracking-wider text-accent"
         >
           ← Back to slides
         </button>
@@ -104,7 +104,7 @@ export default function TheorySlideDeck({
               <button
                 type="button"
                 onClick={() => setShowFullText(true)}
-                className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#8584ff]"
+                className="text-[10px] font-bold uppercase tracking-wider text-muted hover:text-accent"
               >
                 Detailed notes
               </button>
