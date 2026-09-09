@@ -293,6 +293,7 @@ function AssistantResponse({
   onGrade,
   onPickCard,
   onOpenBatchCanvas,
+  onFlagStep,
   gradingDisabled,
   suppressPicker,
   isLatest,
@@ -302,6 +303,7 @@ function AssistantResponse({
   onGrade: (outcome: "correct" | "incorrect") => void;
   onPickCard: (card: FlashcardItem) => void;
   onOpenBatchCanvas?: (batch: InteractivePracticeData[], messageId: string) => void;
+  onFlagStep?: (stepId: string) => void;
   gradingDisabled?: boolean;
   suppressPicker?: boolean;
   isLatest?: boolean;
@@ -397,6 +399,8 @@ function AssistantResponse({
     isLatest && message.agent?.grading_ui?.show_correct_incorrect,
   );
 
+  const hasSteps = message.agent?.steps && message.agent.steps.length > 0;
+
   return (
     <article className="lesson-response assistant-plain">
       {practiceSplit ? (
@@ -405,6 +409,26 @@ function AssistantResponse({
           remainder={practiceSplit.remainder}
           hideSolution={hidePracticeSolution}
         />
+      ) : hasSteps ? (
+        <div className="flex flex-col gap-4 w-full">
+          {message.agent!.steps!.map((step) => (
+            <div key={step.step_id} className="relative group p-4 bg-white/5 border border-white/10 rounded-xl transition-colors hover:bg-white/10">
+              <MarkdownMath content={step.text} />
+              <div className="mt-3 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => onFlagStep?.(step.step_id)}
+                  className="text-xs font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current">
+                    <path d="M5 3v18H3V3h2zm2.5 1h12.1c1.3 0 2.2 1.3 1.7 2.5l-1.9 4 1.9 4c.5 1.2-.4 2.5-1.7 2.5H7.5V4z"/>
+                  </svg>
+                  I don't get this step
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <MarkdownMath content={message.content} />
       )}
@@ -690,6 +714,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
       nodeId?: string | null;
       studyStage?: StudyStage | null;
       gradedOutcome?: "correct" | "incorrect";
+      flaggedStepId?: string | null;
     },
     onToken?: (token: string) => void
   ) {
@@ -711,6 +736,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
       studyStage: stage,
       gradedOutcome: options?.gradedOutcome,
       placement: placementContext,
+      flaggedStepId: options?.flaggedStepId,
     }, onToken);
   }
 
@@ -941,6 +967,50 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
       return;
     }
     await submitMessage(`Follow up: ${card.front.slice(0, 80)}`);
+  }
+
+  async function submitFlaggedStep(stepId: string) {
+    if (isReplying) return;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: "I don't get this step",
+    };
+
+    setError("");
+    setIsReplying(true);
+    const assistantId = crypto.randomUUID();
+    setMessages((current) => [
+      ...current,
+      userMessage,
+      { id: assistantId, role: "assistant", content: "" },
+    ]);
+
+    try {
+      const agentResponse = await sendAgentMessage(
+        "I don't get this step",
+        activeSessionId ?? sessionId,
+        { flaggedStepId: stepId },
+        (token) => {
+          setMessages((current) =>
+            current.map((msg) =>
+              msg.id === assistantId
+                ? { ...msg, content: msg.content + token }
+                : msg
+            )
+          );
+        }
+      );
+      
+      setMessages((current) => current.filter((m) => m.id !== assistantId));
+      await handleAgentResponse(agentResponse);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Something went wrong.");
+      setMessages((current) => current.filter((message) => message.id !== userMessage.id && message.id !== assistantId));
+    } finally {
+      setIsReplying(false);
+    }
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1321,6 +1391,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
                   onOpenBatchCanvas={(batch, msgId) =>
                     setBatchCanvasPractice({ batch: asPracticeBatch(batch), messageId: msgId })
                   }
+                  onFlagStep={(stepId) => void submitFlaggedStep(stepId)}
                   gradingDisabled={isReplying}
                   suppressPicker={isRoadmapSession}
                   isLatest={message.id === latestAssistant?.id}

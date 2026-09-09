@@ -78,6 +78,7 @@ export type TurnPresentationPayload = {
   practice_question?: Record<string, unknown> | null;
   practice_batch?: Record<string, unknown>[] | null;
   active_agent?: string | null;
+  steps?: Array<{ step_id: string; text: string; order: number }> | null;
 };
 
 export type AgentChatResponse = {
@@ -103,6 +104,7 @@ export type AgentChatResponse = {
   error?: string | null;
   active_agent?: string | null;
   agent_signals?: AgentStatusPayload | null;
+  steps?: Array<{ step_id: string; text: string; order: number }> | null;
 };
 
 export type AgentCard = {
@@ -167,6 +169,7 @@ export function presentationToAgentResponse(
     practice_question: (pres?.practice_question as AgentChatResponse["practice_question"]) ?? null,
     practice_batch: (pres?.practice_batch as AgentChatResponse["practice_batch"]) ?? null,
     active_agent: pres?.active_agent ?? null,
+    steps: pres?.steps ?? null,
   };
 }
 
@@ -255,6 +258,7 @@ export async function sendChatMessage(payload: {
   studyStage?: StudyStage | null;
   gradedOutcome?: "correct" | "incorrect";
   placement?: PlacementContext;
+  flaggedStepId?: string | null;
 }, onToken?: (token: string) => void): Promise<AgentChatResponse> {
   const body: Record<string, unknown> = {
     user_id: payload.userId,
@@ -265,6 +269,7 @@ export async function sendChatMessage(payload: {
   if (payload.roadmapConceptId) body.roadmap_concept_id = payload.roadmapConceptId;
   if (payload.studyStage) body.study_stage = payload.studyStage;
   if (payload.gradedOutcome) body.graded_outcome = payload.gradedOutcome;
+  if (payload.flaggedStepId) body.flagged_step_id = payload.flaggedStepId;
   if (payload.placement?.journeyType) body.journey_type = payload.placement.journeyType;
   if (payload.placement?.focusChapters?.length) {
     body.focus_chapters = payload.placement.focusChapters;
