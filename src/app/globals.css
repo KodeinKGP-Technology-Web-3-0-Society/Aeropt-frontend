@@ -574,10 +574,35 @@ textarea:focus-visible,
   background: var(--bg-input);
   cursor: pointer;
   color: var(--text-main);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out,
+    opacity 240ms ease-out;
+  animation: practiceOptionIn 240ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
+.practice-canvas__option:nth-of-type(1) { animation-delay: 0ms; }
+.practice-canvas__option:nth-of-type(2) { animation-delay: 40ms; }
+.practice-canvas__option:nth-of-type(3) { animation-delay: 80ms; }
+.practice-canvas__option:nth-of-type(4) { animation-delay: 120ms; }
+
+@keyframes practiceOptionIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .practice-canvas__option:hover {
   background: var(--bg-hover);
+}
+
+.practice-canvas__option:active {
+  transform: scale(0.985);
 }
 
 .practice-canvas__option.is-selected {
@@ -593,6 +618,12 @@ textarea:focus-visible,
 .practice-canvas__option.is-wrong {
   border-color: var(--danger);
   background: color-mix(in oklch, var(--danger) 10%, var(--bg-surface));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-canvas__option {
+    animation: none;
+  }
 }
 
 .practice-canvas__option input {
@@ -645,10 +676,15 @@ textarea:focus-visible,
   font-size: 0.88rem;
   font-weight: 650;
   cursor: pointer;
+  transition: transform 140ms ease-out, background-color 150ms ease, opacity 150ms ease;
 }
 
 .practice-canvas__submit:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+.practice-canvas__submit:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .practice-canvas__submit:disabled {
@@ -660,6 +696,25 @@ textarea:focus-visible,
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--border-main);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-canvas__result {
+    transition: opacity 150ms ease;
+    transform: none;
+
+    @starting-style {
+      transform: none;
+    }
+  }
 }
 
 .practice-canvas__result.is-correct {
@@ -1303,12 +1358,40 @@ textarea:focus-visible,
   color: var(--text-on-ink);
   font-size: 0.9rem;
   line-height: 1.65;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .lesson-response {
   width: 100%;
   max-width: 48rem;
   margin: 0 0 26px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-bubble,
+  .lesson-response {
+    transition: opacity 150ms ease;
+    transform: none;
+
+    @starting-style {
+      transform: none;
+    }
+  }
 }
 
 .lesson-gap {
@@ -1486,6 +1569,30 @@ textarea:focus-visible,
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 0.75rem;
+}
+
+/* Dashboard card stagger — pair with an inline animation-delay per index
+   (30-80ms apart, per the stagger guideline). backwards fill keeps the card
+   invisible until its own delay elapses instead of flashing then hiding. */
+@keyframes dashCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dash-stagger-in {
+  animation: dashCardIn 320ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-stagger-in {
+    animation: none;
+  }
 }
 
 /* Follow-up picker deck — compact preview cards in chat */
@@ -1666,6 +1773,10 @@ textarea:focus-visible,
   color: var(--accent);
 }
 
+.quick-prompt-chip:active {
+  transform: scale(0.97);
+}
+
 .chat-error {
   width: 70%;
   max-width: 760px;
@@ -1792,6 +1903,15 @@ textarea:focus-visible,
   background: var(--accent);
   color: var(--text-on-accent);
   cursor: pointer;
+  transition: transform 120ms ease-out, background-color 150ms ease, opacity 150ms ease;
+}
+
+.chat-input button:hover:not(:disabled) {
+  background: var(--accent-hover, var(--accent));
+}
+
+.chat-input button:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 .chat-input button:disabled {

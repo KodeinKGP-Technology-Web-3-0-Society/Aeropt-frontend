@@ -88,7 +88,7 @@ export default function SlideShell({
             <button
               type="button"
               onClick={onExpand}
-              className="text-[10px] font-bold uppercase tracking-wider text-accent hover:text-white shrink-0"
+              className="text-[10px] font-bold uppercase tracking-wider text-accent transition-transform duration-150 hover:text-white active:scale-95 shrink-0"
             >
               Expand
             </button>
@@ -114,7 +114,7 @@ export default function SlideShell({
           disabled={slideIndex === 0}
           onClick={onPrev}
           title="Previous slide (←)"
-          className="text-xs font-bold uppercase tracking-wider text-muted hover:text-accent disabled:opacity-30"
+          className="text-xs font-bold uppercase tracking-wider text-muted transition-transform duration-150 hover:text-accent active:enabled:scale-90 disabled:opacity-30"
         >
           ← Prev
         </button>
@@ -124,7 +124,7 @@ export default function SlideShell({
           disabled={slideIndex >= totalSlides - 1}
           onClick={onNext}
           title="Next slide (→)"
-          className="text-xs font-bold uppercase tracking-wider text-accent hover:text-white disabled:opacity-30"
+          className="text-xs font-bold uppercase tracking-wider text-accent transition-transform duration-150 hover:text-white active:enabled:scale-90 disabled:opacity-30"
         >
           Next →
         </button>

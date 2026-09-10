@@ -149,7 +149,7 @@ function WeekStreakDots({ dots, streakValue }: { dots?: boolean[]; streakValue: 
             role="listitem"
             title={`${day}: ${status}`}
             aria-label={`${day}: ${status}`}
-            className={`h-2.5 w-2.5 rounded-full ${
+            className={`h-2.5 w-2.5 rounded-full transition-colors duration-200 ${
               isToday
                 ? "bg-accent ring-2 ring-accent/35 ring-offset-1 ring-offset-canvas"
                 : active
@@ -360,14 +360,14 @@ export default function DashboardContent() {
             <button
               type="button"
               onClick={handleContinueLearning}
-              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg bg-accent px-5 text-sm font-semibold text-accent-on hover:bg-accent-hover"
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg bg-accent px-5 text-sm font-semibold text-accent-on transition-[transform,background-color] duration-150 ease-out hover:bg-accent-hover active:scale-[0.97]"
             >
               {primaryLabel}
             </button>
             <button
               type="button"
               onClick={() => router.push("/roadmap")}
-              className="inline-flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-ink-2 hover:text-accent"
+              className="inline-flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-ink-2 transition-colors duration-150 hover:text-accent active:scale-[0.97]"
             >
               View roadmap
             </button>
@@ -379,13 +379,14 @@ export default function DashboardContent() {
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {SUBJECTS.map((subject) => {
+        {SUBJECTS.map((subject, i) => {
           const metrics = SUBJECT_METRICS[subject.id];
           const empty = metrics.attempted === 0;
           return (
             <article
               key={subject.id}
-              className="relative overflow-hidden rounded-xl border border-line bg-surface px-3 py-3"
+              style={{ animationDelay: `${i * 40}ms` }}
+              className="dash-stagger-in relative overflow-hidden rounded-xl border border-line bg-surface px-3 py-3 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-accent/30"
             >
               <span
                 className="absolute inset-y-2.5 left-0 w-[3px] rounded-full"
@@ -403,7 +404,7 @@ export default function DashboardContent() {
                     onClick={() =>
                       startQuickPrompt(`Teach me a short ${subject.label} warm-up from the basics.`, "theory")
                     }
-                    className="mt-2 cursor-pointer text-left text-xs leading-relaxed text-accent hover:underline"
+                    className="mt-2 cursor-pointer text-left text-xs leading-relaxed text-accent transition-[color,transform] duration-150 hover:underline active:scale-[0.97]"
                   >
                     Start a warm-up
                   </button>
@@ -417,19 +418,28 @@ export default function DashboardContent() {
             </article>
           );
         })}
-        <article className="rounded-xl border border-line bg-surface px-3 py-3">
+        <article
+          style={{ animationDelay: `${SUBJECTS.length * 40}ms` }}
+          className="dash-stagger-in rounded-xl border border-line bg-surface px-3 py-3 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-accent/30"
+        >
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Proficiency</p>
           <p className="mt-1.5 text-xl font-semibold tabular-nums text-ink">
             {overviewEmpty && subjectsEmpty ? "—" : (proficiencyStat?.value ?? "0%")}
           </p>
         </article>
-        <article className="rounded-xl border border-line bg-surface px-3 py-3">
+        <article
+          style={{ animationDelay: `${(SUBJECTS.length + 1) * 40}ms` }}
+          className="dash-stagger-in rounded-xl border border-line bg-surface px-3 py-3 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-accent/30"
+        >
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Flagged weak</p>
           <p className="mt-1.5 text-xl font-semibold tabular-nums text-ink">
             {overviewEmpty && subjectsEmpty ? "—" : weakN}
           </p>
         </article>
-        <article className="rounded-xl border border-line bg-surface px-3 py-3">
+        <article
+          style={{ animationDelay: `${(SUBJECTS.length + 2) * 40}ms` }}
+          className="dash-stagger-in rounded-xl border border-line bg-surface px-3 py-3 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-accent/30"
+        >
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Streak</p>
           <p className="mt-1.5 text-xl font-semibold tabular-nums text-ink">
             {streakN}
@@ -456,7 +466,7 @@ export default function DashboardContent() {
                     key={intent.id}
                     type="button"
                     onClick={() => setStudyIntent(intent.id)}
-                    className={`min-h-14 cursor-pointer rounded-lg border px-2 py-1.5 text-left ${
+                    className={`min-h-14 cursor-pointer rounded-lg border px-2 py-1.5 text-left transition-[transform,border-color,background-color] duration-150 ease-out active:scale-[0.97] ${
                       active
                         ? "border-accent bg-accent-soft text-ink"
                         : "border-line text-muted hover:border-accent/40"
@@ -505,7 +515,7 @@ export default function DashboardContent() {
                 type="button"
                 onClick={handlePromptAgent}
                 disabled={!canPromptAgent}
-                className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-accent text-xs font-semibold uppercase tracking-wider text-accent-on hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-accent text-xs font-semibold uppercase tracking-wider text-accent-on transition-[transform,background-color] duration-150 ease-out hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Start session
               </button>
@@ -523,7 +533,7 @@ export default function DashboardContent() {
                 <button
                   type="button"
                   onClick={() => openConceptChat(weakStat.list![0], true)}
-                  className="mt-2 cursor-pointer text-sm font-semibold text-accent hover:underline"
+                  className="mt-2 cursor-pointer text-sm font-semibold text-accent transition-transform duration-150 hover:underline active:scale-[0.97]"
                 >
                   Practise {weakStat.list[0]}
                 </button>
@@ -536,7 +546,7 @@ export default function DashboardContent() {
                 <button
                   type="button"
                   onClick={() => setShowStrengthBriefing(true)}
-                  className="mt-2 cursor-pointer text-sm font-semibold text-accent hover:underline"
+                  className="mt-2 cursor-pointer text-sm font-semibold text-accent transition-transform duration-150 hover:underline active:scale-[0.97]"
                 >
                   Check your strength
                 </button>
