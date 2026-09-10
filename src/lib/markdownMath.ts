@@ -101,10 +101,24 @@ function englishWordCount(text: string): number {
   return (stripped.match(/[A-Za-z]{3,}/g) || []).length;
 }
 
+/**
+ * Two or more real English words in a row (after stripping macros) reads as a
+ * sentence, not a formula — even if it also contains 2+ macros (e.g. "Angular
+ * speed \omega = 2\pi f in SHM." has 2 macros and only 3 counted words, but
+ * "Angular speed" / "in SHM" are plain prose). Bug found 2026-09-11: without
+ * this veto, isLatexHeavy wrongly wrapped whole sentences like that as one
+ * display-math block, gluing every word together edge-to-edge under KaTeX.
+ */
+function hasConsecutiveEnglishWords(text: string): boolean {
+  const stripped = text.replace(/\\[a-zA-Z]+/g, " ");
+  return /[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(stripped);
+}
+
 function isLatexHeavy(text: string): boolean {
   const s = text.trim();
   if (!s) return false;
   if (!LATEX_LINE_RE.test(s) && !/[\\^_]/.test(s)) return false;
+  if (hasConsecutiveEnglishWords(s)) return false;
   // Prefer math when macros dominate, or line is short equation-like
   const words = englishWordCount(s);
   const macros = (s.match(/\\[a-zA-Z]+/g) || []).length;
@@ -452,7 +466,16 @@ export const MATH_GOLDEN_FIXTURES: MathFixture[] = [
     id: "unicode-omega-becomes-macro",
     surface: "chat",
     input: "Angular speed ω = 2πf in SHM.",
-    mustInclude: ["\\omega"],
+    mustInclude: ["\\omega", "Angular speed"],
+    mustNotInclude: ["Angularspeed", "$$\nAngular"],
+  },
+  {
+    id: "sentence-with-two-macros-not-glued-as-one-math-block",
+    surface: "chat",
+    input:
+      "For small oscillations, the time period is T = 2\\pi\\sqrt{L/g} where L is the length.",
+    mustInclude: ["For small oscillations", "where L is the length"],
+    mustNotInclude: ["Forsmall", "wherelis"],
   },
   {
     id: "bare-frac-wrapped",
