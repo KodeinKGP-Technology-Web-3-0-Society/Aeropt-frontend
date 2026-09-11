@@ -41,10 +41,23 @@ export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
+/**
+ * The middleware gate (src/middleware.ts) reads this cookie server-side; it
+ * can't see localStorage. Every place that extends how long the browser
+ * considers itself logged in must renew this cookie too, or the two fall out
+ * of sync — a still-active user (access token silently refreshed
+ * indefinitely) hits a cookie that quietly expired on its own fixed clock,
+ * and any protected route bounces them to /auth while the client still
+ * thinks they're logged in.
+ */
+function renewAuthCookie(): void {
+  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+}
+
 export function storeTokens(access: string, refresh: string): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, access);
   localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  renewAuthCookie();
 }
 
 export function clearTokens(): void {
@@ -155,6 +168,7 @@ export async function refreshAccessToken(): Promise<string | null> {
   if (data.refresh) {
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh);
   }
+  renewAuthCookie();
   return data.access;
 }
 
