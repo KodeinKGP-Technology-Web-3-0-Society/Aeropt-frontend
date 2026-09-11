@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useApp } from "@/components/AppContext";
 import PrepwiseLogo from "@/components/PrepwiseLogo";
 import MarkdownMath from "@/components/MarkdownMath";
 import Reveal from "@/components/marketing/Reveal";
+import ScrollProgress from "@/components/marketing/ScrollProgress";
+import CompareRow from "@/components/marketing/CompareRow";
 
 function SunIcon() {
   return (
@@ -55,6 +58,14 @@ function IconDashboard() {
   );
 }
 
+const COMPARISONS = [
+  { usual: "Same explanation for every student who asks", aeropt: "Reads your last few attempts before deciding how to teach this one" },
+  { usual: "Answers the exact question you typed", aeropt: "Finds the shaky prerequisite behind it and teaches that first, if that's the real problem" },
+  { usual: "A general chatbot with a JEE prompt bolted on", aeropt: "A retrieval pipeline built specifically around the JEE Physics syllabus" },
+  { usual: "Forgets everything the moment you close the tab", aeropt: "Opens your next session already knowing what you struggled with last time" },
+  { usual: "Sounds equally confident whether it's right or not", aeropt: "Tells you plainly when a question is outside what it covers" },
+];
+
 const FEATURES = [
   {
     icon: IconAdaptive,
@@ -80,9 +91,39 @@ const FEATURES = [
 
 export default function LandingPage() {
   const { appTheme, setAppTheme } = useApp();
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const altitudeFieldRef = useRef<HTMLDivElement | null>(null);
+
+  // Subtle parallax on the hero's contour-line field — genuinely tied to
+  // scroll position, not a one-shot reveal. Capped and slow (0.08x) so it
+  // reads as depth, not motion sickness; transform only, mutated directly on
+  // the node (no React state per scroll tick, no CSS-variable-on-parent
+  // recalculation).
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    const field = altitudeFieldRef.current;
+    if (!scroller || !field) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const y = Math.min(scroller.scrollTop * 0.08, 48);
+      field.style.transform = `translateY(${y}px)`;
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <div className="relative h-screen overflow-y-auto bg-canvas font-sans">
+    <div ref={scrollRef} className="relative h-screen overflow-y-auto bg-canvas font-sans">
+      <ScrollProgress scrollRef={scrollRef} />
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
         <div className="flex items-center gap-2.5">
@@ -115,7 +156,7 @@ export default function LandingPage() {
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        <div className="altitude-field" aria-hidden="true" />
+        <div ref={altitudeFieldRef} className="altitude-field" aria-hidden="true" />
         <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-20 pt-10 sm:px-8 sm:pb-28 sm:pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div className="hero-enter">
             <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-accent">
@@ -211,6 +252,25 @@ export default function LandingPage() {
               </Reveal>
             );
           })}
+        </div>
+      </section>
+
+      {/* ── Why switch ──────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+        <Reveal as="div">
+          <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-accent">Why switch</p>
+          <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            Not another chatbot with a JEE prompt.
+          </h2>
+        </Reveal>
+        <div className="mt-8 grid grid-cols-1 gap-0 text-sm font-semibold uppercase tracking-wider text-muted sm:grid-cols-[1fr_1.3fr] sm:gap-8">
+          <p>The usual way</p>
+          <p className="mt-2 sm:mt-0">Aeropt</p>
+        </div>
+        <div className="mt-1">
+          {COMPARISONS.map((row, i) => (
+            <CompareRow key={row.usual} usual={row.usual} aeropt={row.aeropt} delay={i * 60} />
+          ))}
         </div>
       </section>
 

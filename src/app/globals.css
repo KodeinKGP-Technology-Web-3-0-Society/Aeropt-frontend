@@ -1649,6 +1649,39 @@ textarea:focus-visible,
 .landing-btn:active { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) { .landing-btn:active { transform: none; } }
 
+/* Scroll-progress hairline — genuinely tied to scroll position (not a
+   one-shot reveal), and functional: it's the only honest way to show a
+   first-time visitor how much of the pitch is left. Width, not transform,
+   because it grows from a fixed left edge; cheap at 2px tall. */
+.scroll-progress-track {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 50;
+  background: transparent;
+}
+.scroll-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+/* "Why Aeropt" comparison rows — wipe in left-to-right via clip-path rather
+   than the fade+rise every other section uses, so this section (the one
+   making the direct case for switching) reads as a distinct moment, not
+   another card in the same rhythm. */
+.compare-row {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 640ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.compare-row.is-visible { clip-path: inset(0 0 0 0); }
+@media (prefers-reduced-motion: reduce) {
+  .compare-row { clip-path: inset(0 0 0 0); transition: opacity 200ms ease; }
+}
+
 /* Follow-up picker deck — compact preview cards in chat */
 .picker-card-grid {
   width: 100%;
