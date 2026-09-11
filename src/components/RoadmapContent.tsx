@@ -108,7 +108,11 @@ function NodeCard({
   const isCurrent = node.status === "in_progress" || isUpNext;
   const showStages = node.status === "in_progress" || isUpNext || node.status === "completed";
   const stages = showStages ? nodeStageProgress(node) : [];
-  const actionable = node.status !== "skipped";
+  // The tutor has no seeded content for this concept yet — opening it would
+  // dead-end on "this looks outside the syllabus I cover", so say so here
+  // rather than handing over a button that goes nowhere.
+  const notReady = node.content_ready === false;
+  const actionable = node.status !== "skipped" && !notReady;
 
   return (
     <div
@@ -155,7 +159,13 @@ function NodeCard({
           {formatNodeType(node.node_type)} · {node.estimated_minutes} min · Mastery:{" "}
           {formatProficiencyLabel(node)}
         </p>
-        {stages.length > 0 && <StageStrip items={stages} />}
+        {stages.length > 0 && !notReady && <StageStrip items={stages} />}
+        {notReady && (
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-line bg-hover px-2 py-1 text-[11px] font-semibold text-muted">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-muted" />
+            Lessons being prepared
+          </p>
+        )}
         {actionable && (
           <div className="mt-3 flex justify-end">
             <button
@@ -374,7 +384,9 @@ export default function RoadmapContent() {
   }
 
   const current = roadmap.current_node;
-  const currentEntry = current ? resolveNodeEntry(current) : null;
+  // Don't offer the hero CTA for a concept the tutor can't teach yet.
+  const currentEntry =
+    current && current.content_ready !== false ? resolveNodeEntry(current) : null;
 
   return (
     <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
@@ -455,7 +467,14 @@ export default function RoadmapContent() {
               <p className="text-xs dark:text-muted text-muted mt-0.5">
                 {current.chapter} · {formatNodeType(current.node_type)}
               </p>
-              <StageStrip items={nodeStageProgress(current)} />
+              {current.content_ready === false ? (
+                <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-semibold text-muted">
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-muted" />
+                  Lessons being prepared
+                </p>
+              ) : (
+                <StageStrip items={nodeStageProgress(current)} />
+              )}
             </div>
           )}
         </div>

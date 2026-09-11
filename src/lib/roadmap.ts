@@ -36,6 +36,8 @@ export type PathNode = {
   estimated_minutes: number;
   proficiency_pct: number | null;
   proficiency_display: ProficiencyDisplay;
+  /** False when the tutor has no seeded content for this concept yet. */
+  content_ready?: boolean;
   status: NodeStatus;
   started_at: string | null;
   completed_at: string | null;
