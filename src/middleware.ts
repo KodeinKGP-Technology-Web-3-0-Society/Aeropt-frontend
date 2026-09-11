@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
   const hasAuth = request.cookies.get("has_auth")?.value === "1";
   if (!hasAuth) {
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/";
+    loginUrl.pathname = "/auth";
     return NextResponse.redirect(loginUrl);
   }
 

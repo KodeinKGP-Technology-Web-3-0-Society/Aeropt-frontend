@@ -3,26 +3,16 @@
 import React, { useState } from "react";
 import { useApp } from "@/components/AppContext";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import PrepwiseLogo from "@/components/PrepwiseLogo";
 
-// Premium Isometric 3D Cube Logo
-const PrepwiseLogo = () => (
-  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-accent to-accent-hover text-white shadow-md shadow-accent/20">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-      {/* Top Face */}
-      <path d="M12 2L2 7l10 5 10-5-10-5z" fill="rgba(255,255,255,0.15)"/>
-      {/* Left Face */}
-      <path d="M2 7v10l10 5V12L2 7z" fill="rgba(255,255,255,0.05)"/>
-      {/* Right Face */}
-      <path d="M22 7v10l-10 5V12l10-5z" fill="rgba(255,255,255,0.2)"/>
-      {/* Inner Node */}
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-    </svg>
-  </div>
-);
-
-export default function LoginScreen() {
+export default function LoginScreen({
+  initialTab = "signin",
+}: {
+  /** Lets the landing page's "Get started" vs. "Log in" links open the right tab. */
+  initialTab?: "signin" | "signup";
+}) {
   const { login, register } = useApp();
-  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
+  const [activeTab, setActiveTab] = useState<"signin" | "signup">(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
