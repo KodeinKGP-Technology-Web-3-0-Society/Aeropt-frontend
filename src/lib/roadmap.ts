@@ -80,18 +80,41 @@ export type RoadmapProgressResponse = {
   roadmap: LearningPath;
 };
 
-export async function fetchRoadmap(regenerate = false): Promise<LearningPath> {
+/** Subjects the backend actually has a syllabus file for. */
+export const DEFAULT_SUBJECT = "Physics";
+
+export async function fetchRoadmapSubjects(): Promise<string[]> {
+  return cachedGet(cacheKey(["roadmap", "subjects"]), CacheTTL.roadmap, async () => {
+    const res = await auth.apiRequest<{ subjects: string[] }>(
+      `${auth.getApiBaseUrl()}/roadmap/subjects/`
+    );
+    return res.subjects ?? [DEFAULT_SUBJECT];
+  });
+}
+
+export async function fetchRoadmap(
+  regenerate = false,
+  subject: string = DEFAULT_SUBJECT
+): Promise<LearningPath> {
+  const q = `subject=${encodeURIComponent(subject)}`;
   if (regenerate) {
-    invalidateCache("roadmap");
-    return auth.apiRequest<LearningPath>(`${auth.getApiBaseUrl()}/roadmap/?regenerate=1`);
+    // Only this subject's cached payload is stale — the others are untouched.
+    invalidateCache(cacheKey(["roadmap", subject]));
+    return auth.apiRequest<LearningPath>(
+      `${auth.getApiBaseUrl()}/roadmap/?regenerate=1&${q}`
+    );
   }
-  return cachedGet(cacheKey(["roadmap"]), CacheTTL.roadmap, () =>
-    auth.apiRequest<LearningPath>(`${auth.getApiBaseUrl()}/roadmap/`)
+  return cachedGet(cacheKey(["roadmap", subject]), CacheTTL.roadmap, () =>
+    auth.apiRequest<LearningPath>(`${auth.getApiBaseUrl()}/roadmap/?${q}`)
   );
 }
 
-export async function fetchRoadmapNext(): Promise<RoadmapNextResponse> {
-  return auth.apiRequest<RoadmapNextResponse>(`${auth.getApiBaseUrl()}/roadmap/next/`);
+export async function fetchRoadmapNext(
+  subject: string = DEFAULT_SUBJECT
+): Promise<RoadmapNextResponse> {
+  return auth.apiRequest<RoadmapNextResponse>(
+    `${auth.getApiBaseUrl()}/roadmap/next/?subject=${encodeURIComponent(subject)}`
+  );
 }
 
 export async function updateRoadmapProgress(payload: {

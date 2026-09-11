@@ -4,18 +4,20 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  DEFAULT_SUBJECT,
   LearningPath,
   PathNode,
   StageProgressItem,
   buildContinueChatUrl,
   chapterMasteryPct,
   fetchRoadmap,
+  fetchRoadmapSubjects,
   formatProficiencyLabel,
   groupNodesByChapter,
   nodeStageProgress,
   resolveNodeEntry,
 } from "@/lib/roadmap";
-import { invalidateCache } from "@/lib/apiCache";
+import { cacheKey, invalidateCache } from "@/lib/apiCache";
 
 function formatNodeType(nodeType: string): string {
   if (!nodeType) return "Learn";
@@ -190,37 +192,52 @@ export default function RoadmapContent() {
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>({});
+  const [subject, setSubject] = useState<string>(DEFAULT_SUBJECT);
+  const [subjects, setSubjects] = useState<string[]>([DEFAULT_SUBJECT]);
 
-  const loadRoadmap = useCallback((regenerate = false, silent = false) => {
-    if (!silent) {
-      setLoading(true);
-      setError(null);
-    }
-    if (regenerate) setRegenerating(true);
+  const loadRoadmap = useCallback(
+    (regenerate = false, silent = false, forSubject: string = subject) => {
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
+      if (regenerate) setRegenerating(true);
 
-    fetchRoadmap(regenerate)
-      .then((data) => {
-        setRoadmap(data);
-        setLoading(false);
-        setRegenerating(false);
+      fetchRoadmap(regenerate, forSubject)
+        .then((data) => {
+          setRoadmap(data);
+          setLoading(false);
+          setRegenerating(false);
+        })
+        .catch((err: Error) => {
+          setError(err.message || "Failed to load roadmap");
+          setLoading(false);
+          setRegenerating(false);
+        });
+    },
+    [subject],
+  );
+
+  // Which subjects the backend actually has a syllabus for — never hardcoded,
+  // so adding a syllabus file server-side surfaces here with no frontend change.
+  useEffect(() => {
+    fetchRoadmapSubjects()
+      .then((list) => {
+        if (list.length) setSubjects(list);
       })
-      .catch((err: Error) => {
-        setError(err.message || "Failed to load roadmap");
-        setLoading(false);
-        setRegenerating(false);
-      });
+      .catch(() => setSubjects([DEFAULT_SUBJECT]));
   }, []);
 
   useEffect(() => {
-    invalidateCache("roadmap");
-    loadRoadmap();
-  }, [loadRoadmap]);
+    invalidateCache(cacheKey(["roadmap", subject]));
+    loadRoadmap(false, false, subject);
+  }, [loadRoadmap, subject]);
 
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      invalidateCache("roadmap");
-      loadRoadmap(false, true);
+      invalidateCache(cacheKey(["roadmap", subject]));
+      loadRoadmap(false, true, subject);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -370,6 +387,33 @@ export default function RoadmapContent() {
             {roadmap.active_nodes} concepts · ~{roadmap.estimated_weeks} weeks at{" "}
             {roadmap.daily_goal_minutes} min/day
           </p>
+          {subjects.length > 1 && (
+            <div
+              role="tablist"
+              aria-label="Roadmap subject"
+              className="mt-3 inline-flex rounded-lg border border-line bg-surface p-0.5"
+            >
+              {subjects.map((s) => {
+                const active = s === subject;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSubject(s)}
+                    className={`min-h-9 rounded-[7px] px-3.5 text-xs font-semibold transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      active
+                        ? "bg-accent text-accent-on"
+                        : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <button

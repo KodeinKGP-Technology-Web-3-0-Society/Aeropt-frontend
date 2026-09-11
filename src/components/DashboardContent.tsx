@@ -6,6 +6,7 @@ import { useApp } from "@/components/AppContext";
 import { apiRequest, getApiBaseUrl } from "@/lib/auth";
 import { CacheTTL, cacheKey, cachedGet, peekCache } from "@/lib/apiCache";
 import {
+  DEFAULT_SUBJECT,
   LearningPath,
   buildContinueChatUrl,
   fetchRoadmap,
@@ -166,7 +167,7 @@ function WeekStreakDots({ dots, streakValue }: { dots?: boolean[]; streakValue: 
 export default function DashboardContent() {
   const router = useRouter();
   const { data, setData, setQuizActive } = useApp();
-  const cachedRoadmap = peekCache<LearningPath>(cacheKey(["roadmap"]));
+  const cachedRoadmap = peekCache<LearningPath>(cacheKey(["roadmap", DEFAULT_SUBJECT]));
   const [loading, setLoading] = useState(!cachedRoadmap);
   const [error, setError] = useState<string | null>(null);
   const [roadmap, setRoadmap] = useState<LearningPath | null>(cachedRoadmap);
@@ -192,7 +193,7 @@ export default function DashboardContent() {
   const fetchDashboard = useCallback(() => {
     const warm =
       Boolean(peekCache(cacheKey(["dashboard"]))) ||
-      Boolean(peekCache(cacheKey(["roadmap"])));
+      Boolean(peekCache(cacheKey(["roadmap", DEFAULT_SUBJECT])));
     setLoading(!warm);
     setError(null);
 
