@@ -2,12 +2,15 @@ import { invalidateCache } from "@/lib/apiCache";
 
 /** Django (:8000) is the only auth authority. Do not call the agent for login/register. */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
-  (process.env.NEXT_PUBLIC_CHAT_API_BASE?.replace(/\/chat\/?$/, "") ?? "http://127.0.0.1:8000/api/v1");
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "";
+if (!API_BASE) {
+  console.error("CRITICAL ERROR: NEXT_PUBLIC_API_BASE_URL is unset. API calls will fail.");
+}
 
-export const AGENT_API_BASE =
-  process.env.NEXT_PUBLIC_AGENT_API_BASE?.replace(/\/+$/, "") || "http://127.0.0.1:8001";
+export const AGENT_API_BASE = process.env.NEXT_PUBLIC_AGENT_API_BASE?.replace(/\/+$/, "") || "";
+if (!AGENT_API_BASE) {
+  console.error("CRITICAL ERROR: NEXT_PUBLIC_AGENT_API_BASE is unset. Agent calls will fail.");
+}
 
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
