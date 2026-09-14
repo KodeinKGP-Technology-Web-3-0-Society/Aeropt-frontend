@@ -42,3 +42,5 @@ src/
 | `npm run build` | Build for production |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run ci` | Lint, math self-test, typecheck, production build |
+| `make deploy` | Local CD: start `:3000` if it is not already up |

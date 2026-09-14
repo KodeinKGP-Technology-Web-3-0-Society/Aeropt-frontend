@@ -222,7 +222,7 @@ export default function AssistantResponse({
                   <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current">
                     <path d="M5 3v18H3V3h2zm2.5 1h12.1c1.3 0 2.2 1.3 1.7 2.5l-1.9 4 1.9 4c.5 1.2-.4 2.5-1.7 2.5H7.5V4z"/>
                   </svg>
-                  I don't get this step
+                  {"I don't get this step"}
                 </button>
               </div>
             </div>

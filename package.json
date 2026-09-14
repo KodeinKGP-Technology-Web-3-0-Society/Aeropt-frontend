@@ -6,8 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test:math": "node --experimental-strip-types src/lib/markdownMath.selftest.ts"
+    "lint": "eslint .",
+    "test:math": "node --experimental-strip-types src/lib/markdownMath.selftest.ts",
+    "typecheck": "tsc --noEmit",
+    "ci": "bash ci/run.sh"
   },
   "dependencies": {
     "@lottiefiles/dotlottie-react": "^0.19.15",
