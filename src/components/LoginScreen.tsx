@@ -153,7 +153,7 @@ export default function LoginScreen({
               {/* Divider: OR CONTINUE WITH */}
               <div className="flex items-center my-6">
                 <div className="flex-1 border-t border-line border-line" />
-                <span className="px-3 text-[10px] font-bold tracking-wider text-muted dark:text-muted uppercase select-none">
+                <span className="px-3 text-[10px] font-bold tracking-wider text-muted uppercase select-none">
                   OR CONTINUE WITH
                 </span>
                 <div className="flex-1 border-t border-line border-line" />
@@ -244,7 +244,7 @@ export default function LoginScreen({
             </div>
 
             {/* Footer Terms */}
-            <p className="mt-6 text-[10px] text-center text-muted dark:text-muted font-medium leading-relaxed tracking-wider uppercase select-none">
+            <p className="mt-6 text-[10px] text-center text-muted font-medium leading-relaxed tracking-wider uppercase select-none">
               By continuing you agree to our <br className="sm:hidden" />
               <span className="cursor-pointer text-accent hover:underline">Terms</span> &amp;{" "}
               <span className="cursor-pointer text-accent hover:underline">Privacy Policy</span>

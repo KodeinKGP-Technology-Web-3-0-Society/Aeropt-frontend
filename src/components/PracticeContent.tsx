@@ -80,7 +80,7 @@ export default function PracticeContent() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Chapter Filter */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
               Chapter
             </label>
             <select
@@ -103,7 +103,7 @@ export default function PracticeContent() {
 
           {/* Difficulty Filter */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
               Difficulty
             </label>
             <select
@@ -126,7 +126,7 @@ export default function PracticeContent() {
 
           {/* Type Filter */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
               Type
             </label>
             <select
@@ -209,7 +209,7 @@ export default function PracticeContent() {
 
             {/* Question Text */}
             <div className="p-1">
-              <p className="text-sm font-semibold dark:text-slate-100 text-ink leading-relaxed">
+              <p className="text-sm font-semibold text-ink leading-relaxed">
                 {activeQuestion.text}
               </p>
             </div>
@@ -219,7 +219,7 @@ export default function PracticeContent() {
               {activeQuestion.options.map((opt) => {
                 const isSelected = selectedOption === opt.label;
                 const isCorrect = opt.label === activeQuestion.correctAnswer;
-                let optionClass = "border-line bg-canvas/40 text-ink-2 dark:hover:border-[#3d3d91] border-line/50 dark:hover:bg-[#101021] bg-hover/30";
+                let optionClass = "border-line bg-canvas/40 text-ink-2 hover:border-line-strong hover:bg-hover";
                 
                 if (isAnswerChecked) {
                   if (isCorrect) {
@@ -241,7 +241,7 @@ export default function PracticeContent() {
                     <span className={`h-6 w-6 rounded-lg flex items-center justify-center font-bold text-xs ${
                       isSelected 
                         ? "bg-accent text-white" 
-                        : "bg-hover dark:text-muted text-muted border border-line"
+                        : "bg-hover text-muted border border-line"
                     }`}>
                       {opt.label}
                     </span>
@@ -298,7 +298,7 @@ export default function PracticeContent() {
                   </span>
                   <span className="text-xs font-bold text-ink-2">
                     {selectedOption === activeQuestion.correctAnswer ? "Correct!" : "Incorrect Answer."}{" "}
-                    <span className="text-[10px] dark:text-muted text-muted font-semibold uppercase ml-2 tracking-wider">
+                    <span className="text-[10px] text-muted font-semibold uppercase ml-2 tracking-wider">
                       Time spent: {activeQuestion.timeSpent}
                     </span>
                   </span>
@@ -339,7 +339,7 @@ export default function PracticeContent() {
         <div className="bg-surface border border-line rounded-2xl p-10 text-center shadow-lg">
           <span className="text-2xl">🔍</span>
           <h3 className="text-sm font-bold text-ink uppercase mt-4 mb-2">No Questions Match Filters</h3>
-          <p className="text-xs dark:text-muted text-muted max-w-[320px] mx-auto leading-relaxed">
+          <p className="text-xs text-muted max-w-[320px] mx-auto leading-relaxed">
             Try resetting your chapter, difficulty level, or question type filters.
           </p>
         </div>

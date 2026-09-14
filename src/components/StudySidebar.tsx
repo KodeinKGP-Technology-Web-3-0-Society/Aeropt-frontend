@@ -236,7 +236,7 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
                   type="button"
                   role="menuitem"
                   onClick={() => void logout()}
-                  className="block w-full px-3 py-2.5 text-left text-xs font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                  className="block w-full px-3 py-2.5 text-left text-xs font-medium text-danger hover:bg-danger/10 cursor-pointer"
                 >
                   Sign out
                 </button>

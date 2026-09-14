@@ -71,7 +71,7 @@ function StageStrip({ items }: { items: StageProgressItem[] }) {
       {items.map((item, index) => (
         <li key={item.stage} className="flex items-center gap-1.5">
           {index > 0 && (
-            <span className="text-[10px] dark:text-ink-2 text-slate-300" aria-hidden>
+            <span className="text-[10px] text-muted" aria-hidden>
               →
             </span>
           )}
@@ -81,7 +81,7 @@ function StageStrip({ items }: { items: StageProgressItem[] }) {
                 ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
                 : item.state === "current"
                   ? "border-accent/50 bg-accent/15 text-accent"
-                  : "border-slate-500/20 dark:text-muted text-muted"
+                  : "border-slate-500/20 text-muted"
             }`}
           >
             {item.label}
@@ -153,7 +153,7 @@ function NodeCard({
                 ? "text-emerald-500"
                 : node.proficiency_display === "weak"
                   ? "text-red-400"
-                  : "dark:text-muted text-muted"
+                  : "text-muted"
           }`}
         >
           {formatNodeType(node.node_type)} · {node.estimated_minutes} min · Mastery:{" "}
@@ -175,7 +175,7 @@ function NodeCard({
               className={`min-h-10 px-4 rounded-lg text-xs font-bold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
                 isPrimary
                   ? "bg-accent hover:bg-accent-hover text-white shadow-none"
-                  : "border border-line text-accent hover:border-accent/50 dark:hover:bg-[#121126] hover:bg-accent-soft"
+                  : "border border-line text-accent hover:border-accent/50 hover:bg-accent-soft"
               }`}
             >
               {entry.label}
@@ -432,7 +432,7 @@ export default function RoadmapContent() {
             type="button"
             onClick={handleRebuildPath}
             disabled={regenerating}
-            className="min-h-10 text-xs font-semibold px-4 py-2 rounded-lg border border-line dark:text-muted text-ink-2 hover:border-accent/40 transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="min-h-10 text-xs font-semibold px-4 py-2 rounded-lg border border-line text-ink-2 hover:border-accent/40 transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             {regenerating ? "Rebuilding..." : "Rebuild path"}
           </button>
@@ -464,7 +464,7 @@ export default function RoadmapContent() {
                 {heroFocusLabel(current)}
               </p>
               <p className="text-sm font-bold text-ink">{current.concept_name}</p>
-              <p className="text-xs dark:text-muted text-muted mt-0.5">
+              <p className="text-xs text-muted mt-0.5">
                 {current.chapter} · {formatNodeType(current.node_type)}
               </p>
               {current.content_ready === false ? (
@@ -484,7 +484,7 @@ export default function RoadmapContent() {
             style={{ width: `${roadmap.progress_pct}%` }}
           />
         </div>
-        <p className="text-[10px] dark:text-muted text-muted mt-2 font-medium">
+        <p className="text-[10px] text-muted mt-2 font-medium">
           {roadmap.total_nodes} nodes total · {roadmap.active_nodes} on your active path
         </p>
       </div>
@@ -505,7 +505,7 @@ export default function RoadmapContent() {
               >
                 <div>
                   <h2 className="text-sm font-bold text-ink">{chapter.name}</h2>
-                  <p className="text-[11px] dark:text-muted text-muted font-medium mt-0.5">
+                  <p className="text-[11px] text-muted font-medium mt-0.5">
                     {chapter.activeCount} concepts on path
                     {chapter.fullyDone ? " · completed" : ""}
                   </p>
@@ -515,7 +515,7 @@ export default function RoadmapContent() {
                     <span className="text-xs font-extrabold text-ink-2">
                       {chapter.completePct}%
                     </span>
-                    <p className="text-[10px] dark:text-muted text-muted uppercase tracking-wider">
+                    <p className="text-[10px] text-muted uppercase tracking-wider">
                       Chapter complete
                     </p>
                   </div>
@@ -552,7 +552,7 @@ export default function RoadmapContent() {
         })}
       </div>
 
-      <p className="text-center text-[10px] dark:text-ink-2 text-muted mt-8">
+      <p className="text-center text-[10px] text-muted mt-8">
         Chemistry and Mathematics roadmaps are coming soon.{" "}
         <Link href="/dashboard" className="text-accent hover:underline">
           Back to dashboard

@@ -155,7 +155,7 @@ function WeekStreakDots({ dots, streakValue }: { dots?: boolean[]; streakValue: 
                 ? "bg-accent ring-2 ring-accent/35 ring-offset-1 ring-offset-canvas"
                 : active
                   ? "bg-accent/55"
-                  : "border border-dashed dark:border-white/20 border-slate-300 bg-transparent"
+                  : "border border-dashed border-line bg-transparent"
             }`}
           />
         );

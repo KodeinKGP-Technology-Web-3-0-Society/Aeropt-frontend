@@ -250,11 +250,11 @@ function PickerCard({
       </div>
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
         {difficulty ? (
-          <span className="text-[10px] dark:text-amber-400/80 text-amber-600" aria-label={`Difficulty ${difficulty.length} of 5`}>
+          <span className="text-[10px] text-warning" aria-label={`Difficulty ${difficulty.length} of 5`}>
             {difficulty}
           </span>
         ) : (
-          <span className="text-[10px] dark:text-ink-2 text-muted">Tap to open</span>
+          <span className="text-[10px] text-muted">Tap to open</span>
         )}
         <span className="text-[10px] font-bold uppercase tracking-wider text-accent group-hover:text-white">
           Select →
@@ -300,9 +300,9 @@ function FlipCard({
               <MarkdownMath content={card.front} className="markdown-math markdown-math--card" />
             </div>
             {card.hint && !card.selectable && (
-              <p className="text-[10px] dark:text-muted text-muted mt-2 truncate">Hint: {card.hint}</p>
+              <p className="text-[10px] text-muted mt-2 truncate">Hint: {card.hint}</p>
             )}
-            <p className="mt-2 text-[9px] dark:text-ink-2 text-muted">Tap to flip</p>
+            <p className="mt-2 text-[9px] text-muted">Tap to flip</p>
           </div>
           <div className="absolute inset-0 overflow-hidden rounded-xl border border-accent/30 bg-accent-soft p-4 shadow-lg [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <span className="text-[9px] font-bold uppercase tracking-wider text-accent">
@@ -311,7 +311,7 @@ function FlipCard({
             <div className="mt-2 max-h-[220px] overflow-y-auto text-sm text-ink-2">
               <MarkdownMath content={card.back} className="markdown-math markdown-math--card" />
             </div>
-            <p className="mt-2 text-[9px] dark:text-ink-2 text-muted">Tap to flip back</p>
+            <p className="mt-2 text-[9px] text-muted">Tap to flip back</p>
           </div>
         </div>
       </button>

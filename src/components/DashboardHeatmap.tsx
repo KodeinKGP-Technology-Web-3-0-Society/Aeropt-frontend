@@ -191,7 +191,7 @@ export default function DashboardHeatmap({ onOpenConcept }: Props) {
               Sample data
             </span>
           </div>
-          <p className="mt-0.5 text-xs dark:text-muted text-ink-2 max-w-sm leading-relaxed">
+          <p className="mt-0.5 text-xs text-ink-2 max-w-sm leading-relaxed">
             Centre is the subject. Inner ring is chapters. Outer ring is topics. Colour is mastery.
           </p>
         </div>
@@ -245,7 +245,7 @@ export default function DashboardHeatmap({ onOpenConcept }: Props) {
 
       {view === "weakest" ? (
         weakest.length === 0 ? (
-          <p className="text-sm dark:text-muted text-muted">No measured weak topics in this sample yet.</p>
+          <p className="text-sm text-muted">No measured weak topics in this sample yet.</p>
         ) : (
           <ol className="space-y-1 flex-1 overflow-y-auto">
             {weakest.map((row, i) => (
@@ -255,7 +255,7 @@ export default function DashboardHeatmap({ onOpenConcept }: Props) {
                   onClick={() => onOpenConcept(row.concept.label, row.concept.band === "weak")}
                   className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-hover"
                 >
-                  <span className="w-5 text-xs tabular-nums dark:text-muted text-muted">{i + 1}</span>
+                  <span className="w-5 text-xs tabular-nums text-muted">{i + 1}</span>
                   <span
                     className="h-2.5 w-2.5 rounded-full shrink-0"
                     style={{
@@ -268,7 +268,7 @@ export default function DashboardHeatmap({ onOpenConcept }: Props) {
                     <span className="block truncate text-sm font-semibold text-ink">
                       {row.concept.label}
                     </span>
-                    <span className="block text-xs dark:text-muted text-muted">
+                    <span className="block text-xs text-muted">
                       {row.chapterLabel} · {BAND_COPY[row.concept.band]}
                     </span>
                   </span>
@@ -428,7 +428,7 @@ export default function DashboardHeatmap({ onOpenConcept }: Props) {
                 );
               })}
             </svg>
-            <p className="pointer-events-none absolute bottom-1 left-1 right-1 truncate text-xs dark:text-muted text-ink-2" aria-live="polite">
+            <p className="pointer-events-none absolute bottom-1 left-1 right-1 truncate text-xs text-ink-2" aria-live="polite">
               {hover ? `${trail} · ${BAND_COPY[hover.band]}` : trail}
             </p>
           </div>

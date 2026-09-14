@@ -59,7 +59,7 @@ function CreateSessionRedirect() {
           <p className="text-center text-sm text-red-500 max-w-md">{error}</p>
           <button
             type="button"
-            className="rounded-lg bg-slate-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-ink"
+            className="rounded-lg bg-ink text-canvas px-4 py-2 text-sm font-medium "
             onClick={() => setRetryToken((n) => n + 1)}
           >
             Retry

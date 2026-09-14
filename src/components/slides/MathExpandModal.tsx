@@ -29,7 +29,7 @@ export default function MathExpandModal({
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-hover dark:hover:bg-slate-800"
+            className="ml-auto rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-hover"
           >
             Close
           </button>

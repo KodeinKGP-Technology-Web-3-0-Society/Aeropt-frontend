@@ -39,7 +39,7 @@ function SortHeader({
         type="button"
         onClick={() => onSort(columnKey)}
         aria-label={`Sort by ${label}${isActive ? (sortOrder === "asc" ? ", ascending" : ", descending") : ""}`}
-        className={`inline-flex items-center gap-1 cursor-pointer uppercase tracking-wider dark:hover:text-white hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded ${
+        className={`inline-flex items-center gap-1 cursor-pointer uppercase tracking-wider hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded ${
           align === "right" ? "flex-row-reverse" : ""
         }`}
       >
@@ -182,7 +182,7 @@ export default function ProgressContent() {
             key={stat.id}
             className="bg-surface border border-line rounded-xl p-5 shadow-lg relative overflow-hidden"
           >
-            <span className="text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">
               {stat.label}
             </span>
             <h2 className="text-3xl font-extrabold text-ink mt-2 mb-1">{stat.value}</h2>
@@ -216,7 +216,7 @@ export default function ProgressContent() {
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] dark:text-muted text-muted mt-2">
+              <p className="text-[10px] text-muted mt-2">
                 Complete practice questions to see chapter trends.
               </p>
             )}
@@ -299,7 +299,7 @@ export default function ProgressContent() {
                 ))}
               </svg>
             ) : (
-              <div className="flex items-center justify-center h-full text-xs dark:text-muted text-muted">
+              <div className="flex items-center justify-center h-full text-xs text-muted">
                 No proficiency history yet
               </div>
             )}
@@ -322,7 +322,7 @@ export default function ProgressContent() {
                   <div key={mistake.type} className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-semibold select-none">
                       <span className="text-ink-2">{mistake.type}</span>
-                      <span className="dark:text-muted text-muted">
+                      <span className="text-muted">
                         <strong className="text-ink font-bold">{mistake.count}</strong> ·{" "}
                         {mistake.percentage}%
                       </span>
@@ -338,7 +338,7 @@ export default function ProgressContent() {
               })}
             </div>
           </div>
-          <div className="text-[10px] dark:text-muted text-muted font-semibold mt-4 text-center select-none uppercase tracking-wider leading-relaxed">
+          <div className="text-[10px] text-muted font-semibold mt-4 text-center select-none uppercase tracking-wider leading-relaxed">
             Data compiled from {totalAttempts} questions
           </div>
         </div>
@@ -362,7 +362,7 @@ export default function ProgressContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
-              <tr className="border-b border-line text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider select-none">
+              <tr className="border-b border-line text-[10px] font-bold text-muted uppercase tracking-wider select-none">
                 <SortHeader label="Concept" columnKey="concept" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
                 <SortHeader label="Chapter" columnKey="chapter" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
                 <SortHeader label="Score" columnKey="score" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
@@ -375,7 +375,7 @@ export default function ProgressContent() {
             <tbody className="divide-y divide-[#1b1c2b]/50 text-xs">
               {sortedRows.length > 0 ? (
                 sortedRows.map((row) => (
-                  <tr key={`${row.concept}-${row.chapter}`} className="dark:hover:bg-[#101021] bg-hover/30 transition-colors">
+                  <tr key={`${row.concept}-${row.chapter}`} className="hover:bg-hover transition-colors">
                     <td className="py-3.5 px-4 font-bold text-ink tracking-wide">{row.concept}</td>
                     <td className="py-3.5 px-4 text-muted font-semibold">{row.chapter}</td>
                     <td className="py-3.5 px-4 text-right">
@@ -417,7 +417,7 @@ export default function ProgressContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-6 dark:text-muted text-muted">
+                  <td colSpan={7} className="text-center py-6 text-muted">
                     {conceptBreakdownTable.length === 0
                       ? "Start studying to see your concept breakdown"
                       : "No matching concepts found"}

@@ -49,7 +49,7 @@ export default function SettingsContent() {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
                   Full Name
                 </label>
                 <input
@@ -60,7 +60,7 @@ export default function SettingsContent() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
                   Target Exam Badge
                 </label>
                 <input
@@ -73,7 +73,7 @@ export default function SettingsContent() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold dark:text-muted text-muted uppercase tracking-wider mb-2">
+              <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
                 Registered Email
               </label>
               <input
@@ -100,7 +100,7 @@ export default function SettingsContent() {
           <div className="flex items-center justify-between py-2 border-b border-line/50">
             <div>
               <p className="text-xs font-bold text-ink-2">Daily Study Reminders</p>
-              <p className="text-[10px] dark:text-muted text-muted font-semibold mt-0.5 uppercase tracking-wide">Get alerts when your daily streak is in danger</p>
+              <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Get alerts when your daily streak is in danger</p>
             </div>
             <button
               onClick={() => setAlerts(!alerts)}
@@ -119,7 +119,7 @@ export default function SettingsContent() {
           <div className="flex items-center justify-between py-2 border-b border-line/50">
             <div>
               <p className="text-xs font-bold text-ink-2">Target Level Strategy</p>
-              <p className="text-[10px] dark:text-muted text-muted font-semibold mt-0.5 uppercase tracking-wide">Align recommendation algorithms with target</p>
+              <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Align recommendation algorithms with target</p>
             </div>
             <select
               value={strategy}
@@ -135,7 +135,7 @@ export default function SettingsContent() {
           <div className="flex items-center justify-between py-2 border-b border-line/50">
             <div>
               <p className="text-xs font-bold text-ink-2">Application Theme</p>
-              <p className="text-[10px] dark:text-muted text-muted font-semibold mt-0.5 uppercase tracking-wide">Switch between Light and Dark mode</p>
+              <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Switch between Light and Dark mode</p>
             </div>
             <select
               value={appTheme}

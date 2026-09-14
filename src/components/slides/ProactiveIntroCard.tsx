@@ -13,7 +13,7 @@ export default function ProactiveIntroCard({ card }: { card: ProactiveCardPayloa
           </p>
           <h3 className="text-base font-bold text-ink mt-1">{card.title}</h3>
           {card.preview_text && (
-            <p className="text-xs dark:text-muted text-ink-2 mt-2 line-clamp-3">{card.preview_text}</p>
+            <p className="text-xs text-ink-2 mt-2 line-clamp-3">{card.preview_text}</p>
           )}
         </div>
         {typeof card.proficiency_pct === "number" && (
@@ -23,7 +23,7 @@ export default function ProactiveIntroCard({ card }: { card: ProactiveCardPayloa
           </div>
         )}
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 text-[10px] dark:text-muted text-muted">
+      <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-muted">
         {card.duration_min && <span>{card.duration_min} min</span>}
         {card.weak_prereq && <span>· Weak prereq: {card.weak_prereq}</span>}
       </div>
