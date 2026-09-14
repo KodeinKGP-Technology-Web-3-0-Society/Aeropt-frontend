@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** One "usual way / Aeropt" row, wiped in left-to-right the first time it enters view. */
+/** One "usual way / Prepwise" row, wiped in left-to-right the first time it enters view. */
 export default function CompareRow({
   usual,
-  aeropt,
+  prepwise,
   delay = 0,
 }: {
   usual: string;
-  aeropt: string;
+  prepwise: string;
   delay?: number;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -47,7 +47,7 @@ export default function CompareRow({
         style={delay ? { transitionDelay: `${delay}ms` } : undefined}
       >
         <p className="text-[15px] text-muted line-through decoration-1">{usual}</p>
-        <p className="text-[15px] font-medium text-ink">{aeropt}</p>
+        <p className="text-[15px] font-medium text-ink">{prepwise}</p>
       </div>
     </div>
   );

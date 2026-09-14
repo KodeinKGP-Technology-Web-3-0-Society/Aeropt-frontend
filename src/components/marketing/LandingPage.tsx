@@ -59,11 +59,11 @@ function IconDashboard() {
 }
 
 const COMPARISONS = [
-  { usual: "Same explanation for every student who asks", aeropt: "Reads your last few attempts before deciding how to teach this one" },
-  { usual: "Answers the exact question you typed", aeropt: "Finds the shaky prerequisite behind it and teaches that first, if that's the real problem" },
-  { usual: "A general chatbot with a JEE prompt bolted on", aeropt: "A retrieval pipeline built specifically around the JEE Physics syllabus" },
-  { usual: "Forgets everything the moment you close the tab", aeropt: "Opens your next session already knowing what you struggled with last time" },
-  { usual: "Sounds equally confident whether it's right or not", aeropt: "Tells you plainly when a question is outside what it covers" },
+  { usual: "Same explanation for every student who asks", prepwise: "Reads your last few attempts before deciding how to teach this one" },
+  { usual: "Answers the exact question you typed", prepwise: "Finds the shaky prerequisite behind it and teaches that first, if that's the real problem" },
+  { usual: "A general chatbot with a JEE prompt bolted on", prepwise: "A retrieval pipeline built specifically around the JEE Physics syllabus" },
+  { usual: "Forgets everything the moment you close the tab", prepwise: "Opens your next session already knowing what you struggled with last time" },
+  { usual: "Sounds equally confident whether it's right or not", prepwise: "Tells you plainly when a question is outside what it covers" },
 ];
 
 const FEATURES = [
@@ -85,7 +85,7 @@ const FEATURES = [
   {
     icon: IconGrounded,
     title: "Built for one exam, done properly",
-    body: "Aeropt covers JEE Physics — Mechanics through Modern Physics — in real depth, rather than spreading thin across every subject at once.",
+    body: "Prepwise covers JEE Physics — Mechanics through Modern Physics — in real depth, rather than spreading thin across every subject at once.",
   },
 ];
 
@@ -166,7 +166,7 @@ export default function LandingPage() {
               Knows where you&apos;re stuck<br />before you do.
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-ink-2">
-              Aeropt reads your last few attempts before it answers your next question. If the real
+              Prepwise reads your last few attempts before it answers your next question. If the real
               gap is a shaky prerequisite three chapters back, that&apos;s what gets taught first —
               not just the topic you happened to ask about.
             </p>
@@ -217,7 +217,7 @@ export default function LandingPage() {
             </h2>
             <p className="mt-4 max-w-md text-base leading-relaxed text-ink-2">
               Most tutoring bots answer everything with the same confidence, whether or not it&apos;s
-              actually right. Ask Aeropt something outside the syllabus it covers, and it says so
+              actually right. Ask Prepwise something outside the syllabus it covers, and it says so
               plainly — instead of inventing an answer that sounds correct.
             </p>
           </div>
@@ -265,11 +265,11 @@ export default function LandingPage() {
         </Reveal>
         <div className="mt-8 grid grid-cols-1 gap-0 text-sm font-semibold uppercase tracking-wider text-muted sm:grid-cols-[1fr_1.3fr] sm:gap-8">
           <p>The usual way</p>
-          <p className="mt-2 sm:mt-0">Aeropt</p>
+          <p className="mt-2 sm:mt-0">Prepwise</p>
         </div>
         <div className="mt-1">
           {COMPARISONS.map((row, i) => (
-            <CompareRow key={row.usual} usual={row.usual} aeropt={row.aeropt} delay={i * 60} />
+            <CompareRow key={row.usual} usual={row.usual} prepwise={row.prepwise} delay={i * 60} />
           ))}
         </div>
       </section>
@@ -281,7 +281,7 @@ export default function LandingPage() {
             Stop guessing what to study next.
           </h2>
           <p className="mx-auto mt-4 max-w-md text-base text-ink-2">
-            Tell Aeropt one thing you&apos;re stuck on. It&apos;ll tell you what&apos;s actually behind it.
+            Tell Prepwise one thing you&apos;re stuck on. It&apos;ll tell you what&apos;s actually behind it.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

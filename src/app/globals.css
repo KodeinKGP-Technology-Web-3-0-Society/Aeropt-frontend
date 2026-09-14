@@ -1669,7 +1669,7 @@ textarea:focus-visible,
   transform-origin: left;
 }
 
-/* "Why Aeropt" comparison rows — wipe in left-to-right via clip-path rather
+/* "Why Prepwise" comparison rows — wipe in left-to-right via clip-path rather
    than the fade+rise every other section uses, so this section (the one
    making the direct case for switching) reads as a distinct moment, not
    another card in the same rhythm. */
