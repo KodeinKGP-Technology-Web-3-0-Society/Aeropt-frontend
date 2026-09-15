@@ -1,46 +1,48 @@
-# Aeropt Frontend
+# PrepWise — Frontend
 
-Frontend for the Aeropt project, built with [Next.js](https://nextjs.org), TypeScript, and Tailwind CSS.
+Next.js 16 app for PrepWise: landing, auth, onboarding, dashboard, roadmap,
+progress, practice, and the Study Session (`/chat`).
 
-## Getting Started
+Port **3000**. Django (`:8000`) is auth and roadmaps. The Learning Agent
+(`:8001`) is live chat. The student does not pick an agent.
 
-Install dependencies:
+## Routes
+
+| Path | What |
+|---|---|
+| `/` | Marketing landing |
+| `/auth` | Login / signup |
+| `/onboarding` | Journey, exam, placement |
+| `/dashboard` | Streak, queue, custom session |
+| `/roadmap` | PCM path |
+| `/progress` | Mastery |
+| `/practice` | Practice canvas |
+| `/chat`, `/chat/[sessionId]` | Study Session |
+
+Chat UI: `src/components/ChatWorkspace.tsx` plus `src/components/chat/`.
+Math rendering: `src/lib/markdownMath.ts`.
+
+## Env
+
+Copy `.env.example` to `.env.local`:
+
+```
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
+NEXT_PUBLIC_AGENT_API_BASE=http://127.0.0.1:8001
+```
+
+## Run
 
 ```bash
 npm install
-```
-
-Run the development server:
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+| Command | What |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run ci` / `make ci` | Lint, math self-test, typecheck, production build |
+| `npm run start` | Serve a production build |
+| `make deploy` | Start `:3000` if it is down |
 
-## Tech Stack
-
-- [Next.js 15](https://nextjs.org) — React framework with App Router
-- [TypeScript](https://www.typescriptlang.org) — Type safety
-- [Tailwind CSS v4](https://tailwindcss.com) — Utility-first styling
-
-## Project Structure
-
-```
-src/
-└── app/
-    ├── layout.tsx     # Root layout
-    ├── page.tsx       # Home page
-    └── globals.css    # Global styles
-```
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run ci` | Lint, math self-test, typecheck, production build |
-| `make deploy` | Local CD: start `:3000` if it is not already up |
+Stack: Next.js 16, React 19, Tailwind CSS 4, TypeScript.

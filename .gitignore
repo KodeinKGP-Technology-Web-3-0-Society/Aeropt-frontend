@@ -44,5 +44,11 @@ next-env.d.ts
 # local CI/CD
 .local-run/
 
+# Matt Pocock / agent skills (installed locally, not product code)
+.agents/
+skills-lock.json
+split_clean.py
+split_ts_morph.js
+
 # docs
 JEE Chatbot.pdf
