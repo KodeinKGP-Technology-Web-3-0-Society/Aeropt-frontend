@@ -1419,6 +1419,18 @@ textarea:focus-visible,
   line-height: 1.7;
 }
 
+/* A formula KaTeX could not parse, shown as its source instead of a red error.
+   Deliberately quiet: the student should read the formula, not a failure. */
+.math-fallback {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.95em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.16);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .markdown-math {
   color: var(--text-secondary);
   font-size: 0.92rem;

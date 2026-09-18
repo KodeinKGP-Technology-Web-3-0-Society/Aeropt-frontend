@@ -26,6 +26,11 @@ npm run test:math
 echo "==> [frontend] latex contract (KaTeX)"
 npm run test:latex
 
+# Renders through the real remark-math → rehype-katex pipeline and fails on any error
+# node. Catches the cases a regex-based span split cannot see.
+echo "==> [frontend] latex render check"
+npm run test:render
+
 echo "==> [frontend] typecheck"
 npx tsc --noEmit
 
