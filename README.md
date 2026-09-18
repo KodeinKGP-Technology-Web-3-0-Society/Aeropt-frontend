@@ -20,7 +20,25 @@ Port **3000**. Django (`:8000`) is auth and roadmaps. The Learning Agent
 | `/chat`, `/chat/[sessionId]` | Study Session |
 
 Chat UI: `src/components/ChatWorkspace.tsx` plus `src/components/chat/`.
-Math rendering: `src/lib/markdownMath.ts`.
+
+## Math rendering
+
+Every student-facing string goes through `prepareMathMarkdown` (`src/lib/mathHarden.ts`)
+before `react-markdown` sees it. Two layers, in order:
+
+| layer | file | job |
+|---|---|---|
+| normalise | `src/lib/markdownMath.ts` | `\(…\)`/`\[…\]` → `$`/`$$`, unicode → macros, escape prices, unwrap sentences the model wrapped in `$…$`, delimit bare TeX, give display blocks their own line |
+| choose + veto | `src/lib/mathHarden.ts` | run the aggressive and conservative pipelines, score both with KaTeX, keep the better one — then parse each span with **KaTeX itself**; what it rejects becomes text, not a red error |
+
+```bash
+npm run test:latex    # 1500+ fixtures: nothing breaks, and no valid maths is lost
+npm run latex:audit   # corpus fixture, fails on any breakage
+```
+
+Regenerate `fixtures/latex-corpus.json` from the agent with `make latex-fixture`; the
+agent side of the same contract lives in `Aeropt-agent/utils/latex_guidelines.py` and
+`Aeropt-agent/tests/test_latex_contract.py`.
 
 ## Env
 

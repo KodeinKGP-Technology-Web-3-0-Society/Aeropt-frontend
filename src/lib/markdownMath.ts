@@ -44,11 +44,98 @@ const UNICODE_MATH: Record<string, string> = {
   "→": "\\to",
 };
 
+/**
+ * `\omega` followed immediately by a letter is a different, undefined macro: "2πf"
+ * converted to "2\pif", which KaTeX rejects. Replacements therefore keep a space when
+ * a letter follows.
+ */
+const UNICODE_NEEDS_SPACE = /^\\[a-zA-Z]/;
+
 const N_MACROS =
   "nu|nabla|neq|ne|notin|ni|nless|ngtr|napprox|ncong|nmid|nparallel|nrightarrow|nRightarrow|nleftarrow|nLeftarrow|nexists|nsubseteq|nsupseteq";
 
 const N_MACRO_RE = new RegExp(String.raw`\\(?:${N_MACROS})(?![a-zA-Z])`, "g");
 const IMAGE_PLACEHOLDER_PREFIX = "\uE000IMG";
+const ESCAPED_DOLLAR_TOKEN = "\uE004ESCDOLLAR\uE005";
+const AUTHOR_DISPLAY_TOKEN = (i: number) => `\uE00ADISP${i}\uE00B`;
+
+/**
+ * `\[ … \]` is an explicit request for display maths, so it is protected rather than
+ * treated as a guess: no heuristic rewraps it, and `inlineDisplaySpansToInline` does not
+ * downgrade it just because prose follows on the same line.
+ */
+function protectAuthorDisplay(text: string): { text: string; blocks: string[] } {
+  const blocks: string[] = [];
+  const masked = text.replace(/\\\[([\s\S]+?)\\\]/g, (_whole, inner: string) => {
+    blocks.push(`$$\n${String(inner).trim()}\n$$`);
+    return AUTHOR_DISPLAY_TOKEN(blocks.length - 1);
+  });
+  return { text: masked, blocks };
+}
+
+function restoreAuthorDisplay(text: string, blocks: string[]): string {
+  return text.replace(/\uE00ADISP(\d+)\uE00B/g, (_, i) => blocks[Number(i)] ?? "");
+}
+
+/**
+ * An escaped `\$` is a literal dollar sign the agent deliberately protected (a price,
+ * "costs \$0.0900 per kWh"). The wrapping heuristics below see only a backslash and a
+ * digit, so they used to wrap the escape itself as maths — turning a table of values
+ * into `$$\n\\\n$$$1036\\$`. Masking it keeps every heuristic away from it.
+ */
+function protectEscapedDollars(text: string): string {
+  return text.replace(/\\\$/g, ESCAPED_DOLLAR_TOKEN);
+}
+
+function restoreEscapedDollars(text: string): string {
+  return text.split(ESCAPED_DOLLAR_TOKEN).join("\\$");
+}
+
+const MONEY_BODY_RE = /^\s*\d[\d,]*(?:\.\d+)?\s*(?:per\s+\w+|each|a\s+\w+|an\s+\w+|billion|million|thousand)?\s*$/i;
+const MONEY_CUE_RE = /\b(?:per|each|a\s+\w+|an\s+\w+|billion|million|thousand|dollars?|cents?)\b|\.\d{2}\b/i;
+const MATH_EVIDENCE_RE = /[\\^_={}]|\\[a-zA-Z]+/;
+
+/**
+ * Escape `$` that introduces money rather than maths — the same rule the agent applies
+ * in `utils/latex_guidelines.escape_currency_dollars`. Duplicated deliberately: cards
+ * and stored content reach this component without passing through the agent's outbound
+ * pass, and an unescaped price swallows the rest of the sentence.
+ */
+export function escapeCurrencyDollars(text: string): string {
+  if (!text.includes("$")) return text;
+  let out = text.replace(/(?<!\\)\$([^$\n]{1,120}?)(?<!\\)\$/g, (whole, body: string) => {
+    if (MATH_EVIDENCE_RE.test(body)) return whole;
+    if (MONEY_CUE_RE.test(body) && MONEY_BODY_RE.test(body)) return `\\$${body}\\$`;
+    // No macro, no operator, several English words *and* it starts at an amount:
+    // "a $5 note and a $10 note". Without the leading-digit test this also matched the
+    // prose between two legitimate formulas and escaped their delimiters.
+    if (/^\d/.test(body.trim()) && (body.match(/[A-Za-z]{2,}/g) || []).length >= 2) {
+      return `\\$${body}\\$`;
+    }
+    return whole;
+  });
+  out = out
+    .split("\n")
+    .map((line) => {
+      const unescaped = line.match(/(?<!\\)\$/g);
+      if (!unescaped || unescaped.length % 2 === 0) return line;
+      return line.replace(/(?<!\\)\$(?=\d)/, "\\$");
+    })
+    .join("\n");
+  return out;
+}
+
+/**
+ * A span holding a whole English sentence is the model breaking the prompt's rule 6.
+ * KaTeX renders it — badly, as italic run-together text — so it is unwrapped instead.
+ */
+export function unwrapSentenceMath(text: string): string {
+  return text.replace(/(?<!\\)(?<!\$)\$([^$\n]{8,400}?)\$(?!\$)/g, (whole, body: string) => {
+    if (MATH_EVIDENCE_RE.test(body)) return whole;
+    const words = body.match(/[A-Za-z]{2,}/g) || [];
+    return words.length >= 4 ? body : whole;
+  });
+}
 
 /** Lines / fragments that are clearly TeX (macros, ^, _, = with math). */
 const LATEX_LINE_RE =
@@ -358,7 +445,17 @@ export function unicodeMathToLatex(text: string): string {
       if (index % 2 === 1) return part;
       let out = part;
       for (const [symbol, latex] of Object.entries(UNICODE_MATH)) {
-        out = out.split(symbol).join(latex);
+        if (!out.includes(symbol)) continue;
+        // Keep a space when a letter follows, or `\pi` + `f` becomes the undefined
+        // macro `\pif` and the whole span fails to parse.
+        out = out.replace(
+          new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+          (_m, offset: number, whole: string) => {
+            const next = whole[offset + symbol.length] ?? "";
+            const needsSpace = UNICODE_NEEDS_SPACE.test(latex) && /[a-zA-Z]/.test(next);
+            return needsSpace ? `${latex} ` : latex;
+          },
+        );
       }
       return out;
     })
@@ -411,16 +508,71 @@ export function preprocessFormulaSlideMath(raw: string): string {
 }
 
 /** Chat / flashcard / notes path — residual wrap for anything that slipped past the agent. */
+/**
+ * Display math must own its line. The wrapping heuristics above can emit `$$…$$`
+ * in the middle of a sentence, and when the next fragment is inline math the two
+ * delimiters collide into `$$$`, which mis-pairs everything after it on the line.
+ * Downgrading a mid-sentence display span to inline keeps the maths and the pairing.
+ */
+function inlineDisplaySpansToInline(text: string): string {
+  return text.replace(/\$\$\s*([^$]+?)\s*\$\$/g, (whole, body: string, offset: number) => {
+    const before = text.slice(0, offset);
+    const after = text.slice(offset + whole.length);
+    const atLineStart = before === "" || /\n[ \t]*$/.test(before);
+    const atLineEnd = after === "" || /^[ \t]*\n/.test(after);
+    if (atLineStart && atLineEnd) return whole;
+    return `$${String(body).replace(/\s*\n\s*/g, " ").trim()}$`;
+  });
+}
+
+/**
+ * Separate and space inline spans so markdown can actually see them.
+ *
+ * Wrapping fragments independently can leave two spans touching — "2πf" becomes
+ * `$\omega = 2$$\pi$ f`, where the `$$` reads as a display delimiter and mis-pairs
+ * everything after it. And `have$E$` (no space before the opening `$`) is not reliably
+ * parsed as maths at all. Both are fixed by inserting the missing whitespace.
+ */
+function tidyInlineSpans(text: string): string {
+  let out = text;
+  // close + open mistaken for a display delimiter (both sides non-space, non-$)
+  out = out.replace(/(?<=[^\s$])\$\$(?=[^\s$])/g, "$ $");
+  // a word running straight into an opening delimiter, or out of a closing one
+  out = out.replace(/(?<=[A-Za-z0-9])\$(?=[^$\n]*?\$)/g, " $");
+  return out;
+}
+
+/**
+ * Display blocks must stand alone, or remark-math never sees them.
+ *
+ * `…condition is $$\nv = \omega R\n$$` looks like display maths but is not: block math
+ * has to begin its own line, and inline math cannot contain a newline, so remark-math
+ * treats the whole thing as literal text and the student reads `$$` on screen. Giving
+ * every block a blank line either side is what makes it parse.
+ */
+function ensureDisplayBlocksStandAlone(text: string): string {
+  return text.replace(/\$\$([\s\S]*?)\$\$/g, (whole, body: string, offset: number) => {
+    const before = text.slice(0, offset);
+    const after = text.slice(offset + whole.length);
+    const lead = before === "" || /\n\s*\n[ \t]*$/.test(before) ? "" : "\n\n";
+    const tail = after === "" || /^[ \t]*\n\s*\n/.test(after) ? "" : "\n\n";
+    const inner = String(body).trim();
+    return `${lead}$$\n${inner}\n$$${tail}`;
+  });
+}
+
 export function preprocessMarkdownMath(raw: string): string {
   if (!raw?.trim()) return raw;
 
   const { text: withoutPractice, blocks: practiceBlocks } = protectPracticeFences(raw);
   const { text: protectedText, images } = protectImages(withoutPractice);
-  let text = protectedText;
+  let text = protectEscapedDollars(escapeCurrencyDollars(protectedText));
+  const authored = protectAuthorDisplay(text);
+  text = authored.text;
 
   text = collapseDoubleEscapedMacros(text);
-  text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, inner) => `$$\n${String(inner).trim()}\n$$`);
   text = text.replace(/\\\((.+?)\\\)/g, (_, inner) => `$${String(inner).trim()}$`);
+  text = unwrapSentenceMath(text);
   text = expandLiteralNewlinesInProse(text);
   text = collapseDiagramLines(text);
   // Unicode → TeX before wrapping so ω becomes \omega and then gets delimited.
@@ -432,6 +584,48 @@ export function preprocessMarkdownMath(raw: string): string {
   text = balanceMathDelimiters(text);
   text = cleanDisplayMathBlocks(text);
   text = wrapUndelimitedLatex(text);
+  text = inlineDisplaySpansToInline(text);
+  text = tidyInlineSpans(text);
+  text = restoreAuthorDisplay(text, authored.blocks);
+  text = ensureDisplayBlocksStandAlone(text);
+  text = restoreEscapedDollars(text);
+  text = restoreImages(text, images);
+  text = restorePracticeFences(text, practiceBlocks);
+  return text;
+}
+
+/**
+ * Conservative preprocessing: normalise what is unambiguous (TeX delimiters, unicode
+ * symbols, stray literal newlines) and *never* guess where maths begins in prose.
+ *
+ * `prepareMathMarkdown` falls back to this when the wrapping heuristics above make a
+ * message worse rather than better. Half-delimited source text is the case that does
+ * it: wrapping each macro separately produces `$$…$$` runs that collide with the
+ * delimiters already there.
+ */
+export function preprocessMarkdownMathConservative(raw: string): string {
+  if (!raw?.trim()) return raw;
+  const { text: withoutPractice, blocks: practiceBlocks } = protectPracticeFences(raw);
+  const { text: protectedText, images } = protectImages(withoutPractice);
+  let text = protectEscapedDollars(escapeCurrencyDollars(protectedText));
+  const authored = protectAuthorDisplay(text);
+  text = authored.text;
+
+  text = collapseDoubleEscapedMacros(text);
+  text = text.replace(/\\\((.+?)\\\)/g, (_, inner) => `$${String(inner).trim()}$`);
+  text = unwrapSentenceMath(text);
+  text = expandLiteralNewlinesInProse(text);
+  // Unicode → TeX only where it is already inside maths. Converting ω to \omega out in
+  // the prose and then not wrapping it (this path does no wrapping) would print the
+  // macro name to the student.
+  text = text.replace(/(\$\$[\s\S]*?\$\$|(?<!\\)\$[^$\n]*?(?<!\\)\$)/g, (span) =>
+    unicodeMathToLatex(span),
+  );
+  text = cleanDisplayMathBlocks(text);
+  text = balanceMathDelimiters(text);
+  text = restoreAuthorDisplay(text, authored.blocks);
+  text = ensureDisplayBlocksStandAlone(text);
+  text = restoreEscapedDollars(text);
   text = restoreImages(text, images);
   text = restorePracticeFences(text, practiceBlocks);
   return text;

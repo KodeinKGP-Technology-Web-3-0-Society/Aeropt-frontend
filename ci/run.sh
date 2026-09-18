@@ -20,6 +20,12 @@ npm run lint
 echo "==> [frontend] math self-test"
 npm run test:math
 
+# Renders every fixture through the real pipeline and real KaTeX: fails if any span
+# would not render, or if valid maths was lost on the way. Regenerate the corpus
+# fixture from the agent with `make latex-fixture`.
+echo "==> [frontend] latex contract (KaTeX)"
+npm run test:latex
+
 echo "==> [frontend] typecheck"
 npx tsc --noEmit
 

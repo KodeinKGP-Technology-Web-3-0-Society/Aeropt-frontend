@@ -1,0 +1,102 @@
+[
+  {
+    "id": "inline-and-display",
+    "note": "the shape the prompt asks for",
+    "text": "By the work-energy theorem, $W_{\\text{net}} = \\Delta K$. For a constant force,\n\n$$\nW = \\vec{F} \\cdot \\vec{d} = F d \\cos\\theta\n$$\n\nso the block gains $12\\,\\text{J}$ of kinetic energy."
+  },
+  {
+    "id": "tex-delimiters-the-model-should-not-use",
+    "text": "The moment of inertia is \\(I = \\tfrac{1}{2} M R^2\\) and the rolling condition is \\[ v_{cm} = \\omega R \\]"
+  },
+  {
+    "id": "truncated-mid-formula",
+    "note": "the model ran out of tokens",
+    "text": "Substituting the values gives $a = \\frac{F - \\mu m g}{"
+  },
+  {
+    "id": "currency-in-prose",
+    "text": "Running a 3.00 W clock for a year costs $0.0900 per kWh, about $2.40 in total."
+  },
+  {
+    "id": "two-amounts-in-one-sentence",
+    "text": "The meter reads $5 in the morning and $12 by evening."
+  },
+  {
+    "id": "unicode-physics-letters",
+    "text": "Angular speed ω = 2πf, torque τ = r × F, and μ = 0.35 for the surfaces."
+  },
+  {
+    "id": "nu-macro-not-a-newline",
+    "text": "Kinematic viscosity is $\\nu = \\mu / \\rho$, and $\\neq$ must survive too."
+  },
+  {
+    "id": "nested-dollars",
+    "text": "The speed is $v = $5$ m/s$ which is malformed."
+  },
+  {
+    "id": "double-escaped-macros",
+    "text": "From a JSON round trip: $\\\\frac{1}{2} m v^2$ and $\\\\vec{F} = m \\\\vec{a}$."
+  },
+  {
+    "id": "piecewise-cases",
+    "text": "$$\n\\left\\{ \\begin{matrix} f_s \\leq \\mu_s N & \\text{static} \\\\ f_k = \\mu_k N & \\text{sliding} \\end{matrix} \\right.\n$$"
+  },
+  {
+    "id": "matrix-in-display",
+    "text": "$$\n\\begin{matrix} w_{\\text{Moon}} & = & m g_{\\text{Moon}} \\\\ m & = & 150\\,\\text{kg} \\end{matrix}\n$$"
+  },
+  {
+    "id": "degree-and-temperature",
+    "text": "Water boils at $100^{\\circ}\\text{C}$ and the incline is at $30^{\\circ}$ to the horizontal."
+  },
+  {
+    "id": "whole-sentence-wrongly-in-math",
+    "note": "rule 6 violation by the model",
+    "text": "$The block slides down the incline with acceleration a$"
+  },
+  {
+    "id": "undefined-macro",
+    "text": "The field is $5\\muT$ which uses a macro that does not exist."
+  },
+  {
+    "id": "unmatched-left",
+    "text": "The integral $\\left( \\int_0^1 x^2 dx$ never closes its delimiter."
+  },
+  {
+    "id": "double-subscript",
+    "text": "Internal energy $E_{\\text{int}}_{i}$ before and after."
+  },
+  {
+    "id": "mixed-list-with-math",
+    "text": "Steps:\n\n1. Resolve forces: $N = mg\\cos\\theta$\n2. Apply Newton's second law: $ma = mg\\sin\\theta - \\mu N$\n3. Solve for $a$\n\nThat gives $a = g(\\sin\\theta - \\mu\\cos\\theta)$."
+  },
+  {
+    "id": "table-of-values-bare-numbers",
+    "note": "numbers alone inside delimiters are maths, not money",
+    "text": "Lattice energies: $\\text{Li}^{+}$ $1036$ $853$ $807$ $757$"
+  },
+  {
+    "id": "display-math-mid-sentence",
+    "text": "We then have $$E = mc^2$$ as the rest energy, and $p = \\gamma m v$ for momentum."
+  },
+  {
+    "id": "stray-literal-newline-separator",
+    "text": "F=m\\nu\\nE=mc^2"
+  },
+  {
+    "id": "empty-math-span",
+    "text": "An empty span $$ and $ $ should not break anything."
+  },
+  {
+    "id": "backslash-at-end-of-span",
+    "text": "The result is $\\sqrt{7}\\$ with a trailing break."
+  },
+  {
+    "id": "half-delimited-source-style",
+    "text": "Here $C_1 = 1$ $\\mu F$, C_2 = 2 \\mu F and the potential of earth is taken as zero."
+  },
+  {
+    "id": "long-derivation",
+    "text": "Starting from $\\tau = I\\alpha$:\n\n$$\n\\tau = r F \\sin\\phi\n$$\n\n$$\nI = \\sum_i m_i r_i^2\n$$\n\n$$\n\\alpha = \\frac{d\\omega}{dt} = \\frac{d^2\\theta}{dt^2}\n$$\n\nTherefore $\\alpha = \\frac{r F \\sin\\phi}{I}$, and for a disc $I = \\frac{1}{2}MR^2$ so $\\alpha = \\frac{2 F \\sin\\phi}{M R}$."
+  }
+]

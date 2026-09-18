@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { preprocessFormulaSlideMath, preprocessMarkdownMath } from "@/lib/markdownMath";
+import { prepareMathMarkdown } from "@/lib/mathHarden";
 import InteractivePracticeCanvas from "./InteractivePracticeCanvas";
 
 type MarkdownMathProps = {
@@ -54,11 +54,10 @@ export default function MarkdownMath({
 }: MarkdownMathProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const normalized = content?.trim()
-    ? mode === "formula"
-      ? preprocessFormulaSlideMath(content)
-      : preprocessMarkdownMath(content)
-    : "";
+  // Preprocess, then let KaTeX itself veto anything it cannot parse, and fall back to
+  // conservative preprocessing when the wrapping heuristics would make things worse.
+  // A wrong guess is then harmless: the fragment renders as text, never as a red error.
+  const normalized = content?.trim() ? prepareMathMarkdown(content, mode) : "";
 
   useEffect(() => {
     const root = rootRef.current;
