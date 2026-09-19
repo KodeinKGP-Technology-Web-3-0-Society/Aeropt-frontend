@@ -64,9 +64,24 @@ export const CacheTTL = {
   dashboard: 90_000,
   progress: 180_000,
   roadmap: 60_000,
-  sandboxQueue: 30_000,
+  /**
+   * Short on purpose: the queue is now mutable (complete/dismiss), so a stale
+   * card is worse than a round trip. Mutations also call `primeCache` with the
+   * queue the server rebuilt, so the cache is corrected without a refetch.
+   */
+  sandboxQueue: 15_000,
   chapters: 600_000,
+  chatHistory: 60_000,
+  chatHistoryDetail: 300_000,
 } as const;
+
+/**
+ * Write a value straight into the cache — for when a mutation response already
+ * contains the freshly rebuilt read model, so refetching it would be waste.
+ */
+export function primeCache<T>(key: string, data: T, ttlMs: number): void {
+  setEntry(key, data, ttlMs);
+}
 
 export function cacheKey(parts: Array<string | number | null | undefined>): string {
   return parts.filter((p) => p != null && p !== "").join(":");

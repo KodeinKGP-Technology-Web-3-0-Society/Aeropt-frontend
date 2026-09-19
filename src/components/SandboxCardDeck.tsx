@@ -1,8 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SandboxAction } from "@/lib/sandbox";
+import {
+  completeSandboxAction,
+  dismissSandboxAction,
+  type SandboxAction,
+} from "@/lib/sandbox";
+import { ApiError } from "@/lib/auth";
 import { stagePrompt, type StudyStage } from "@/lib/roadmap";
 
 function actionToChat(action: string, conceptName: string): { stage: StudyStage; prompt: string } {
@@ -71,8 +76,33 @@ export default function SandboxCardDeck({
   loading?: boolean;
 }) {
   const router = useRouter();
+  // Local copy so a decision can be reflected immediately (optimistic dismiss)
+  // and corrected from the queue the mutation response carries — the parent
+  // owns the fetch, not the decision.
+  const [cards, setCards] = useState<SandboxAction[]>(queue);
+  const [syncedQueue, setSyncedQueue] = useState<SandboxAction[]>(queue);
+  const [notice, setNotice] = useState("");
+
+  // Adjust state during render when the fetched queue changes (React's
+  // documented alternative to a setState-in-effect sync).
+  if (queue !== syncedQueue) {
+    setSyncedQueue(queue);
+    setCards(queue);
+  }
 
   function startAction(item: SandboxAction) {
+    // No completion signal exists in the chat layer for "this card's flow is
+    // done" (see the comment on dismissAction), so clicking through is what we
+    // can honestly observe: the student took the card on.
+    void completeSandboxAction(item.id, {
+      action: item.action,
+      concept_id: item.concept_id,
+      roadmap_node_id: item.roadmap_node_id,
+    }).catch(() => {
+      // Navigation is already underway; a lost signal only means the card
+      // reappears in tomorrow's queue, which is the safe direction to fail.
+    });
+
     const { stage, prompt } = actionToChat(item.action, item.concept_name);
     const params = new URLSearchParams({
       concept_id: item.concept_id,
@@ -84,6 +114,35 @@ export default function SandboxCardDeck({
     router.push(`/chat?${params.toString()}`);
   }
 
+  /**
+   * Optimistic: drop the card, then reconcile with the rebuilt queue the
+   * response carries (no refetch). On failure put the card back and say why,
+   * using `ApiError.retryable` rather than message text.
+   */
+  async function dismissAction(item: SandboxAction) {
+    const previous = cards;
+    setCards((current) => current.filter((card) => card.id !== item.id));
+    setNotice("");
+    try {
+      const result = await dismissSandboxAction(item.id, {
+        action: item.action,
+        concept_id: item.concept_id,
+        roadmap_node_id: item.roadmap_node_id,
+      });
+      if (result?.queue?.queue) setCards(result.queue.queue);
+    } catch (caught) {
+      setCards(previous);
+      const retryable = caught instanceof ApiError ? caught.retryable : true;
+      setNotice(
+        retryable
+          ? "Could not skip that card just now. Try again."
+          : caught instanceof Error
+            ? caught.message
+            : "Could not skip that card."
+      );
+    }
+  }
+
   function startQuick(slot: QuickSlot) {
     const params = new URLSearchParams({ prompt: slot.prompt, stage: slot.stage, fresh: "1" });
     router.push(`/chat?${params.toString()}`);
@@ -91,7 +150,7 @@ export default function SandboxCardDeck({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" role="status" aria-busy="true" aria-label="Loading recommended actions">
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-[148px] animate-pulse rounded-xl border border-line bg-surface" />
         ))}
@@ -99,33 +158,41 @@ export default function SandboxCardDeck({
     );
   }
 
-  const queued = queue.slice(0, 3);
+  const queued = cards.slice(0, 3);
   const fillers = QUICK_SLOTS.filter((slot) =>
     !queued.some((item) => item.concept_name.toLowerCase() === slot.title.toLowerCase())
   ).slice(0, Math.max(0, 3 - queued.length));
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" role="list" aria-label="Recommended next actions">
-      {queued.map((item) => (
-        <FocusCard
-          key={item.id}
-          action={item.action}
-          title={item.concept_name}
-          hint={item.reason || item.chapter || "Recommended for today"}
-          minutes={item.duration_min ?? 8}
-          onStart={() => startAction(item)}
-        />
-      ))}
-      {fillers.map((slot) => (
-        <FocusCard
-          key={slot.id}
-          action={slot.action}
-          title={slot.title}
-          hint={slot.hint}
-          minutes={slot.minutes}
-          onStart={() => startQuick(slot)}
-        />
-      ))}
+    <div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" role="list" aria-label="Recommended next actions">
+        {queued.map((item) => (
+          <FocusCard
+            key={item.id}
+            action={item.action}
+            title={item.concept_name}
+            hint={item.reason || item.chapter || "Recommended for today"}
+            minutes={item.duration_min ?? 8}
+            onStart={() => startAction(item)}
+            onDismiss={() => void dismissAction(item)}
+          />
+        ))}
+        {fillers.map((slot) => (
+          <FocusCard
+            key={slot.id}
+            action={slot.action}
+            title={slot.title}
+            hint={slot.hint}
+            minutes={slot.minutes}
+            onStart={() => startQuick(slot)}
+          />
+        ))}
+      </div>
+      {notice ? (
+        <p role="status" className="mt-2 text-[11px] text-danger">
+          {notice}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -139,12 +206,14 @@ function FocusCard({
   hint,
   minutes,
   onStart,
+  onDismiss,
 }: {
   action: string;
   title: string;
   hint: string;
   minutes: number;
   onStart: () => void;
+  onDismiss?: () => void;
 }) {
   return (
     <div
@@ -157,14 +226,26 @@ function FocusCard({
         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{hint}</p>
         <p className="mt-2 text-[11px] text-muted">{minutes} min</p>
       </div>
-      <button
-        type="button"
-        onClick={onStart}
-        aria-label={`Start ${action.toLowerCase()} on ${title}`}
-        className={`mt-3 min-h-10 w-full rounded-lg bg-accent text-xs font-bold uppercase tracking-wider text-accent-on hover:bg-accent-hover ${FOCUS_RING}`}
-      >
-        Start
-      </button>
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onStart}
+          aria-label={`Start ${action.toLowerCase()} on ${title}`}
+          className={`min-h-10 flex-1 rounded-lg bg-accent text-xs font-bold uppercase tracking-wider text-accent-on hover:bg-accent-hover ${FOCUS_RING}`}
+        >
+          Start
+        </button>
+        {onDismiss ? (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label={`Not now: skip ${title} today`}
+            className={`min-h-10 shrink-0 rounded-lg border border-line px-3 text-[11px] font-semibold text-muted hover:bg-hover hover:text-ink ${FOCUS_RING}`}
+          >
+            Not now
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

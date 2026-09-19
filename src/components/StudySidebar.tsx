@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { useApp } from "@/components/AppContext";
 import NavLiquidGlass from "@/components/NavLiquidGlass";
+import PastSessionsPanel from "@/components/PastSessionsPanel";
 
 export type StudySidebarContext = {
   conceptName?: string | null;
@@ -192,6 +193,8 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
         </nav>
 
         <div className="relative z-10 flex shrink-0 items-center gap-1">
+          <PastSessionsPanel />
+
           <button
             type="button"
             onClick={() => setAppTheme(appTheme === "dark" ? "light" : "dark")}
