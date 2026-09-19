@@ -19,19 +19,19 @@ Port **3000**. Django (`:8000`) is auth and roadmaps. The Learning Agent
 | `/practice` | Practice canvas |
 | `/chat`, `/chat/[sessionId]` | Study Session |
 
-Chat UI: `src/components/ChatWorkspace.tsx` plus `src/components/chat/`.
+Chat UI: `src/components/chat/` (`ChatWorkspace.tsx` + hooks).
 
 ## Math rendering
 
-Every student-facing string goes through `prepareMathMarkdown` (`src/lib/mathHarden.ts`)
+Every student-facing string goes through `prepareMathMarkdown` (`src/lib/math/mathHarden.ts`)
 before `react-markdown` sees it. Three layers, in order:
 
 | layer | file | job |
 |---|---|---|
-| normalise | `src/lib/markdownMath.ts` | `\(…\)`/`\[…\]` → `$`/`$$`, unicode → macros, escape prices, unwrap sentences the model wrapped in `$…$`, delimit bare TeX, give display blocks their own line |
-| choose | `src/lib/mathHarden.ts` | run the aggressive and conservative pipelines, score both with KaTeX, keep the better one — preprocessing may not make a message worse |
-| veto | `src/lib/mathHarden.ts` | parse each span with **KaTeX itself**; what it rejects becomes text, not a red error |
-| guarantee | `src/lib/rehypeKatexSafe.ts` | runs *after* rehype-katex and replaces any surviving error node with the formula as `code` |
+| normalise | `src/lib/math/markdownMath.ts` | `\(…\)`/`\[…\]` → `$`/`$$`, unicode → macros, escape prices, unwrap sentences the model wrapped in `$…$`, delimit bare TeX, give display blocks their own line |
+| choose | `src/lib/math/mathHarden.ts` | run the aggressive and conservative pipelines, score both with KaTeX, keep the better one — preprocessing may not make a message worse |
+| veto | `src/lib/math/mathHarden.ts` | parse each span with **KaTeX itself**; what it rejects becomes text, not a red error |
+| guarantee | `src/lib/math/rehypeKatexSafe.ts` | runs *after* rehype-katex and replaces any surviving error node with the formula as `code` |
 
 The last layer is the one that actually guarantees it. A regex cannot reproduce exactly
 which substrings remark-math treats as maths — auditing the corpus found five error
