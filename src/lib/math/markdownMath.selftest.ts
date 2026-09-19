@@ -1,7 +1,7 @@
 /**
  * Phase 4 — run frontend LaTeX golden fixtures.
  *
- *   npx --yes tsx src/lib/markdownMath.selftest.ts
+ *   npx --yes tsx src/lib/math/markdownMath.selftest.ts
  */
 import {
   assertMathFixtures,

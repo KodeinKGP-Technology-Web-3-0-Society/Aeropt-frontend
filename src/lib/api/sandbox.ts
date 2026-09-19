@@ -1,5 +1,5 @@
-import * as auth from "@/lib/auth";
-import { CacheTTL, cacheKey, cachedGet, primeCache } from "@/lib/apiCache";
+import * as auth from "@/lib/api/auth";
+import { CacheTTL, cacheKey, cachedGet, primeCache } from "@/lib/api/apiCache";
 
 export type SandboxAction = {
   id: string;

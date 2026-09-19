@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathExpandModal from "@/components/slides/MathExpandModal";
-import type { FlashcardItem, GradingUIPayload } from "@/lib/agent";
-import type { StudyStage } from "@/lib/roadmap";
+import type { FlashcardItem, GradingUIPayload } from "@/lib/api/agent";
+import type { StudyStage } from "@/lib/api/roadmap";
 
 const STAGE_LABELS: Record<string, string> = {
   theory: "Theory",

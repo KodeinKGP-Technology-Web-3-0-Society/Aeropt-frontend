@@ -1,7 +1,7 @@
 "use client";
 
 import AuthGuard from "@/components/AuthGuard";
-import ChatWorkspace from "@/components/ChatWorkspace";
+import ChatWorkspace from "@/components/chat/ChatWorkspace";
 import { Suspense, use } from "react";
 
 type PageProps = {

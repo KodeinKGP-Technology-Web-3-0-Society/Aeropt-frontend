@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { ProactiveCardPayload } from "@/lib/agent";
+import type { ProactiveCardPayload } from "@/lib/api/agent";
 
 export default function ProactiveIntroCard({ card }: { card: ProactiveCardPayload }) {
   return (

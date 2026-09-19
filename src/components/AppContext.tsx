@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import appDataJson from "@/data/appData.json";
-import * as auth from "@/lib/auth";
-import * as onboardingApi from "@/lib/onboarding";
+import * as auth from "@/lib/api/auth";
+import * as onboardingApi from "@/lib/api/onboarding";
 
 // Types derived from JSON schema
 export type User = {

@@ -15,10 +15,9 @@ import {
   type ChatHistoryDetail,
   type ChatHistorySession,
   type HistoryErrorCopy,
-} from "@/lib/chatHistory";
+} from "@/lib/api/chatHistory";
+import { FOCUS_RING } from "@/lib/focusRing";
 
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 function ClockIcon(props: React.SVGProps<SVGSVGElement>) {
   return (

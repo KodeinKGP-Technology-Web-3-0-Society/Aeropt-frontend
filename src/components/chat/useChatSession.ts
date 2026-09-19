@@ -8,12 +8,12 @@ import {
   fetchChatSessionDetail,
   presentationToAgentResponse,
   type ChatTurnItem,
-} from "@/lib/agent";
-import { getSupabaseUserId, getAgentApiBase } from "@/lib/auth";
+} from "@/lib/api/agent";
+import { getSupabaseUserId, getAgentApiBase } from "@/lib/api/auth";
 import type { Session, Message, StructuredResponse } from "./types";
 import { asPracticeBatch, asPracticeData, extractPracticeQuestion } from "@/lib/practiceContent";
-import { StudyStage } from "@/lib/roadmap";
-import * as onboarding from "@/lib/onboarding";
+import { StudyStage } from "@/lib/api/roadmap";
+import * as onboarding from "@/lib/api/onboarding";
 
 const SESSION_STORAGE_KEY = "agent_active_session_id";
 const agentBaseUrl = getAgentApiBase();

@@ -1,6 +1,6 @@
 import AuthGuard from "@/components/AuthGuard";
-import StudySidebar from "@/components/StudySidebar";
-import RoadmapContent from "@/components/RoadmapContent";
+import StudySidebar from "@/components/study/StudySidebar";
+import RoadmapContent from "@/components/roadmap/RoadmapContent";
 
 export default function RoadmapPage() {
   return (

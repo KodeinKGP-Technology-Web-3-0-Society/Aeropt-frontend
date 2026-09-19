@@ -5,7 +5,7 @@ import DiagramSlide from "@/components/slides/DiagramSlide";
 import FormulaSlide from "@/components/slides/FormulaSlide";
 import SummarySlide from "@/components/slides/SummarySlide";
 import MarkdownMath from "@/components/MarkdownMath";
-import { extractMarkdownImageUrls } from "@/lib/markdownMath";
+import { extractMarkdownImageUrls } from "@/lib/math/markdownMath";
 import type { SlideType } from "@/components/slides/types";
 
 function stripMarkdownImages(md: string): string {

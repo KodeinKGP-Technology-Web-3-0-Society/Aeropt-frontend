@@ -1,5 +1,5 @@
-import { requireAgentApiBase } from "@/lib/auth";
-import type { StudyStage } from "@/lib/roadmap";
+import { requireAgentApiBase } from "@/lib/api/auth";
+import type { StudyStage } from "@/lib/api/roadmap";
 
 /**
  * Client-side guards for the chat stream.
@@ -528,7 +528,7 @@ export type DailyBriefingPayload = {
 
 /** Mentor Briefing card + dashboard coach note from Django analytics. */
 export async function fetchDailyBriefing(): Promise<DailyBriefingPayload | null> {
-  const { apiRequest, getApiBaseUrl } = await import("@/lib/auth");
+  const { apiRequest, getApiBaseUrl } = await import("@/lib/api/auth");
   try {
     return await apiRequest<DailyBriefingPayload>(
       `${getApiBaseUrl()}/analytics/daily-briefing/`,

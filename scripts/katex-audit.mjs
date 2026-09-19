@@ -41,8 +41,8 @@ async function transpile(relPath, outName) {
 
 /** The exact pipeline the chat view runs: preprocess, then KaTeX-veto each span. */
 async function loadPreprocessor() {
-  await transpile("src/lib/markdownMath.ts", "markdownMath.audit.mjs");
-  const { prepareMathMarkdown } = await transpile("src/lib/mathHarden.ts", "mathHarden.audit.mjs");
+  await transpile("src/lib/math/markdownMath.ts", "markdownMath.audit.mjs");
+  const { prepareMathMarkdown } = await transpile("src/lib/math/mathHarden.ts", "mathHarden.audit.mjs");
   return { preprocessMarkdownMath: (text) => prepareMathMarkdown(text, "full") };
 }
 

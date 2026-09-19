@@ -2,24 +2,24 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import StudySidebar from "@/components/StudySidebar";
-import AgentRosterPanel from "@/components/AgentRosterPanel";
-import { StudyStepBar } from "@/components/StudySessionCards";
-import InteractivePracticeCanvas from "@/components/InteractivePracticeCanvas";
-import PracticeBatchCanvas from "@/components/PracticeBatchCanvas";
-import { getSupabaseUserId } from "@/lib/auth";
-import { stagePrompt, updateRoadmapProgress, clearRoadmapSessionBind, writeRoadmapSessionBind } from "@/lib/roadmap";
+import StudySidebar from "@/components/study/StudySidebar";
+import AgentRosterPanel from "@/components/chat/AgentRosterPanel";
+import { StudyStepBar } from "@/components/study/StudySessionCards";
+import InteractivePracticeCanvas from "@/components/practice/InteractivePracticeCanvas";
+import PracticeBatchCanvas from "@/components/practice/PracticeBatchCanvas";
+import { getSupabaseUserId } from "@/lib/api/auth";
+import { stagePrompt, updateRoadmapProgress, clearRoadmapSessionBind, writeRoadmapSessionBind } from "@/lib/api/roadmap";
 import { asPracticeBatch, asPracticeData, extractPracticeQuestion } from "@/lib/practiceContent";
-import type { StudyStage } from "@/lib/roadmap";
-import type { AgentChatResponse } from "@/lib/agent";
-import { AgentStreamError } from "@/lib/agent";
+import type { StudyStage } from "@/lib/api/roadmap";
+import type { AgentChatResponse } from "@/lib/api/agent";
+import { AgentStreamError } from "@/lib/api/agent";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
-import { useRoadmapBinding } from "./chat/useRoadmapBinding";
-import { useChatSession } from "./chat/useChatSession";
-import MessageList from "./chat/MessageList";
-import ChatInput from "./chat/ChatInput";
-import type { FlashcardItem } from "@/lib/agent";
+import { useRoadmapBinding } from "./useRoadmapBinding";
+import { useChatSession } from "./useChatSession";
+import MessageList from "./MessageList";
+import ChatInput from "./ChatInput";
+import type { FlashcardItem } from "@/lib/api/agent";
 
 function HistoryIcon() {
   return (

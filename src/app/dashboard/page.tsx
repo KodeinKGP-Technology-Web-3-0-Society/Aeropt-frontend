@@ -1,6 +1,6 @@
 import AuthGuard from "@/components/AuthGuard";
-import StudySidebar from "@/components/StudySidebar";
-import DashboardContent from "@/components/DashboardContent";
+import StudySidebar from "@/components/study/StudySidebar";
+import DashboardContent from "@/components/dashboard/DashboardContent";
 
 export default function DashboardPage() {
   return (

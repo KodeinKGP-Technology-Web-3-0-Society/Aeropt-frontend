@@ -8,8 +8,8 @@ import {
   writeRoadmapSessionBind,
   type PathNode,
   type StudyStage,
-} from "@/lib/roadmap";
-import { fetchConceptProficiency } from "@/lib/agent";
+} from "@/lib/api/roadmap";
+import { fetchConceptProficiency } from "@/lib/api/agent";
 
 export function useRoadmapBinding(sessionId: string, activeSessionId: string | null) {
   const router = useRouter();

@@ -1,6 +1,6 @@
 import AuthGuard from "@/components/AuthGuard";
-import StudySidebar from "@/components/StudySidebar";
-import ProgressContent from "@/components/ProgressContent";
+import StudySidebar from "@/components/study/StudySidebar";
+import ProgressContent from "@/components/progress/ProgressContent";
 
 export default function ProgressPage() {
   return (

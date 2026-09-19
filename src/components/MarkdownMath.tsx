@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import rehypeKatexSafe from "@/lib/rehypeKatexSafe";
-import { prepareMathMarkdown } from "@/lib/mathHarden";
-import InteractivePracticeCanvas from "./InteractivePracticeCanvas";
+import rehypeKatexSafe from "@/lib/math/rehypeKatexSafe";
+import { prepareMathMarkdown } from "@/lib/math/mathHarden";
+import InteractivePracticeCanvas from "@/components/practice/InteractivePracticeCanvas";
 
 type MarkdownMathProps = {
   content: string;

@@ -1,6 +1,6 @@
 import AuthGuard from "@/components/AuthGuard";
-import StudySidebar from "@/components/StudySidebar";
-import SettingsContent from "@/components/SettingsContent";
+import StudySidebar from "@/components/study/StudySidebar";
+import SettingsContent from "@/components/settings/SettingsContent";
 
 export default function SettingsPage() {
   return (

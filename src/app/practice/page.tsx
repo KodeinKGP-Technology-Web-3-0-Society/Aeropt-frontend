@@ -1,6 +1,6 @@
 import AuthGuard from "@/components/AuthGuard";
-import StudySidebar from "@/components/StudySidebar";
-import PracticeContent from "@/components/PracticeContent";
+import StudySidebar from "@/components/study/StudySidebar";
+import PracticeContent from "@/components/practice/PracticeContent";
 
 export default function PracticePage() {
   return (

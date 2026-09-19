@@ -39,9 +39,9 @@ async function transpile(relPath, outName) {
   return import(`file://${tmp}?v=${Date.now()}`);
 }
 
-await transpile("src/lib/markdownMath.ts", "markdownMath.render.mjs");
-const { prepareMathMarkdown } = await transpile("src/lib/mathHarden.ts", "mathHarden.render.mjs");
-const rehypeKatexSafe = (await transpile("src/lib/rehypeKatexSafe.ts", "rehypeKatexSafe.render.mjs"))
+await transpile("src/lib/math/markdownMath.ts", "markdownMath.render.mjs");
+const { prepareMathMarkdown } = await transpile("src/lib/math/mathHarden.ts", "mathHarden.render.mjs");
+const rehypeKatexSafe = (await transpile("src/lib/math/rehypeKatexSafe.ts", "rehypeKatexSafe.render.mjs"))
   .default;
 
 // Same options as KATEX_OPTIONS in src/components/MarkdownMath.tsx. The tree is

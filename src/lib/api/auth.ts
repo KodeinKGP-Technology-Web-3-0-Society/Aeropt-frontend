@@ -1,4 +1,4 @@
-import { invalidateCache } from "@/lib/apiCache";
+import { invalidateCache } from "@/lib/api/apiCache";
 
 /** Django (:8000) is the only auth authority. Do not call the agent for login/register. */
 

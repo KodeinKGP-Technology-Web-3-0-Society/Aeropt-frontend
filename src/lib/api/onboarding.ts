@@ -1,10 +1,10 @@
-import * as auth from "@/lib/auth";
+import * as auth from "@/lib/api/auth";
 import {
   CacheTTL,
   cacheKey,
   cachedGet,
   invalidateUserProductCache,
-} from "@/lib/apiCache";
+} from "@/lib/api/apiCache";
 
 export type JourneyType = "fresh_start" | "mid_journey" | "revision_dropper";
 export type LearningSource = "school" | "coaching" | "self_study" | "mixed";

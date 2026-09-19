@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useApp } from "@/components/AppContext";
-import { apiRequest, getApiBaseUrl } from "@/lib/auth";
-import { CacheTTL, cacheKey, cachedGet } from "@/lib/apiCache";
+import { apiRequest, getApiBaseUrl } from "@/lib/api/auth";
+import { CacheTTL, cacheKey, cachedGet } from "@/lib/api/apiCache";
 
 type SortKey = "concept" | "chapter" | "score" | "attempts" | "accuracy" | "lastAttempted";
 type SortOrder = "asc" | "desc";

@@ -6,9 +6,10 @@ import {
   completeSandboxAction,
   dismissSandboxAction,
   type SandboxAction,
-} from "@/lib/sandbox";
-import { ApiError } from "@/lib/auth";
-import { stagePrompt, type StudyStage } from "@/lib/roadmap";
+} from "@/lib/api/sandbox";
+import { ApiError } from "@/lib/api/auth";
+import { stagePrompt, type StudyStage } from "@/lib/api/roadmap";
+import { FOCUS_RING } from "@/lib/focusRing";
 
 function actionToChat(action: string, conceptName: string): { stage: StudyStage; prompt: string } {
   switch ((action || "LEARN").toUpperCase()) {
@@ -197,8 +198,6 @@ export default function SandboxCardDeck({
   );
 }
 
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 function FocusCard({
   action,

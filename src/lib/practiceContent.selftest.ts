@@ -1,7 +1,7 @@
 /**
  *   npx --yes tsx src/lib/practiceContent.selftest.ts
  */
-import { preprocessMarkdownMath } from "./markdownMath.ts";
+import { preprocessMarkdownMath } from "./math/markdownMath.ts";
 import { extractPracticeQuestion, looksLikePracticeDump, asPracticeBatch } from "./practiceContent.ts";
 
 const fence = `\`\`\`interactive-practice

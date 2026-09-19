@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import AssistantResponse from "./AssistantResponse";
 import type { Message } from "./types";
 import { asPracticeBatch } from "@/lib/practiceContent";
-import type { FlashcardItem } from "@/lib/agent";
+import type { FlashcardItem } from "@/lib/api/agent";
 
 interface MessageListProps {
   messages: Message[];

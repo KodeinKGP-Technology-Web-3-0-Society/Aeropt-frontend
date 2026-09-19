@@ -1,11 +1,11 @@
-import * as auth from "@/lib/auth";
+import * as auth from "@/lib/api/auth";
 import {
   CacheTTL,
   cacheKey,
   cachedGet,
   invalidateCache,
   invalidateUserProductCache,
-} from "@/lib/apiCache";
+} from "@/lib/api/apiCache";
 
 export type NodeStatus = "pending" | "in_progress" | "completed" | "skipped";
 export type NodeType = "learn" | "revise" | "mastered";

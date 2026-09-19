@@ -1,4 +1,4 @@
-import { AgentChatResponse } from "@/lib/agent";
+import { AgentChatResponse } from "@/lib/api/agent";
 
 export type PrerequisiteNode = {
   concept: string;

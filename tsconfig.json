@@ -37,6 +37,6 @@
   ],
   "exclude": [
     "node_modules",
-    "src/lib/*.selftest.ts"
+    "src/lib/**/*.selftest.ts"
   ]
 }

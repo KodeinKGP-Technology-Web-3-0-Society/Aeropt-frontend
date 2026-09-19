@@ -1,8 +1,8 @@
 "use client";
 
 import AuthGuard from "@/components/AuthGuard";
-import { createChatSession } from "@/lib/agent";
-import { getSupabaseUserId } from "@/lib/auth";
+import { createChatSession } from "@/lib/api/agent";
+import { getSupabaseUserId } from "@/lib/api/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 

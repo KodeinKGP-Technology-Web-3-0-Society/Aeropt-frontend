@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { useApp } from "@/components/AppContext";
 import NavLiquidGlass from "@/components/NavLiquidGlass";
-import PastSessionsPanel from "@/components/PastSessionsPanel";
+import PastSessionsPanel from "@/components/study/PastSessionsPanel";
 
 export type StudySidebarContext = {
   conceptName?: string | null;

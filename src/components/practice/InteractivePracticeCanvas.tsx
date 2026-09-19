@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import MarkdownMath from "./MarkdownMath";
+import MarkdownMath from "@/components/MarkdownMath";
 import type { InteractivePracticeData } from "@/lib/practiceContent";
 
 type InteractivePracticeCanvasProps = {

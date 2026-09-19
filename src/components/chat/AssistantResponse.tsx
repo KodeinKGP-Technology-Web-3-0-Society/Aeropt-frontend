@@ -1,10 +1,10 @@
 import React from "react";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
-import InteractivePracticeCanvas from "@/components/InteractivePracticeCanvas";
-import PracticeAttemptView from "@/components/PracticeAttemptView";
-import PracticeBatchCanvas from "@/components/PracticeBatchCanvas";
-import { FlashcardDeck, GradingButtons, CollapsibleScoreSummary, QuizAssessmentNotice } from "@/components/StudySessionCards";
+import InteractivePracticeCanvas from "@/components/practice/InteractivePracticeCanvas";
+import PracticeAttemptView from "@/components/practice/PracticeAttemptView";
+import PracticeBatchCanvas from "@/components/practice/PracticeBatchCanvas";
+import { FlashcardDeck, GradingButtons, CollapsibleScoreSummary, QuizAssessmentNotice } from "@/components/study/StudySessionCards";
 import ProactiveIntroCard from "@/components/slides/ProactiveIntroCard";
 import { 
   asPracticeBatch, 
@@ -15,7 +15,7 @@ import {
   type InteractivePracticeData
 } from "@/lib/practiceContent";
 import type { Message } from "./types";
-import type { AgentChatResponse, FlashcardItem } from "@/lib/agent";
+import type { AgentChatResponse, FlashcardItem } from "@/lib/api/agent";
 
 function TypingIndicator() {
   return (

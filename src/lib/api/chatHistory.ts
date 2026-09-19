@@ -9,8 +9,8 @@
  * turns both into calm copy and says whether a retry is worth offering.
  */
 
-import * as auth from "@/lib/auth";
-import { CacheTTL, cacheKey, cachedGet } from "@/lib/apiCache";
+import * as auth from "@/lib/api/auth";
+import { CacheTTL, cacheKey, cachedGet } from "@/lib/api/apiCache";
 
 export type ChatHistorySession = {
   session_id: string;
