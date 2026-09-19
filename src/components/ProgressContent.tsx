@@ -147,9 +147,23 @@ export default function ProgressContent() {
   });
 
   if (loading) {
+    // Same skeleton shape as DashboardContent/RoadmapContent: header, stat row,
+    // table block. A bare "Loading…" line collapsed the layout and jumped.
     return (
-      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
-        <p className="text-sm text-muted">Loading your progress…</p>
+      <div
+        className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading your progress"
+      >
+        <div className="h-7 w-40 rounded-lg bg-hover mb-2" />
+        <div className="h-4 w-64 rounded bg-hover/60 mb-8" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 rounded-2xl border border-line bg-surface" />
+          ))}
+        </div>
+        <div className="h-64 rounded-2xl border border-line bg-surface" />
       </div>
     );
   }

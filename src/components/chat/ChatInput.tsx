@@ -15,6 +15,8 @@ interface ChatInputProps {
   isReplying: boolean;
   showSelfGradeHint: boolean;
   error: string;
+  /** Present only when the last turn failed and can be resent as-is. */
+  onRetry?: () => void;
 }
 
 export default function ChatInput({
@@ -24,6 +26,7 @@ export default function ChatInput({
   isReplying,
   showSelfGradeHint,
   error,
+  onRetry,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
@@ -51,6 +54,7 @@ export default function ChatInput({
     <form ref={formRef} className="chat-input" onSubmit={onSubmit}>
       <div className="chat-composer">
         <textarea
+          aria-label="Ask the tutor a question"
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="Ask anything from Laws of Motion, Work Energy & Power, or Rotational Motion..."
@@ -71,10 +75,25 @@ export default function ChatInput({
           <ArrowUpIcon />
         </button>
       </div>
-      {showSelfGradeHint ? (
+      {error && !sessionNotFound ? (
+        <p className="chat-error" role="status">
+          {formatAgentError(error)}
+          {onRetry ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={isReplying}
+                className="font-semibold text-accent underline underline-offset-2 disabled:opacity-60"
+              >
+                Retry
+              </button>
+            </>
+          ) : null}
+        </p>
+      ) : showSelfGradeHint ? (
         <p>After practice questions, use the Correct / Incorrect buttons to self-grade.</p>
-      ) : error && !sessionNotFound ? (
-        <p className="chat-error">{formatAgentError(error)}</p>
       ) : null}
     </form>
   );

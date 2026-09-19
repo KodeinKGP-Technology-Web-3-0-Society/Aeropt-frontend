@@ -12,6 +12,8 @@ import { stagePrompt, updateRoadmapProgress, clearRoadmapSessionBind, writeRoadm
 import { asPracticeBatch, asPracticeData, extractPracticeQuestion } from "@/lib/practiceContent";
 import type { StudyStage } from "@/lib/roadmap";
 import type { AgentChatResponse } from "@/lib/agent";
+import { AgentStreamError } from "@/lib/agent";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useRoadmapBinding } from "./chat/useRoadmapBinding";
 import { useChatSession } from "./chat/useChatSession";
@@ -48,7 +50,7 @@ const fallbackPrompts = [
   "Give me a practice question on Newton's 2nd law",
 ];
 
-export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
+function ChatWorkspaceInner({ sessionId }: { sessionId: string }) {
   const roadmap = useRoadmapBinding(sessionId, sessionId);
   
   const chat = useChatSession(
@@ -69,6 +71,19 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [agentPanelCollapsed, setAgentPanelCollapsed] = useState(false);
   const [agentRefreshKey, setAgentRefreshKey] = useState(0);
+  /**
+   * A turn whose stream died before the agent's `result` frame. Kept so the
+   * student's question and any partial answer stay on screen with a retry,
+   * instead of both being deleted (the old behaviour) or the UI spinning
+   * forever.
+   */
+  const [failedTurn, setFailedTurn] = useState<{
+    query: string;
+    gradedOutcome?: "correct" | "incorrect";
+    studyStage?: StudyStage;
+    flaggedStepId?: string;
+    messageIds: string[];
+  } | null>(null);
 
   const [canvasPractice, setCanvasPractice] = useState<{
     data: any;
@@ -169,6 +184,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
     };
 
     chat.setError("");
+    setFailedTurn(null);
     chat.setIsReplying(true);
     const assistantId = crypto.randomUUID();
     chat.setMessages((current) => [
@@ -223,12 +239,74 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
       
       return newResponse;
     } catch (caught) {
-      chat.setError(caught instanceof Error ? caught.message : "Something went wrong.");
-      chat.setMessages((current) => current.filter((message) => message.id !== userMessage.id && message.id !== assistantId));
+      handleTurnFailure(caught, {
+        userMessageId: userMessage.id,
+        assistantId,
+        retry: { query: isGradeTap ? (gradedOutcome === "correct" ? "1" : "0") : trimmed, gradedOutcome, studyStage },
+      });
       return null;
     } finally {
       chat.setIsReplying(false);
     }
+  }
+
+  /**
+   * One place decides what a failed turn leaves on screen.
+   *
+   * If tokens had already streamed we keep them: a student who watched half an
+   * explanation appear should not see it vanish. Either way the question stays,
+   * so "Retry" can resend it.
+   */
+  function handleTurnFailure(
+    caught: unknown,
+    context: {
+      userMessageId: string;
+      assistantId: string;
+      retry: {
+        query: string;
+        gradedOutcome?: "correct" | "incorrect";
+        studyStage?: StudyStage;
+        flaggedStepId?: string;
+      };
+    },
+  ) {
+    const streamError = caught instanceof AgentStreamError ? caught : null;
+    const partial = streamError?.partial.trim() ?? "";
+
+    chat.setError(caught instanceof Error ? caught.message : "Something went wrong.");
+
+    if (partial) {
+      chat.setMessages((current) =>
+        current.map((message) =>
+          message.id === context.assistantId ? { ...message, content: partial } : message,
+        ),
+      );
+    } else {
+      chat.setMessages((current) =>
+        current.filter((message) => message.id !== context.assistantId),
+      );
+    }
+
+    setFailedTurn({
+      ...context.retry,
+      messageIds: partial
+        ? [context.userMessageId, context.assistantId]
+        : [context.userMessageId],
+    });
+  }
+
+  /** Drops the failed pair, then resends exactly the same turn. */
+  async function retryFailedTurn() {
+    if (!failedTurn || chat.isReplying) return;
+    const turn = failedTurn;
+    setFailedTurn(null);
+    chat.setError("");
+    chat.setMessages((current) => current.filter((message) => !turn.messageIds.includes(message.id)));
+    if (turn.flaggedStepId) {
+      await submitFlaggedStep(turn.flaggedStepId);
+      return;
+    }
+    await submitMessage(turn.query, turn.gradedOutcome, turn.studyStage);
   }
 
   async function submitGrade(outcome: "correct" | "incorrect") {
@@ -266,6 +344,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
     };
 
     chat.setError("");
+    setFailedTurn(null);
     chat.setIsReplying(true);
     const assistantId = crypto.randomUUID();
     chat.setMessages((current) => [
@@ -301,8 +380,11 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
       };
       chat.setMessages((current) => [...current, assistantMessage]);
     } catch (caught) {
-      chat.setError(caught instanceof Error ? caught.message : "Something went wrong.");
-      chat.setMessages((current) => current.filter((message) => message.id !== userMessage.id && message.id !== assistantId));
+      handleTurnFailure(caught, {
+        userMessageId: userMessage.id,
+        assistantId,
+        retry: { query: "I don't get this step", flaggedStepId: stepId },
+      });
     } finally {
       chat.setIsReplying(false);
     }
@@ -449,6 +531,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
               isReplying={chat.isReplying}
               showSelfGradeHint={!canvasPractice && (chat.awaitingGrade || Boolean(chat.latestAssistant?.agent?.grading_ui?.show_correct_incorrect))}
               error={chat.error}
+              onRetry={failedTurn ? () => void retryFailedTurn() : undefined}
             />
           </div>
           
@@ -486,5 +569,28 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
     </div>
     </main>
     </>
+  );
+}
+
+/**
+ * Scoped boundary around the busiest, most complex surface in the app.
+ *
+ * A crash in the thread (a malformed presentation payload, a bad practice
+ * canvas) used to unmount the whole tree and drop the student back on a blank
+ * page with no idea whether the session survived. It did: every turn is
+ * persisted server-side, so the message says so and reloading resumes it.
+ * `resetKey={sessionId}` clears the caught error when the student navigates to
+ * a different session.
+ */
+export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
+  return (
+    <ErrorBoundary
+      scope="ChatWorkspace"
+      resetKey={sessionId}
+      title="This study session hit a snag"
+      description="Your progress is saved — every turn is stored on the server. Reload to pick the conversation back up."
+    >
+      <ChatWorkspaceInner sessionId={sessionId} />
+    </ErrorBoundary>
   );
 }

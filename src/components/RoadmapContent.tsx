@@ -319,7 +319,12 @@ export default function RoadmapContent() {
 
   if (loading) {
     return (
-      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse">
+      <div
+        className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading your roadmap"
+      >
         <div className="h-7 w-48 bg-hover rounded-lg mb-2" />
         <div className="h-4 w-72 bg-hover/60 rounded mb-8" />
         <div className="h-24 bg-surface border border-line rounded-xl mb-6" />

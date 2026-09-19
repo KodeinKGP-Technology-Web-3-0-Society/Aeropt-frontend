@@ -309,7 +309,12 @@ export default function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse">
+      <div
+        className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading your dashboard"
+      >
         <div className="h-40 rounded-3xl bg-hover mb-6" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (

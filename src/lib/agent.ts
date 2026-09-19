@@ -1,5 +1,39 @@
-import { getAgentApiBase } from "@/lib/auth";
+import { requireAgentApiBase } from "@/lib/auth";
 import type { StudyStage } from "@/lib/roadmap";
+
+/**
+ * Client-side guards for the chat stream.
+ *
+ * The agent's own per-turn budget is `LEARNING_AGENT_TIME_BUDGET_S = 45.0`
+ * (`Aeropt-agent/config.py`), and the Answer Checker plus the SSE flush run
+ * *after* that budget. So both numbers below sit comfortably above 45 s: they
+ * exist to end a connection that has genuinely died (laptop slept, wifi
+ * dropped, tunnel closed), never to cut short a turn the agent would have
+ * finished. STALL is measured between chunks, so a slow-but-alive stream that
+ * keeps emitting tokens is never aborted however long it runs in total.
+ */
+export const AGENT_STREAM_STALL_TIMEOUT_MS = 90_000;
+export const AGENT_STREAM_TOTAL_TIMEOUT_MS = 300_000;
+
+export type AgentStreamErrorKind = "timeout" | "network" | "server" | "protocol";
+
+/**
+ * A chat turn that failed *after* the request went out, carrying whatever text
+ * had already streamed so the UI can keep the partial answer on screen and
+ * offer a retry instead of silently deleting the student's question.
+ */
+export class AgentStreamError extends Error {
+  readonly kind: AgentStreamErrorKind;
+  readonly partial: string;
+  readonly retryable = true;
+
+  constructor(message: string, options: { kind: AgentStreamErrorKind; partial?: string }) {
+    super(message);
+    this.name = "AgentStreamError";
+    this.kind = options.kind;
+    this.partial = options.partial ?? "";
+  }
+}
 
 export type FlashcardItem = {
   id: string;
@@ -183,12 +217,28 @@ function sessionApiError(response: Response, data: { detail?: string; error?: st
   return data.detail || data.error || `Agent request failed (${response.status}).`;
 }
 
+/**
+ * Every non-streaming agent call goes through this. A bare `fetch` rejects with
+ * `TypeError: Failed to fetch` when the agent service is down, which used to
+ * surface to the student verbatim; this turns it into something actionable and
+ * names a missing `NEXT_PUBLIC_AGENT_API_BASE` instead of fetching a relative
+ * URL against the Next.js server.
+ */
+async function agentFetch(path: string, init?: RequestInit): Promise<Response> {
+  const base = requireAgentApiBase();
+  try {
+    return await fetch(`${base}${path}`, init);
+  } catch {
+    throw new Error("Unable to reach the tutor service. Check your connection and try again.");
+  }
+}
+
 export async function fetchChatSessions(
   userId: string,
   limit = 20,
 ): Promise<ChatSessionSummary[]> {
   const params = new URLSearchParams({ user_id: userId, limit: String(limit) });
-  const response = await fetch(`${getAgentApiBase()}/api/v1/chat/sessions?${params}`);
+  const response = await agentFetch(`/api/v1/chat/sessions?${params}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
     throw new Error(sessionApiError(response, data));
@@ -198,7 +248,7 @@ export async function fetchChatSessions(
 }
 
 export async function createChatSession(userId: string): Promise<string> {
-  const response = await fetch(`${getAgentApiBase()}/api/v1/chat/sessions`, {
+  const response = await agentFetch(`/api/v1/chat/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_id: userId }),
@@ -219,9 +269,7 @@ export async function fetchChatSessionDetail(
   sessionId: string,
 ): Promise<ChatSessionDetail> {
   const params = new URLSearchParams({ user_id: userId });
-  const response = await fetch(
-    `${getAgentApiBase()}/api/v1/chat/sessions/${sessionId}?${params}`,
-  );
+  const response = await agentFetch(`/api/v1/chat/sessions/${sessionId}?${params}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
     throw new Error(sessionApiError(response, data));
@@ -242,8 +290,8 @@ export async function fetchConceptProficiency(
   conceptId: string,
 ): Promise<ConceptProficiency | null> {
   const params = new URLSearchParams({ user_id: userId });
-  const response = await fetch(
-    `${getAgentApiBase()}/api/v1/concepts/${encodeURIComponent(conceptId)}/proficiency?${params}`,
+  const response = await agentFetch(
+    `/api/v1/concepts/${encodeURIComponent(conceptId)}/proficiency?${params}`,
   );
   if (!response.ok) return null;
   return (await response.json()) as ConceptProficiency;
@@ -275,26 +323,84 @@ export async function sendChatMessage(payload: {
     body.focus_chapters = payload.placement.focusChapters;
   }
 
-  const response = await fetch(`${getAgentApiBase()}/api/v1/chat/message`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const base = requireAgentApiBase();
+
+  // Aborting the request is what actually frees a hung stream: without it the
+  // reader's `read()` promise never settles and the UI spins forever.
+  const controller = new AbortController();
+  let abortReason: AgentStreamErrorKind | null = null;
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  const abortWith = (reason: AgentStreamErrorKind) => {
+    abortReason = reason;
+    controller.abort();
+  };
+  const totalTimer = setTimeout(() => abortWith("timeout"), AGENT_STREAM_TOTAL_TIMEOUT_MS);
+  const armStallTimer = () => {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => abortWith("timeout"), AGENT_STREAM_STALL_TIMEOUT_MS);
+  };
+  const clearTimers = () => {
+    clearTimeout(totalTimer);
+    if (stallTimer) clearTimeout(stallTimer);
+  };
+
+  let streamed = "";
+  const timeoutMessage =
+    "The tutor stopped responding — the connection looks lost. Your question is still here, retry when you're ready.";
+  const networkMessage =
+    "Connection to the tutor was lost. Your question is still here, retry when you're ready.";
+
+  let response: Response;
+  armStallTimer();
+  try {
+    response = await fetch(`${base}/api/v1/chat/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch {
+    clearTimers();
+    throw new AgentStreamError(abortReason === "timeout" ? timeoutMessage : networkMessage, {
+      kind: abortReason ?? "network",
+    });
+  }
 
   if (!response.ok) {
+    clearTimers();
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
-    throw new Error(data.detail || data.error || `Agent request failed (${response.status}).`);
+    throw new AgentStreamError(
+      data.detail || data.error || `Agent request failed (${response.status}).`,
+      { kind: response.status >= 500 ? "server" : "protocol" },
+    );
   }
 
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("No response body");
+  if (!reader) {
+    clearTimers();
+    throw new AgentStreamError("The tutor's reply arrived empty. Retry when you're ready.", {
+      kind: "protocol",
+    });
+  }
 
   const decoder = new TextDecoder();
   let buffer = "";
   let finalResult: AgentChatResponse | null = null;
 
   while (true) {
-    const { done, value } = await reader.read();
+    let done: boolean;
+    let value: Uint8Array | undefined;
+    try {
+      armStallTimer();
+      ({ done, value } = await reader.read());
+    } catch {
+      clearTimers();
+      // An abort or a socket reset mid-stream: hand back what we already have.
+      throw new AgentStreamError(abortReason === "timeout" ? timeoutMessage : networkMessage, {
+        kind: abortReason ?? "network",
+        partial: streamed,
+      });
+    }
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
@@ -318,23 +424,35 @@ export async function sendChatMessage(payload: {
       }
 
       if (eventData) {
-        if (eventType === "token" && onToken) {
+        if (eventType === "token") {
           try {
-            onToken(JSON.parse(eventData));
+            const token = JSON.parse(eventData) as string;
+            streamed += token;
+            onToken?.(token);
           } catch (e) {
             console.error("Failed to parse token", e);
           }
         } else if (eventType === "result") {
           finalResult = JSON.parse(eventData) as AgentChatResponse;
         } else if (eventType === "error") {
-          throw new Error(JSON.parse(eventData));
+          clearTimers();
+          void reader.cancel().catch(() => {});
+          throw new AgentStreamError(String(JSON.parse(eventData)), {
+            kind: "server",
+            partial: streamed,
+          });
         }
       }
     }
   }
 
+  clearTimers();
+
   if (!finalResult) {
-    throw new Error("Stream ended without returning a final result.");
+    // The socket closed cleanly but the `result` frame never arrived — e.g. a
+    // proxy cut the response. Treat it as a dropped connection, not a bug, and
+    // keep the partial text for the UI.
+    throw new AgentStreamError(networkMessage, { kind: "network", partial: streamed });
   }
 
   return finalResult;
@@ -352,7 +470,7 @@ export async function executeSandboxAction(payload: {
   proficiencyPct?: number;
   placement?: PlacementContext;
 }): Promise<AgentChatResponse> {
-  const response = await fetch(`${getAgentApiBase()}/api/v1/sandbox/execute`, {
+  const response = await agentFetch(`/api/v1/sandbox/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -393,7 +511,7 @@ export async function fetchAgentStatus(params: {
   if (params.activeAgent) qs.set("active_agent", params.activeAgent);
   if (params.focusChapters?.length) qs.set("focus_chapters", params.focusChapters.join(","));
 
-  const response = await fetch(`${getAgentApiBase()}/api/v1/agents/status?${qs}`);
+  const response = await agentFetch(`/api/v1/agents/status?${qs}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
     throw new Error(data.detail || data.error || `Agent status failed (${response.status}).`);

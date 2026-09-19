@@ -80,10 +80,11 @@ export default function PracticeContent() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Chapter Filter */}
           <div>
-            <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+            <label htmlFor="practice-filter-chapter" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
               Chapter
             </label>
             <select
+              id="practice-filter-chapter"
               value={selectedPracticeChapter}
               onChange={(e) => {
                 setSelectedPracticeChapter(e.target.value);
@@ -103,10 +104,11 @@ export default function PracticeContent() {
 
           {/* Difficulty Filter */}
           <div>
-            <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+            <label htmlFor="practice-filter-difficulty" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
               Difficulty
             </label>
             <select
+              id="practice-filter-difficulty"
               value={selectedPracticeDifficulty}
               onChange={(e) => {
                 setSelectedPracticeDifficulty(e.target.value);
@@ -126,10 +128,11 @@ export default function PracticeContent() {
 
           {/* Type Filter */}
           <div>
-            <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+            <label htmlFor="practice-filter-type" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
               Type
             </label>
             <select
+              id="practice-filter-type"
               value={selectedPracticeType}
               onChange={(e) => {
                 setSelectedPracticeType(e.target.value);
@@ -154,6 +157,10 @@ export default function PracticeContent() {
             Prioritise weak concepts
           </span>
           <button
+            type="button"
+            role="switch"
+            aria-checked={prioritizeWeak}
+            aria-label="Prioritise weak concepts"
             onClick={() => {
               setPrioritizeWeak(!prioritizeWeak);
               setCurrentQuestionIndex(0);
@@ -234,6 +241,8 @@ export default function PracticeContent() {
                 return (
                   <button
                     key={opt.label}
+                    type="button"
+                    aria-pressed={selectedOption === opt.label}
                     disabled={isAnswerChecked}
                     onClick={() => handleOptionClick(opt.label)}
                     className={`text-left p-4 border rounded-xl flex items-center gap-4 transition-all duration-200 font-sans cursor-pointer ${optionClass}`}
@@ -258,6 +267,7 @@ export default function PracticeContent() {
             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-line/50">
               {!isAnswerChecked ? (
                 <button
+                  type="button"
                   disabled={!selectedOption}
                   onClick={handleCheckAnswer}
                   className="w-full sm:flex-1 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-none cursor-pointer"
@@ -267,6 +277,7 @@ export default function PracticeContent() {
               ) : (
                 <>
                   <button
+                    type="button"
                     onClick={handleAskAboutThis}
                     className="w-full sm:flex-1 bg-hover border border-accent/30 text-ink font-semibold text-xs uppercase tracking-wider py-3 rounded-xl hover:bg-hover transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
@@ -276,6 +287,7 @@ export default function PracticeContent() {
                     Ask about this
                   </button>
                   <button
+                    type="button"
                     onClick={handleNextQuestion}
                     className="w-full sm:flex-1 bg-accent hover:bg-accent-hover text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-none cursor-pointer"
                   >

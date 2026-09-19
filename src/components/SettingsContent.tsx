@@ -49,21 +49,24 @@ export default function SettingsContent() {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+                <label htmlFor="settings-full-name" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
                   Full Name
                 </label>
                 <input
+                  id="settings-full-name"
                   type="text"
+                  autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-canvas border border-line focus:border-accent/80 text-xs text-ink rounded-lg p-3 outline-none transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+                <label htmlFor="settings-badge" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
                   Target Exam Badge
                 </label>
                 <input
+                  id="settings-badge"
                   type="text"
                   value={badge}
                   onChange={(e) => setBadge(e.target.value)}
@@ -73,11 +76,13 @@ export default function SettingsContent() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+              <label htmlFor="settings-email" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
                 Registered Email
               </label>
               <input
+                id="settings-email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-canvas border border-line focus:border-accent/80 text-xs text-ink rounded-lg p-3 outline-none transition-colors"
@@ -103,6 +108,10 @@ export default function SettingsContent() {
               <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Get alerts when your daily streak is in danger</p>
             </div>
             <button
+              type="button"
+              role="switch"
+              aria-checked={alerts}
+              aria-label="Daily study reminders"
               onClick={() => setAlerts(!alerts)}
               className={`w-10 h-5.5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
                 alerts ? "bg-success" : "bg-hover"
@@ -122,6 +131,7 @@ export default function SettingsContent() {
               <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Align recommendation algorithms with target</p>
             </div>
             <select
+              aria-label="Target level strategy"
               value={strategy}
               onChange={(e) => setStrategy(e.target.value)}
               className="bg-canvas border border-line text-[11px] font-bold text-ink rounded-lg px-3 py-1.5 outline-none cursor-pointer"
@@ -138,6 +148,7 @@ export default function SettingsContent() {
               <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Switch between Light and Dark mode</p>
             </div>
             <select
+              aria-label="Application theme"
               value={appTheme}
               onChange={(e) => setAppTheme(e.target.value as "light" | "dark")}
               className="bg-canvas border border-line text-[11px] font-bold text-ink rounded-lg px-3 py-1.5 outline-none cursor-pointer"
@@ -153,6 +164,7 @@ export default function SettingsContent() {
           <h3 className="text-xs font-bold uppercase tracking-widest text-danger">Danger Zone</h3>
           <p className="text-xs font-medium text-muted">Log out from your current learning session on this device.</p>
           <button
+            type="button"
             onClick={() => void logout()}
             className="cursor-pointer rounded-lg border border-danger/50 bg-transparent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-danger transition-colors hover:bg-danger/10"
           >

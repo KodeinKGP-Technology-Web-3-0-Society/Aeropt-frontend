@@ -12,6 +12,80 @@ if (!AGENT_API_BASE) {
   console.error("CRITICAL ERROR: NEXT_PUBLIC_AGENT_API_BASE is unset. Agent calls will fail.");
 }
 
+/**
+ * An unset base used to resolve to `""`, so every call became a same-origin
+ * fetch to `/auth/token/` and failed with a 404 that looked like a backend
+ * bug. Fail with the actual cause instead. `next.config.ts` reports the same
+ * missing vars at build time.
+ */
+function assertBase(base: string, envVar: string): string {
+  if (!base) {
+    throw new ApiError(
+      `${envVar} is not set for this build, so the app has no API address to call. ` +
+        `Set it in .env.local (see .env.example) and restart the dev server.`,
+      { kind: "config" },
+    );
+  }
+  return base;
+}
+
+export type ApiErrorKind =
+  /** env/config problem — retrying will not help. */
+  | "config"
+  /** offline, DNS, CORS, server not listening — retrying can help. */
+  | "network"
+  /** refresh failed; the student has to sign in again. */
+  | "auth"
+  /** 5xx — server-side, retrying can help. */
+  | "server"
+  /** 4xx other than 401 — the request itself was wrong. */
+  | "client";
+
+/**
+ * Carries *why* a request failed so callers can choose between "Retry" and
+ * "Sign in again". `message` stays human-readable, so existing call sites that
+ * only render `error.message` keep working unchanged.
+ */
+export class ApiError extends Error {
+  readonly kind: ApiErrorKind;
+  readonly status?: number;
+  readonly retryable: boolean;
+
+  constructor(message: string, options: { kind: ApiErrorKind; status?: number }) {
+    super(message);
+    this.name = "ApiError";
+    this.kind = options.kind;
+    this.status = options.status;
+    this.retryable = options.kind === "network" || options.kind === "server";
+  }
+}
+
+/** Fired once when a refresh attempt fails, i.e. the session is really over. */
+export const AUTH_EXPIRED_EVENT = "prepwise:auth-expired";
+
+export function onAuthExpired(handler: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(AUTH_EXPIRED_EVENT, handler);
+  return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handler);
+}
+
+let authExpiredAnnounced = false;
+
+/**
+ * Refresh failed while a refresh token existed: the session expired mid-use.
+ * Tell the app (so an open screen can prompt), then fall back to a hard bounce
+ * to /auth — otherwise a student sits in front of a screen whose every fetch
+ * 401s with no explanation.
+ */
+function announceAuthExpired(): void {
+  if (typeof window === "undefined" || authExpiredAnnounced) return;
+  authExpiredAnnounced = true;
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+  if (!window.location.pathname.startsWith("/auth")) {
+    window.location.assign("/auth?expired=1");
+  }
+}
+
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
 export const SUPABASE_USER_ID_KEY = "supabase_user_id";
@@ -23,6 +97,15 @@ export function getApiBaseUrl(): string {
 
 export function getAgentApiBase(): string {
   return AGENT_API_BASE;
+}
+
+/** Same as the getters, but throws a named error instead of returning "". */
+export function requireApiBaseUrl(): string {
+  return assertBase(API_BASE, "NEXT_PUBLIC_API_BASE_URL");
+}
+
+export function requireAgentApiBase(): string {
+  return assertBase(AGENT_API_BASE, "NEXT_PUBLIC_AGENT_API_BASE");
 }
 
 export function getSupabaseUserId(): string | null {
@@ -148,21 +231,58 @@ export async function register(email: string, password: string, fullName = ""): 
   await login(email, password);
 }
 
-export async function refreshAccessToken(): Promise<string | null> {
+/**
+ * In-flight refresh, shared by every caller.
+ *
+ * A dashboard fires several requests at once; when the access token expires
+ * they all 401 together. Without this, each one POSTs `token/refresh/`
+ * separately and — with refresh-token rotation on — all but the winner present
+ * a refresh token the server has already retired, so a recoverable expiry
+ * turns into a forced sign-out.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+export function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = performRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function performRefresh(): Promise<string | null> {
   const refresh = getRefreshToken();
   if (!refresh) {
     clearTokens();
     return null;
   }
 
-  const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/auth/token/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh }),
+    });
+  } catch {
+    // Offline or backend down. The token may well still be valid, so keep it:
+    // signing the student out over a dropped connection is the worse failure.
+    throw new ApiError(
+      "Unable to reach the API server. Check your connection and API base URL.",
+      { kind: "network" },
+    );
+  }
 
   if (!response.ok) {
+    // 5xx is the server's problem, not an expired session — do not sign out.
+    if (response.status >= 500) {
+      throw new ApiError(`The API server failed while refreshing your session (${response.status}).`, {
+        kind: "server",
+        status: response.status,
+      });
+    }
     clearTokens();
+    announceAuthExpired();
     return null;
   }
 
@@ -172,6 +292,7 @@ export async function refreshAccessToken(): Promise<string | null> {
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh);
   }
   renewAuthCookie();
+  authExpiredAnnounced = false;
   return data.access;
 }
 
@@ -214,23 +335,41 @@ export async function apiRequest<T>(url: string, init?: RequestInit): Promise<T>
     headers.set("Content-Type", "application/json");
   }
 
+  if (url.startsWith("/")) {
+    // A missing NEXT_PUBLIC_*_BASE leaves the caller with a relative URL.
+    requireApiBaseUrl();
+  }
+
   let response: Response;
   try {
     response = await fetch(url, { credentials: "include", ...init, headers });
   } catch {
-    throw new Error("Unable to reach the API server. Check your connection and API base URL.");
+    throw new ApiError(
+      "Unable to reach the API server. Check your connection and API base URL.",
+      { kind: "network" },
+    );
   }
 
   if (response.status === 401) {
+    // Silent refresh first; `refreshAccessToken` only signs the student out
+    // (and announces it) when the refresh itself is genuinely rejected.
     const newToken = await refreshAccessToken();
     if (newToken) {
       headers.set("Authorization", `Bearer ${newToken}`);
       response = await fetch(url, { credentials: "include", ...init, headers });
+    } else {
+      throw new ApiError("Your session expired. Please sign in again.", {
+        kind: "auth",
+        status: 401,
+      });
     }
   }
 
   if (!response.ok) {
-    throw new Error(await parseResponseError(response));
+    throw new ApiError(await parseResponseError(response), {
+      kind: response.status >= 500 ? "server" : response.status === 401 ? "auth" : "client",
+      status: response.status,
+    });
   }
 
   if (response.status === 204) return undefined as T;

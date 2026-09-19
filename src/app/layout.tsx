@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Source_Sans_3, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const sourceSans = Source_Sans_3({
   variable: "--font-source-sans",
@@ -33,9 +34,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body className={`${sourceSans.variable} ${sourceSerif.variable} font-sans antialiased`}>
-        <AppProvider>
-          {children}
-        </AppProvider>
+        <ErrorBoundary scope="app-shell">
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

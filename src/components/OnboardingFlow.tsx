@@ -142,17 +142,30 @@ function SegmentedChoice<T extends string>({
   value,
   options,
   onChange,
+  groupLabel,
 }: {
   value: T | "";
   options: { id: T; label: string }[];
   onChange: (id: T) => void;
+  /**
+   * These are toggle buttons, not a form control, so a `<label>` has nothing to
+   * point at. A named group plus `aria-pressed` is what a screen reader can
+   * actually announce ("Exam group, Main, pressed").
+   */
+  groupLabel: string;
 }) {
   return (
-    <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+    <div
+      role="group"
+      aria-label={groupLabel}
+      className={`grid gap-2`}
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
       {options.map((opt) => (
         <button
           key={opt.id}
           type="button"
+          aria-pressed={value === opt.id}
           onClick={() => onChange(opt.id)}
           className={`py-2.5 rounded-lg text-[13px] font-medium border transition-colors ${
             value === opt.id
@@ -375,8 +388,9 @@ export default function OnboardingFlow() {
               ))}
             </div>
             <div>
-              <label className="text-[14px] font-medium text-ink block mb-2">Exam</label>
+              <span className="text-[14px] font-medium text-ink block mb-2">Exam</span>
               <SegmentedChoice
+                groupLabel="Exam"
                 value={state.target_exam}
                 options={[
                   { id: "JEE_MAINS", label: "Main" },
@@ -387,8 +401,9 @@ export default function OnboardingFlow() {
               />
             </div>
             <div>
-              <label className="text-[14px] font-medium text-ink block mb-2">Class</label>
+              <span className="text-[14px] font-medium text-ink block mb-2">Class</span>
               <SegmentedChoice
+                groupLabel="Class"
                 value={state.grade_level}
                 options={[
                   { id: "CLASS_11", label: "Class 11" },
@@ -399,8 +414,11 @@ export default function OnboardingFlow() {
               />
             </div>
             <div>
-              <label className="text-[14px] font-medium text-ink block mb-2">Target year</label>
+              <label htmlFor="onboarding-target-year" className="text-[14px] font-medium text-ink block mb-2">
+                Target year
+              </label>
               <input
+                id="onboarding-target-year"
                 type="number"
                 value={state.target_year}
                 onChange={(e) =>
@@ -425,6 +443,7 @@ export default function OnboardingFlow() {
                 <div key={subject} className="p-4 rounded-xl border border-line-strong bg-hover">
                   <p className="text-base font-medium text-ink mb-3">{subject}</p>
                   <SegmentedChoice
+                    groupLabel={`${subject} confidence`}
                     value={state.subject_proficiency[subject] ?? "not_started"}
                     options={SUBJECT_DEPTHS}
                     onChange={(id) =>
@@ -446,6 +465,7 @@ export default function OnboardingFlow() {
                     <div key={unit.name} className="p-4 rounded-xl border border-line-strong bg-hover">
                       <p className="text-sm font-medium text-ink mb-3">{unit.name}</p>
                       <SegmentedChoice
+                        groupLabel={`${unit.name} coverage`}
                         value={state.unit_coverage[unit.name] ?? ""}
                         options={UNIT_DEPTHS}
                         onChange={(id) =>
@@ -473,13 +493,14 @@ export default function OnboardingFlow() {
             loading={saving}
           >
             <div>
-              <label className="text-base font-medium text-ink block mb-4">
+              <label htmlFor="onboarding-daily-goal" className="text-base font-medium text-ink block mb-4">
                 Daily study goal:{" "}
                 <span className="text-accent font-bold">
                   {state.daily_goal_minutes === 120 ? "120+" : state.daily_goal_minutes} min
                 </span>
               </label>
               <input
+                id="onboarding-daily-goal"
                 type="range"
                 min={15}
                 max={120}
@@ -492,8 +513,9 @@ export default function OnboardingFlow() {
               />
             </div>
             <div>
-              <label className="text-[14px] font-medium text-ink block mb-3">Preferred depth</label>
+              <span className="text-[14px] font-medium text-ink block mb-3">Preferred depth</span>
               <SegmentedChoice
+                groupLabel="Preferred depth"
                 value={state.preferred_depth}
                 options={[
                   { id: "quick", label: "Quick" },

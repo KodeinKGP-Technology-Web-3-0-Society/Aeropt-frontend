@@ -1,5 +1,6 @@
 import React from "react";
 import MarkdownMath from "@/components/MarkdownMath";
+import MathErrorBoundary from "@/components/MathErrorBoundary";
 import InteractivePracticeCanvas from "@/components/InteractivePracticeCanvas";
 import PracticeAttemptView from "@/components/PracticeAttemptView";
 import PracticeBatchCanvas from "@/components/PracticeBatchCanvas";
@@ -153,7 +154,9 @@ export default function AssistantResponse({
     const n = practiceBatch.length;
     return (
       <article className="lesson-response assistant-plain">
-        <MarkdownMath content={message.content} />
+        <MathErrorBoundary content={message.content}>
+          <MarkdownMath content={message.content} />
+        </MathErrorBoundary>
         <div className="practice-open-canvas-wrap">
           <button
             type="button"
@@ -229,7 +232,9 @@ export default function AssistantResponse({
           ))}
         </div>
       ) : (
-        <MarkdownMath content={message.content} />
+        <MathErrorBoundary content={message.content}>
+          <MarkdownMath content={message.content} />
+        </MathErrorBoundary>
       )}
       {extras}
     </article>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useApp } from "@/components/AppContext";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import PrepwiseLogo from "@/components/PrepwiseLogo";
@@ -18,6 +18,17 @@ export default function LoginScreen({
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expired, setExpired] = useState(false);
+
+  /**
+   * `auth.ts` bounces here with `?expired=1` when a refresh attempt was
+   * rejected, i.e. the session really ended. Without this the student is just
+   * dumped back on a login form with no explanation of why.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setExpired(new URLSearchParams(window.location.search).get("expired") === "1");
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +87,15 @@ export default function LoginScreen({
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-5">
+                {expired && !error && (
+                  <div
+                    role="status"
+                    className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center text-xs text-ink"
+                  >
+                    Your session expired. Sign in again to pick up where you left off.
+                  </div>
+                )}
+
                 {error && (
                   <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center animate-shake">
                     {error}
@@ -84,11 +104,13 @@ export default function LoginScreen({
 
                 {activeTab === "signup" && (
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold text-muted uppercase tracking-wider">
+                    <label htmlFor="login-full-name" className="block text-[10px] font-bold text-muted uppercase tracking-wider">
                       Full name
                     </label>
                     <input
+                      id="login-full-name"
                       type="text"
+                      autoComplete="name"
                       placeholder="Your name"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
@@ -99,11 +121,13 @@ export default function LoginScreen({
 
                 {/* Email field */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-muted uppercase tracking-wider">
+                  <label htmlFor="login-email" className="block text-[10px] font-bold text-muted uppercase tracking-wider">
                     Email Address
                   </label>
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="email"
                     placeholder="student@jee-elite.ai"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -114,7 +138,7 @@ export default function LoginScreen({
                 {/* Password field */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[10px] font-bold text-muted uppercase tracking-wider">
+                    <label htmlFor="login-password" className="block text-[10px] font-bold text-muted uppercase tracking-wider">
                       Password
                     </label>
                     {activeTab === "signin" && (
@@ -128,7 +152,9 @@ export default function LoginScreen({
                     )}
                   </div>
                   <input
+                    id="login-password"
                     type="password"
+                    autoComplete={activeTab === "signup" ? "new-password" : "current-password"}
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
