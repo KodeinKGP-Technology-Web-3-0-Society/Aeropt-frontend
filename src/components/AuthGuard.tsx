@@ -25,7 +25,7 @@ export default function AuthGuard({
     }
 
     if (onboardingCompleted && pathname === "/onboarding") {
-      router.replace("/dashboard");
+      router.replace("/home");
     }
   }, [
     authLoading,

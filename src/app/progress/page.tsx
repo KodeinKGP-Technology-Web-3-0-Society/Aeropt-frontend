@@ -1,15 +1,5 @@
-import AuthGuard from "@/components/AuthGuard";
-import StudySidebar from "@/components/study/StudySidebar";
-import ProgressContent from "@/components/progress/ProgressContent";
+import { redirect } from "next/navigation";
 
 export default function ProgressPage() {
-  return (
-    <AuthGuard>
-      <div className="h-dvh overflow-y-auto bg-transparent text-ink">
-        <StudySidebar />
-        <ProgressContent />
-      </div>
-    </AuthGuard>
-  );
+  redirect("/home");
 }
-

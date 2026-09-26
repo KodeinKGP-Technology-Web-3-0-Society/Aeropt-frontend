@@ -27,11 +27,10 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { label: "Roadmap", href: "/roadmap", icon: MapIcon },
-  { label: "Study Session", href: "/chat", icon: ChatIcon },
-  { label: "Practice", href: "/practice", icon: LayersIcon },
-  { label: "Progress", href: "/progress", icon: ChartIcon },
+  { label: "Home", href: "/home", icon: HomeIcon },
+  { label: "Plan", href: "/plan", icon: PlanIcon },
+  { label: "Readiness", href: "/readiness", icon: ReadinessIcon },
+  { label: "Doubt", href: "/doubt", icon: ChatIcon },
   { label: "Settings", href: "/settings", icon: GearIcon },
 ];
 
@@ -43,10 +42,20 @@ function HomeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function MapIcon(props: SVGProps<SVGSVGElement>) {
+function PlanIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M3 6.5 9 4.5l6 2 6-2v13l-6 2-6-2-6 2V6.5Zm6-1.3v13m6-11v13" />
+      <path d="M8 5h10.5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+      <path d="M9.5 9.5h7M9.5 13h7M9.5 16.5h4.5" />
+    </svg>
+  );
+}
+
+function ReadinessIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M5 19V9.5L12 5l7 4.5V19" />
+      <path d="M9.5 19v-5h5v5" />
     </svg>
   );
 }
@@ -55,22 +64,6 @@ function ChatIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M5 6.5h14v10H8.7L5 19.5v-13Z" />
-    </svg>
-  );
-}
-
-function LayersIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m12 4 8 4-8 4-8-4 8-4Zm-6 8 6 3 6-3m-12 4 6 3 6-3" />
-    </svg>
-  );
-}
-
-function ChartIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M4 19h16M7 16V9m5 7V5m5 11v-4" />
     </svg>
   );
 }
@@ -121,7 +114,11 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 
-  const onChat = pathname.startsWith("/chat");
+  const onChat =
+    pathname.startsWith("/chat") ||
+    pathname.startsWith("/lesson") ||
+    pathname.startsWith("/doubt") ||
+    pathname.startsWith("/assess");
   const contextLabel = studyContext?.conceptName
     ? [
         studyContext.conceptName,
@@ -163,7 +160,7 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
         <NavLiquidGlass />
         <nav className="relative z-10 flex min-w-0 items-center gap-0.5 overflow-x-auto" aria-label="Primary">
           {navItems.map((item) => {
-            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            const active = pathname === item.href || (item.href !== "/home" && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}

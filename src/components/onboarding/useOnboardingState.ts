@@ -76,7 +76,7 @@ export function useOnboardingState() {
       try {
         const me = await onboarding.fetchMe();
         if (me.onboarding_completed) {
-          router.replace("/dashboard");
+          router.replace("/home");
           return;
         }
         setUserId(me.id);
@@ -191,7 +191,7 @@ export function useOnboardingState() {
       });
       clearDraft();
       await refreshOnboardingStatus();
-      router.replace("/dashboard");
+      router.replace("/home");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not finish setup");
     } finally {

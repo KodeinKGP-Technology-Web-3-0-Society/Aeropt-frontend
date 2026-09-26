@@ -13,7 +13,7 @@ function AuthPageInner() {
 
   useEffect(() => {
     if (!authLoading && !onboardingLoading && isLoggedIn) {
-      router.replace(onboardingCompleted ? "/dashboard" : "/onboarding");
+      router.replace(onboardingCompleted ? "/home" : "/onboarding");
     }
   }, [authLoading, onboardingLoading, isLoggedIn, onboardingCompleted, router]);
 
