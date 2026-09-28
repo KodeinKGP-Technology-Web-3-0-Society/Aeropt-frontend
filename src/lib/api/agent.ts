@@ -1,4 +1,4 @@
-import { requireAgentApiBase } from "@/lib/api/auth";
+import { getAccessToken, requireAgentApiBase } from "@/lib/api/auth";
 import type { StudyStage } from "@/lib/api/roadmap";
 
 /**
@@ -297,6 +297,68 @@ export async function fetchConceptProficiency(
   return (await response.json()) as ConceptProficiency;
 }
 
+export type ClassroomChatSurface = "lesson" | "doubt" | "assess";
+
+export type AssessItem = {
+  item_id: string;
+  prompt?: string;
+  question?: string;
+  text?: string;
+};
+
+export type AssessBuildResponse = {
+  items: AssessItem[];
+};
+
+export type AssessGradeAnswer = {
+  item_id: string;
+  answer: string;
+};
+
+export type AssessGradeResponse = {
+  mastery?: number;
+  correct?: number;
+  attempts?: number;
+};
+
+export async function buildClassroomAssess(conceptId: string): Promise<AssessBuildResponse> {
+  const response = await agentFetch(`/api/v1/classroom/assess/build`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ concept_id: conceptId }),
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+    throw new Error(sessionApiError(response, data));
+  }
+  const payload = (await response.json()) as AssessBuildResponse;
+  return { items: Array.isArray(payload.items) ? payload.items : [] };
+}
+
+export async function gradeClassroomAssess(input: {
+  conceptId: string;
+  answers: AssessGradeAnswer[];
+  userId?: string | null;
+  sessionId?: string | null;
+}): Promise<AssessGradeResponse> {
+  const response = await agentFetch(`/api/v1/classroom/assess/grade`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      concept_id: input.conceptId,
+      answers: input.answers,
+      user_id: input.userId || "",
+      session_id: input.sessionId || "",
+      classroom_token: getAccessToken(),
+    }),
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+    throw new Error(sessionApiError(response, data));
+  }
+  return (await response.json()) as AssessGradeResponse;
+}
+
 export async function sendChatMessage(payload: {
   userId: string;
   sessionId: string | null;
@@ -307,6 +369,10 @@ export async function sendChatMessage(payload: {
   gradedOutcome?: "correct" | "incorrect";
   placement?: PlacementContext;
   flaggedStepId?: string | null;
+  surface?: ClassroomChatSurface | null;
+  studentWork?: string | null;
+  assessAction?: "build" | "grade" | null;
+  submissions?: Array<{ item_id: string; answer: string }> | null;
 }, onToken?: (token: string) => void): Promise<AgentChatResponse> {
   const body: Record<string, unknown> = {
     user_id: payload.userId,
@@ -317,6 +383,12 @@ export async function sendChatMessage(payload: {
   if (payload.roadmapConceptId) body.roadmap_concept_id = payload.roadmapConceptId;
   if (payload.studyStage) body.study_stage = payload.studyStage;
   if (payload.gradedOutcome) body.graded_outcome = payload.gradedOutcome;
+  if (payload.surface) body.surface = payload.surface;
+  if (payload.studentWork) body.student_work = payload.studentWork;
+  if (payload.assessAction) body.assess_action = payload.assessAction;
+  if (payload.submissions?.length) body.submissions = payload.submissions;
+  const classroomToken = getAccessToken();
+  if (classroomToken) body.classroom_token = classroomToken;
   if (payload.flaggedStepId) body.flagged_step_id = payload.flaggedStepId;
   if (payload.placement?.journeyType) body.journey_type = payload.placement.journeyType;
   if (payload.placement?.focusChapters?.length) {
