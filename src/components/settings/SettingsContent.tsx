@@ -29,7 +29,7 @@ export default function SettingsContent() {
   };
 
   return (
-    <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
+    <div className="flex-1 px-6 pb-6 pt-24 lg:px-8 lg:pb-8 overflow-y-auto">
       {/* Header */}
       <div className="mb-8 select-none">
         <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-ink">Settings</h1>

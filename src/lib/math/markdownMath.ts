@@ -130,7 +130,13 @@ export function escapeCurrencyDollars(text: string): string {
  * KaTeX renders it — badly, as italic run-together text — so it is unwrapped instead.
  */
 export function unwrapSentenceMath(text: string): string {
-  return text.replace(/(?<!\\)(?<!\$)\$([^$\n]{8,400}?)\$(?!\$)/g, (whole, body: string) => {
+  // Pair delimiters left to right, every span regardless of length, and only then
+  // decide. Requiring 8+ chars inside the pattern (as this used to) made the scan
+  // skip `$C$`, restart on its CLOSING `$`, and pair every later delimiter wrong:
+  // "a capacitor $C$ and an inductor $L$, and we want … of $L$?" lost the `$`
+  // after the first L and rendered the rest of the sentence as italic maths.
+  return text.replace(/(?<![\\$])\$(?!\$)([^$\n]*?)(?<!\\)\$(?!\$)/g, (whole, body: string) => {
+    if (body.length < 8 || body.length > 400) return whole;
     if (MATH_EVIDENCE_RE.test(body)) return whole;
     const words = body.match(/[A-Za-z]{2,}/g) || [];
     return words.length >= 4 ? body : whole;
@@ -537,8 +543,16 @@ function tidyInlineSpans(text: string): string {
   let out = text;
   // close + open mistaken for a display delimiter (both sides non-space, non-$)
   out = out.replace(/(?<=[^\s$])\$\$(?=[^\s$])/g, "$ $");
-  // a word running straight into an opening delimiter, or out of a closing one
-  out = out.replace(/(?<=[A-Za-z0-9])\$(?=[^$\n]*?\$)/g, " $");
+  // A word running straight into an opening delimiter, or out of a closing one.
+  // Walk real pairs: a lookahead rule cannot tell opening from closing, and it used
+  // to turn "a capacitor $C$ and" into "$C $and", gluing the next word to the maths.
+  out = out.replace(/(?<![\\$])\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)/g, (span, _body, offset: number, whole: string) => {
+    const before = whole[offset - 1] ?? "";
+    const after = whole[offset + span.length] ?? "";
+    const lead = /[A-Za-z0-9]/.test(before) ? " " : "";
+    const tail = /[A-Za-z0-9]/.test(after) ? " " : "";
+    return `${lead}${span}${tail}`;
+  });
   return out;
 }
 
@@ -643,6 +657,16 @@ export type MathFixture = {
 };
 
 export const MATH_GOLDEN_FIXTURES: MathFixture[] = [
+  {
+    // Study Room, 2026-10-02: a short span ($C$) before two longer ones used to
+    // shift delimiter pairing, so the rest of the bold question rendered as maths.
+    id: "short-span-does-not-shift-pairing",
+    surface: "chat",
+    input:
+      '**If we have a capacitor $C$ and an inductor $L$, and we want the "sloshing" to happen faster, should we increase or decrease the value of $L$?**',
+    mustInclude: ["$C$ and an inductor $L$, and we want", "the value of $L$?"],
+    mustNotInclude: ["$C $and", "$L, and"],
+  },
   {
     id: "nu-macro-survives-stray-n-split",
     surface: "formula",

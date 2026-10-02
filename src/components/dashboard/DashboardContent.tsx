@@ -184,7 +184,7 @@ export default function DashboardContent() {
   if (loading) {
     return (
       <div
-        className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse"
+        className="flex-1 px-6 pb-6 pt-24 lg:px-8 lg:pb-8 overflow-y-auto animate-pulse"
         role="status"
         aria-busy="true"
         aria-label="Loading your dashboard"
@@ -201,7 +201,7 @@ export default function DashboardContent() {
 
   if (error) {
     return (
-      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto flex items-center justify-center">
+      <div className="flex-1 px-6 pb-6 pt-24 lg:px-8 lg:pb-8 overflow-y-auto flex items-center justify-center">
         <div className="bg-surface border border-red-900/30 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
           <h3 className="text-base font-bold text-ink mb-2">Failed to load dashboard</h3>
           <p className="text-sm text-muted mb-5">{error}</p>

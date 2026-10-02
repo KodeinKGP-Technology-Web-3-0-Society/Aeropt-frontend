@@ -9,6 +9,8 @@ import {
   presentationToAgentResponse,
   type ChatTurnItem,
 } from "@/lib/api/agent";
+import { invalidateCache } from "@/lib/api/apiCache";
+import { classroomHomeShouldRefresh } from "@/lib/api/classroom";
 import { getSupabaseUserId, getAgentApiBase } from "@/lib/api/auth";
 import type { Session, Message, StructuredResponse } from "./types";
 import { asPracticeBatch, asPracticeData, extractPracticeQuestion } from "@/lib/practiceContent";
@@ -141,7 +143,8 @@ export function useChatSession(
   clearRoadmapSessionBind: (nodeId: string) => void,
   writeRoadmapSessionBind: (nodeId: string, payload: any) => void,
   initialStage: StudyStage,
-  entryNonce: number
+  entryNonce: number,
+  surface?: "lesson" | "doubt" | "assess" | null,
 ) {
   const router = useRouter();
 
@@ -197,6 +200,7 @@ export function useChatSession(
       studyStage?: StudyStage | null;
       gradedOutcome?: "correct" | "incorrect";
       flaggedStepId?: string | null;
+      surface?: "lesson" | "doubt" | "assess" | null;
     },
     onToken?: (token: string) => void
   ) {
@@ -205,7 +209,7 @@ export function useChatSession(
       throw new Error("Missing Supabase user link. Sign out and sign in again.");
     }
 
-    return sendChatMessage({
+    const result = await sendChatMessage({
       userId,
       sessionId: currentSessionId,
       query,
@@ -215,7 +219,18 @@ export function useChatSession(
       gradedOutcome: options?.gradedOutcome,
       placement: placementContext,
       flaggedStepId: options?.flaggedStepId,
+      surface: options?.surface ?? surface ?? null,
     }, onToken);
+    if (
+      classroomHomeShouldRefresh({
+        gradedOutcome: options?.gradedOutcome,
+        agentUsed: result.agent_used,
+        scoreSummary: result.score_summary,
+      })
+    ) {
+      invalidateCache("classroom");
+    }
+    return result;
   }
 
   function registerSession(newSessionId: string, title?: string) {
@@ -296,7 +311,7 @@ export function useChatSession(
       });
       localStorage.removeItem(SESSION_STORAGE_KEY);
       if (roadmapNodeId) clearRoadmapSessionBind(roadmapNodeId);
-      router.push("/chat");
+      router.push("/home");
     } catch (caught) {
       endingBeaconSentRef.current = false;
       setError(caught instanceof Error ? caught.message : "Unable to end this session.");

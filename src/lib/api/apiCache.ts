@@ -70,6 +70,7 @@ export const CacheTTL = {
    * queue the server rebuilt, so the cache is corrected without a refetch.
    */
   sandboxQueue: 15_000,
+  classroom: 30_000,
   chapters: 600_000,
   chatHistory: 60_000,
   chatHistoryDetail: 300_000,
@@ -119,6 +120,7 @@ export function invalidateUserProductCache(): void {
   invalidateCache("progress");
   invalidateCache("roadmap");
   invalidateCache("sandbox");
+  invalidateCache("classroom");
   invalidateCache("me");
 }
 

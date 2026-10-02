@@ -50,13 +50,20 @@ const fallbackPrompts = [
   "Give me a practice question on Newton's 2nd law",
 ];
 
-function ChatWorkspaceInner({ sessionId }: { sessionId: string }) {
+type ChatWorkspaceProps = {
+  sessionId: string;
+  conceptId?: string;
+  surface?: "lesson" | "doubt" | "assess";
+};
+
+function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProps) {
   const roadmap = useRoadmapBinding(sessionId, sessionId);
-  
+  const effectiveConceptId = conceptId ?? roadmap.roadmapConceptId;
+
   const chat = useChatSession(
     sessionId,
     roadmap.roadmapNodeId,
-    roadmap.roadmapConceptId,
+    effectiveConceptId,
     roadmap.isRoadmapSession,
     roadmap.startFreshRef,
     roadmap.setCurrentStageIndex,
@@ -64,7 +71,8 @@ function ChatWorkspaceInner({ sessionId }: { sessionId: string }) {
     clearRoadmapSessionBind,
     writeRoadmapSessionBind,
     roadmap.initialStage,
-    roadmap.entryNonce
+    roadmap.entryNonce,
+    surface ?? null,
   );
 
   const [panelCollapsed, setPanelCollapsed] = useState(true);
@@ -394,20 +402,7 @@ function ChatWorkspaceInner({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <StudySidebar
-        studyContext={{
-          conceptName: roadmap.roadmapNode?.concept_name,
-          conceptId: roadmap.roadmapConceptId,
-          nodeId: roadmap.roadmapNodeId,
-          stage: roadmap.isRoadmapSession ? roadmap.contentSequence[roadmap.currentStageIndex] : null,
-          stageIndex: roadmap.currentStageIndex,
-          stageTotal: roadmap.contentSequence.length,
-          proficiencyPct: roadmap.lastProficiencyPct ?? roadmap.roadmapNode?.proficiency_pct ?? null,
-          weakPrereq: chat.latestAssistant?.agent?.card?.weak_prereq ?? null,
-          journeyType: chat.placementContext.journeyType ?? null,
-        }}
-      />
-    <main className="chat-page">
+    <main className="flex-1 chat-page">
       {historyOpen ? (
         <button
           type="button"
@@ -550,8 +545,8 @@ function ChatWorkspaceInner({ sessionId }: { sessionId: string }) {
       <AgentRosterPanel
         userId={getSupabaseUserId()}
         sessionId={chat.activeSessionId}
-        roadmapConceptId={roadmap.roadmapConceptId}
-        primaryConceptId={chat.latestAssistant?.agent?.primary_concept_id ?? roadmap.roadmapConceptId}
+        roadmapConceptId={effectiveConceptId}
+        primaryConceptId={chat.latestAssistant?.agent?.primary_concept_id ?? effectiveConceptId}
         focusChapters={chat.placementContext.focusChapters}
         activeAgent={chat.lastActiveAgent}
         refreshKey={agentRefreshKey}
@@ -582,7 +577,7 @@ function ChatWorkspaceInner({ sessionId }: { sessionId: string }) {
  * `resetKey={sessionId}` clears the caught error when the student navigates to
  * a different session.
  */
-export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
+export default function ChatWorkspace({ sessionId, conceptId, surface }: ChatWorkspaceProps) {
   return (
     <ErrorBoundary
       scope="ChatWorkspace"
@@ -590,7 +585,7 @@ export default function ChatWorkspace({ sessionId }: { sessionId: string }) {
       title="This study session hit a snag"
       description="Your progress is saved — every turn is stored on the server. Reload to pick the conversation back up."
     >
-      <ChatWorkspaceInner sessionId={sessionId} />
+      <ChatWorkspaceInner sessionId={sessionId} conceptId={conceptId} surface={surface} />
     </ErrorBoundary>
   );
 }

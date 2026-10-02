@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import MarkdownMath from "@/components/MarkdownMath";
+import SandboxCanvas from "./SandboxCanvas";
 import type { InteractivePracticeData } from "@/lib/practiceContent";
 
 type InteractivePracticeCanvasProps = {
@@ -64,6 +65,8 @@ export default function InteractivePracticeCanvas({
       <div className="practice-canvas__prompt">
         <MarkdownMath content={data.question_text} className="markdown-math practice-canvas__math" />
       </div>
+
+      <SandboxCanvas />
 
       {data.type === "mcq" && data.options && data.options.length > 0 ? (
         <fieldset className="practice-canvas__options" disabled={isSubmitted || gradingDisabled}>

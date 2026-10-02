@@ -74,7 +74,7 @@ export default function PracticeContent() {
   };
 
   return (
-    <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
+    <div className="flex-1 px-6 pb-6 pt-24 lg:px-8 lg:pb-8 overflow-y-auto">
       {/* Filters Area */}
       <div className="bg-surface border border-line rounded-2xl p-5 shadow-lg mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

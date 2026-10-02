@@ -1,447 +1,487 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useApp } from "@/components/AppContext";
-import { apiRequest, getApiBaseUrl } from "@/lib/api/auth";
-import { CacheTTL, cacheKey, cachedGet } from "@/lib/api/apiCache";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import MarkdownMath from "@/components/MarkdownMath";
+import MathErrorBoundary from "@/components/MathErrorBoundary";
+import {
+  fetchProgress,
+  type ConceptStatus,
+  type ProgressChapter,
+  type ProgressConcept,
+  type ProgressReport,
+} from "@/lib/api/progress";
+import ActivityChart from "./ActivityChart";
 
-type SortKey = "concept" | "chapter" | "score" | "attempts" | "accuracy" | "lastAttempted";
-type SortOrder = "asc" | "desc";
+// Status always carries its word: teal accent and "mastered" green are too close
+// to tell apart by colour alone (ΔE 7.8, measured), so colour is never the cue.
+const STATUS: Record<ConceptStatus, { label: string; tone: string }> = {
+  mastered: { label: "Mastered", tone: "bg-success/12 text-success" },
+  strong: { label: "Strong", tone: "bg-accent-soft text-accent" },
+  building: { label: "Building", tone: "bg-warning/15 text-ink-2" },
+  weak: { label: "Weak", tone: "bg-danger/10 text-danger" },
+  new: { label: "New", tone: "bg-hover text-muted" },
+};
 
-const DEFAULT_CHART_COLORS = [
-  "var(--physics)",
-  "var(--maths)",
-  "var(--danger)",
-  "var(--chemistry)",
-  "var(--success)",
+const ERROR_LABEL: Record<string, string> = {
+  conceptual: "Conceptual",
+  procedural: "Method",
+  calculation: "Calculation",
+  misread: "Misread",
+  unclassified: "Unclassified",
+};
+
+const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+
+function ago(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString([], { day: "numeric", month: "short" });
+}
+
+function studyHref(conceptId: string) {
+  return `/study/${encodeURIComponent(conceptId)}`;
+}
+
+function StatTile({ label, value, sub, delta }: { label: string; value: string; sub?: string; delta?: { text: string; good: boolean } | null }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface px-4 py-3.5">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value}</p>
+      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
+        {delta && <span className={`font-semibold ${delta.good ? "text-success" : "text-danger"}`}>{delta.text}</span>}
+        {sub && <span>{sub}</span>}
+      </p>
+    </div>
+  );
+}
+
+function ProficiencyBar({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="relative h-2 w-full rounded-full bg-hover" role="img" aria-label={label}>
+      <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(2, Math.round(value * 100))}%` }} />
+      {/* mastery line at 80%: position, not colour, says "mastered" */}
+      <div className="absolute -top-0.5 h-3 w-px bg-ink-2/50" style={{ left: "80%" }} aria-hidden />
+    </div>
+  );
+}
+
+function Chapters({ chapters }: { chapters: ProgressChapter[] }) {
+  if (!chapters.length) return null;
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="chapters-title">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="chapters-title" className="text-sm font-semibold text-ink">
+          Mastery by chapter
+        </h2>
+        <span className="text-[11px] text-muted">line marks mastery (80%)</span>
+      </div>
+      <ul className="mt-4 flex flex-col gap-3.5">
+        {chapters.map((c) => (
+          <li key={c.chapter}>
+            <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate font-medium text-ink">{c.chapter}</span>
+              <span className="shrink-0 tabular-nums text-ink-2">{pct(c.proficiency)}</span>
+            </div>
+            <ProficiencyBar value={c.proficiency} label={`${c.chapter}: ${pct(c.proficiency)} proficiency`} />
+            <p className="mt-1 text-[11px] text-muted">
+              {c.concepts} concept{c.concepts === 1 ? "" : "s"} · {c.attempts} question{c.attempts === 1 ? "" : "s"}
+              {c.accuracy != null ? ` · ${pct(c.accuracy)} right` : ""}
+              {c.mastered ? ` · ${c.mastered} mastered` : ""}
+              {c.weak ? ` · ${c.weak} weak` : ""}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const FILTERS: { key: "all" | ConceptStatus; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "weak", label: "Weak" },
+  { key: "building", label: "Building" },
+  { key: "strong", label: "Strong" },
+  { key: "mastered", label: "Mastered" },
 ];
 
-function SortHeader({
-  label,
-  columnKey,
-  sortKey,
-  sortOrder,
-  onSort,
-  align = "left",
-}: {
-  label: string;
-  columnKey: SortKey;
-  sortKey: SortKey;
-  sortOrder: SortOrder;
-  onSort: (key: SortKey) => void;
-  align?: "left" | "right";
-}) {
-  const isActive = sortKey === columnKey;
-  const ariaSort = isActive ? (sortOrder === "asc" ? "ascending" : "descending") : "none";
+function Concepts({ concepts }: { concepts: ProgressConcept[] }) {
+  const [filter, setFilter] = useState<"all" | ConceptStatus>("all");
+  const shown = filter === "all" ? concepts : concepts.filter((c) => c.status === filter);
+  if (!concepts.length) return null;
   return (
-    <th aria-sort={ariaSort} className={`py-3 px-4 ${align === "right" ? "text-right" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onSort(columnKey)}
-        aria-label={`Sort by ${label}${isActive ? (sortOrder === "asc" ? ", ascending" : ", descending") : ""}`}
-        className={`inline-flex items-center gap-1 cursor-pointer uppercase tracking-wider hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded ${
-          align === "right" ? "flex-row-reverse" : ""
-        }`}
-      >
-        {label}
-        <span aria-hidden="true">{isActive ? (sortOrder === "asc" ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
+    <section className="rounded-2xl border border-line bg-surface" aria-labelledby="concepts-title">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+        <h2 id="concepts-title" className="text-sm font-semibold text-ink">
+          Concepts you&apos;ve practised
+        </h2>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by status">
+          {FILTERS.map((f) => {
+            const n = f.key === "all" ? concepts.length : concepts.filter((c) => c.status === f.key).length;
+            if (f.key !== "all" && n === 0) return null;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={filter === f.key}
+                onClick={() => setFilter(f.key)}
+                className={`cursor-pointer rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                  filter === f.key ? "bg-accent-soft text-accent" : "text-muted hover:bg-hover hover:text-ink"
+                }`}
+              >
+                {f.label} <span className="tabular-nums opacity-70">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="text-xs text-muted">
+            <tr className="border-b border-line">
+              <th className="px-5 py-2 font-medium">Concept</th>
+              <th className="px-3 py-2 font-medium">Status</th>
+              <th className="w-40 px-3 py-2 font-medium">Proficiency</th>
+              <th className="px-3 py-2 text-right font-medium">Right</th>
+              <th className="px-3 py-2 text-right font-medium">2-week trend</th>
+              <th className="px-3 py-2 font-medium">Last practised</th>
+              <th className="px-5 py-2" aria-label="Actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((c) => (
+              <tr key={c.concept_id} className="border-b border-line last:border-0">
+                <td className="px-5 py-2.5">
+                  <span className="block font-medium text-ink first-letter:uppercase">{c.name}</span>
+                  <span className="block text-xs text-muted">{c.chapter}</span>
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS[c.status].tone}`}>{STATUS[c.status].label}</span>
+                  {c.review_due && <span className="ml-1.5 text-[11px] text-ink-2">· review due</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <ProficiencyBar value={c.proficiency} label={`${pct(c.proficiency)} proficiency`} />
+                    <span className="w-9 shrink-0 text-right text-xs tabular-nums text-ink-2">{pct(c.proficiency)}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-ink-2">
+                  {c.correct}/{c.attempts}
+                </td>
+                <td className="px-3 py-2.5 text-right text-xs tabular-nums">
+                  {c.trend == null || Math.abs(c.trend) < 0.01 ? (
+                    <span className="text-muted">—</span>
+                  ) : (
+                    <span className={c.trend > 0 ? "text-success" : "text-danger"}>
+                      {c.trend > 0 ? "▲" : "▼"} {Math.abs(Math.round(c.trend * 100))} pts
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-xs text-muted">{ago(c.last_practised)}</td>
+                <td className="px-5 py-2.5 text-right">
+                  <Link href={studyHref(c.concept_id)} className="text-xs font-semibold text-accent hover:underline">
+                    {c.status === "mastered" ? "Revisit" : "Practise"}
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function Mistakes({ report }: { report: ProgressReport }) {
+  const { by_type, total_wrong, notebook } = report.mistakes;
+  const [showFixed, setShowFixed] = useState(false);
+  if (!total_wrong) return null;
+  const types = Object.entries(by_type).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(...types.map(([, n]) => n));
+  const entries = showFixed ? notebook : notebook.filter((m) => !m.fixed);
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="mistakes-title">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 id="mistakes-title" className="text-sm font-semibold text-ink">
+          Mistake notebook
+        </h2>
+        <span className="text-xs text-muted">
+          {total_wrong} wrong answer{total_wrong === 1 ? "" : "s"} so far
+        </span>
+      </div>
+
+      <ul className="mt-4 flex flex-col gap-2" aria-label="Mistakes by type">
+        {types.map(([type, n]) => (
+          <li key={type} className="grid grid-cols-[6.5rem_1fr_2rem] items-center gap-3 text-xs">
+            <span className="text-ink-2">{ERROR_LABEL[type] ?? type}</span>
+            <span className="h-2 rounded-r-[4px] bg-accent/70" style={{ width: `${Math.max(4, (n / max) * 100)}%` }} aria-hidden />
+            <span className="text-right tabular-nums text-ink">{n}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+        <p className="text-xs font-semibold text-ink-2">{showFixed ? "All recent mistakes" : "Still to fix"}</p>
+        {notebook.some((m) => m.fixed) && (
+          <button type="button" onClick={() => setShowFixed((v) => !v)} className="cursor-pointer text-xs text-muted hover:text-ink">
+            {showFixed ? "Hide fixed" : "Show fixed too"}
+          </button>
+        )}
+      </div>
+      {entries.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">Every recent mistake has since been answered correctly. Nice.</p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-3">
+          {entries.slice(0, 8).map((m, i) => (
+            <li key={`${m.content_id}-${i}`} className="rounded-xl border border-line p-4">
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                {m.concept_name && <span className="font-semibold text-ink first-letter:uppercase">{m.concept_name}</span>}
+                {m.error_type && (
+                  <span className="rounded-full bg-hover px-2 py-0.5 font-semibold text-ink-2">{ERROR_LABEL[m.error_type] ?? m.error_type}</span>
+                )}
+                {m.fixed && <span className="rounded-full bg-success/12 px-2 py-0.5 font-semibold text-success">Fixed since</span>}
+                <span className="ml-auto text-muted">{ago(m.when)}</span>
+              </div>
+              {m.question && (
+                <div className="study-notes mt-2 text-sm">
+                  <MathErrorBoundary content={m.question}>
+                    <MarkdownMath content={m.question.length > 420 ? `${m.question.slice(0, 420)}…` : m.question} />
+                  </MathErrorBoundary>
+                </div>
+              )}
+              {m.student_answer && (
+                <p className="mt-2 text-xs text-ink-2">
+                  <span className="text-muted">You answered: </span>
+                  {m.student_answer}
+                </p>
+              )}
+              {m.concept_id && !m.fixed && (
+                <Link href={studyHref(m.concept_id)} className="mt-2 inline-block text-xs font-semibold text-accent hover:underline">
+                  Practise this concept →
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Timeline({ report }: { report: ProgressReport }) {
+  if (!report.timeline.length) return null;
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="timeline-title">
+      <h2 id="timeline-title" className="text-sm font-semibold text-ink">
+        Recent activity
+      </h2>
+      <ol className="mt-3 flex flex-col">
+        {report.timeline.slice(0, 15).map((t, i) => (
+          <li key={`${t.when}-${i}`} className="flex gap-3 border-b border-line py-2.5 text-sm last:border-0">
+            <span
+              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                t.outcome === "wrong" ? "bg-danger" : t.kind === "attempt" || t.outcome === "mastered" ? "bg-success" : "bg-line-strong"
+              }`}
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-ink-2 first-letter:uppercase">
+                {t.text}
+                {t.count && t.count > 1 ? <span className="text-muted"> · {t.count} messages</span> : null}
+                {t.delta_pct ? (
+                  <span className={`ml-1.5 text-xs tabular-nums ${t.delta_pct > 0 ? "text-success" : "text-danger"}`}>
+                    {t.delta_pct > 0 ? "+" : ""}
+                    {t.delta_pct} pts
+                  </span>
+                ) : null}
+              </p>
+              {t.detail && <p className="truncate text-xs text-muted">“{t.detail}”</p>}
+            </div>
+            <span className="shrink-0 text-xs text-muted">{ago(t.when)}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
 export default function ProgressContent() {
-  const { data, setData } = useApp();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("score");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState<ProgressReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchProgress = useCallback(() => {
-    setLoading(true);
-    setError(null);
-
-    const url = `${getApiBaseUrl()}/analytics/progress/`;
-    cachedGet(cacheKey(["progress"]), CacheTTL.progress, () =>
-      apiRequest<typeof data.progress & { totalAttempts?: number }>(url)
-    )
-      .then((resData) => {
-        const { totalAttempts: _totalAttempts, ...progress } = resData;
-        setData((prev) => ({
-          ...prev,
-          progress,
-        }));
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        console.error("Progress fetch error:", err);
-        setError(err.message || "Failed to load progress");
-        setLoading(false);
-      });
-  }, [setData]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchProgress();
-  }, [fetchProgress]);
+    let live = true;
+    fetchProgress(30)
+      .then((r) => live && setReport(r))
+      .catch((e: unknown) => live && setError(e instanceof Error ? e.message : "Could not load your progress."));
+    return () => {
+      live = false;
+    };
+  }, [reloadKey]);
 
-  const { subtitle, stats, mistakesDistribution, proficiencyOverTime, conceptBreakdownTable } = data.progress;
-  const totalAttempts = stats.find((stat) => stat.id === "questions_attempted")?.value ?? "0";
+  const retry = useCallback(() => {
+    setError(null);
+    setReloadKey((k) => k + 1);
+  }, []);
 
-  const width = 500;
-  const height = 180;
-  const paddingLeft = 30;
-  const paddingRight = 10;
-  const paddingTop = 10;
-  const paddingBottom = 25;
-
-  const chartWidth = width - paddingLeft - paddingRight;
-  const chartHeight = height - paddingTop - paddingBottom;
-
-  const datesCount = Math.max(proficiencyOverTime.dates.length, 1);
-  const xStep = datesCount > 1 ? chartWidth / (datesCount - 1) : 0;
-
-  const getSvgPoints = (values: number[]) => {
-    if (values.length === 0) return "";
-    if (values.length === 1) {
-      const x = paddingLeft + chartWidth / 2;
-      const y = paddingTop + chartHeight - (values[0] / 100) * chartHeight;
-      return `${x},${y}`;
-    }
-    return values
-      .map((val, idx) => {
-        const x = paddingLeft + idx * xStep;
-        const y = paddingTop + chartHeight - (val / 100) * chartHeight;
-        return `${x},${y}`;
-      })
-      .join(" ");
-  };
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortOrder("desc");
-    }
-  };
-
-  const filteredRows = conceptBreakdownTable.filter(
-    (row) =>
-      row.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.chapter.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const sortedRows = [...filteredRows].sort((a, b) => {
-    const aVal = a[sortKey];
-    const bVal = b[sortKey];
-
-    if (typeof aVal === "string" && typeof bVal === "string") {
-      return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-
-    if (typeof aVal === "number" && typeof bVal === "number") {
-      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
-    }
-    return 0;
-  });
-
-  if (loading) {
-    // Same skeleton shape as DashboardContent/RoadmapContent: header, stat row,
-    // table block. A bare "Loading…" line collapsed the layout and jumped.
-    return (
-      <div
-        className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto animate-pulse"
-        role="status"
-        aria-busy="true"
-        aria-label="Loading your progress"
-      >
-        <div className="h-7 w-40 rounded-lg bg-hover mb-2" />
-        <div className="h-4 w-64 rounded bg-hover/60 mb-8" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 rounded-2xl border border-line bg-surface" />
-          ))}
-        </div>
-        <div className="h-64 rounded-2xl border border-line bg-surface" />
-      </div>
-    );
-  }
+  const o = report?.overview;
+  const weekDelta = useMemo(() => {
+    if (!o || o.accuracy_7d == null || o.accuracy_prev_7d == null) return null;
+    const d = Math.round((o.accuracy_7d - o.accuracy_prev_7d) * 100);
+    return d === 0 ? null : { text: `${d > 0 ? "▲" : "▼"} ${Math.abs(d)} pts`, good: d > 0 };
+  }, [o]);
 
   if (error) {
     return (
-      <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
-        <p className="text-sm text-red-400 mb-3">{error}</p>
-        <button
-          type="button"
-          onClick={fetchProgress}
-          className="text-xs font-semibold text-ink border border-line rounded-lg px-3 py-1.5"
-        >
-          Retry
+      <div className="mx-auto max-w-md rounded-2xl border border-danger/20 bg-danger/5 p-8 text-center">
+        <p className="text-sm font-medium text-danger">{error}</p>
+        <button type="button" onClick={retry} className="mt-4 cursor-pointer rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-ink-on">
+          Try again
         </button>
       </div>
     );
   }
+  if (!report || !o) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-24" role="status">
+        <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-line border-t-accent motion-reduce:animate-none" />
+        <p className="text-sm text-muted">Loading your progress…</p>
+      </div>
+    );
+  }
+
+  const empty = o.questions_attempted === 0 && report.timeline.length === 0;
 
   return (
-    <div className="flex-1 px-6 pb-6 pt-[6.75rem] lg:px-8 lg:pb-8 overflow-y-auto">
-      <div className="mb-8 select-none">
-        <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-ink">Progress</h1>
-        <p className="text-xs text-muted font-medium mt-1">{subtitle}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-        {stats.map((stat) => (
-          <div
-            key={stat.id}
-            className="bg-surface border border-line rounded-xl p-5 shadow-lg relative overflow-hidden"
-          >
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">
-              {stat.label}
-            </span>
-            <h2 className="text-3xl font-extrabold text-ink mt-2 mb-1">{stat.value}</h2>
-            <p className="text-xs text-muted font-medium mt-0.5">{stat.subtext}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-surface border border-line rounded-2xl p-5 shadow-lg lg:col-span-2 flex flex-col justify-between select-none">
-          <div className="mb-4">
-            <h3 className="text-xs font-bold text-muted uppercase tracking-widest">
-              Proficiency Over Time
-            </h3>
-            {proficiencyOverTime.chapters.length > 0 ? (
-              <div className="flex flex-wrap gap-4 mt-2">
-                {proficiencyOverTime.chapters.map((chapter, index) => (
-                  <div
-                    key={chapter.name}
-                    className="flex items-center gap-1.5 text-[10px] text-ink-2 font-semibold"
-                  >
-                    <span
-                      className="h-1.5 w-4 rounded-full inline-block"
-                      style={{
-                        backgroundColor:
-                          chapter.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length],
-                      }}
-                    />
-                    {chapter.name}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[10px] text-muted mt-2">
-                Complete practice questions to see chapter trends.
-              </p>
-            )}
-          </div>
-
-          <div className="relative w-full h-[200px]">
-            {proficiencyOverTime.chapters.length > 0 ? (
-              <svg
-                viewBox={`0 0 ${width} ${height}`}
-                className="w-full h-full"
-                role="img"
-                aria-label={`Proficiency over the last ${proficiencyOverTime.dates.length} days for ${proficiencyOverTime.chapters
-                  .map((c) => c.name)
-                  .join(", ")}.`}
-              >
-                {[0, 25, 50, 75, 100].map((grid) => {
-                  const y = paddingTop + chartHeight - (grid / 100) * chartHeight;
-                  return (
-                    <g key={grid}>
-                      <line
-                        x1={paddingLeft}
-                        y1={y}
-                        x2={width - paddingRight}
-                        y2={y}
-                        stroke="#1b1c2b"
-                        strokeWidth="1.2"
-                        strokeDasharray="3 3"
-                      />
-                      <text
-                        x={paddingLeft - 8}
-                        y={y + 3.5}
-                        fill="#475569"
-                        fontSize="9"
-                        fontWeight="bold"
-                        textAnchor="end"
-                      >
-                        {grid}%
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {proficiencyOverTime.dates.map((date, idx) => {
-                  const x = paddingLeft + idx * xStep;
-                  return (
-                    <g key={`${date}-${idx}`}>
-                      <line
-                        x1={x}
-                        y1={paddingTop}
-                        x2={x}
-                        y2={paddingTop + chartHeight}
-                        stroke="#1b1c2b"
-                        strokeWidth="1.2"
-                      />
-                      <text
-                        x={x}
-                        y={height - 5}
-                        fill="#475569"
-                        fontSize="9"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {date}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {proficiencyOverTime.chapters.map((chapter, index) => (
-                  <polyline
-                    key={chapter.name}
-                    fill="none"
-                    stroke={chapter.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length]}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={getSvgPoints(chapter.data)}
-                    className={index === 0 ? "drop-shadow-[0_0_4px_rgba(98,88,255,0.25)]" : undefined}
-                  />
-                ))}
-              </svg>
-            ) : (
-              <div className="flex items-center justify-center h-full text-xs text-muted">
-                No proficiency history yet
-              </div>
-            )}
-          </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Progress</p>
+          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">How you&apos;re doing</h1>
         </div>
+        <p className="text-xs text-muted">
+          {o.last_active ? `Last active ${ago(o.last_active)}` : "No activity yet"} ·{" "}
+          <button type="button" onClick={retry} className="cursor-pointer underline-offset-2 hover:text-ink hover:underline">
+            Refresh
+          </button>
+        </p>
+      </header>
 
-        <div className="bg-surface border border-line rounded-2xl p-5 shadow-lg flex flex-col justify-between">
-          <div>
-            <h3 className="text-xs font-bold text-muted uppercase tracking-widest mb-4">
-              Where your mistakes are coming from
-            </h3>
-            <div className="space-y-4">
-              {mistakesDistribution.map((mistake) => {
-                let barColor = "bg-accent";
-                if (mistake.type === "Procedural") barColor = "bg-[#38bdf8]";
-                if (mistake.type === "Calculation") barColor = "bg-[#eab308]";
-                if (mistake.type === "Misinterpretation") barColor = "bg-[#f43f5e]";
+      {empty ? (
+        <div className="rounded-2xl border border-line bg-surface p-10 text-center">
+          <h2 className="font-display text-xl font-semibold text-ink">Nothing to show yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+            Every question you answer, topic you study and doubt you ask is recorded here — your accuracy, what&apos;s getting
+            stronger, and the mistakes worth another look.
+          </p>
+          <Link href="/study" className="mt-5 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+            Start a study session
+          </Link>
+        </div>
+      ) : (
+        <>
+          {report.insights.length > 0 && (
+            <section aria-label="What to do next" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {report.insights.map((ins, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col justify-between gap-2 rounded-2xl border px-4 py-3 text-sm ${
+                    ins.tone === "action" ? "border-accent/30 bg-accent-soft/50" : "border-line bg-surface"
+                  }`}
+                >
+                  <p className="text-ink-2">{ins.text}</p>
+                  {ins.concept_id && ins.action && (
+                    <Link href={studyHref(ins.concept_id)} className="text-xs font-semibold text-accent hover:underline">
+                      {ins.action === "review" ? "Start review →" : "Study it →"}
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </section>
+          )}
 
-                return (
-                  <div key={mistake.type} className="space-y-1.5">
-                    <div className="flex justify-between items-center text-xs font-semibold select-none">
-                      <span className="text-ink-2">{mistake.type}</span>
-                      <span className="text-muted">
-                        <strong className="text-ink font-bold">{mistake.count}</strong> ·{" "}
-                        {mistake.percentage}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-hover h-2 rounded-full overflow-hidden border border-line">
-                      <div
-                        className={`h-full rounded-full ${barColor}`}
-                        style={{ width: `${mistake.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+          <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatTile
+              label="Questions answered"
+              value={o.questions_attempted.toLocaleString()}
+              sub={`${pct(o.accuracy)} right${o.accuracy_7d != null ? ` · ${pct(o.accuracy_7d)} this week` : ""}`}
+              delta={weekDelta}
+            />
+            <StatTile
+              label="Streak"
+              value={`${o.streak_days} day${o.streak_days === 1 ? "" : "s"}`}
+              sub={o.active_today ? `Best ${o.best_streak_days} · today counts` : `Best ${o.best_streak_days} · study today to keep it`}
+            />
+            <StatTile label="Time this week" value={`${o.active_minutes_7d} min`} sub={`${o.active_days_30d} active days this month`} />
+            <StatTile
+              label="Concepts mastered"
+              value={`${o.concepts_mastered}`}
+              sub={`of ${o.concepts_practised} practised · ${o.study_sessions_completed} session${o.study_sessions_completed === 1 ? "" : "s"} done`}
+            />
+          </section>
+
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <ActivityChart days={report.daily} />
+            <div className="flex flex-col gap-5">
+              <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="reviews-title">
+                <h2 id="reviews-title" className="text-sm font-semibold text-ink">
+                  Reviews
+                </h2>
+                {report.reviews.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted">Nothing scheduled. Topics that need another look appear here.</p>
+                ) : (
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {report.reviews.map((r) => (
+                      <li key={r.concept_id} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-ink first-letter:uppercase">{r.name}</span>
+                          <span className={`text-xs ${r.overdue ? "font-semibold text-danger" : "text-muted"}`}>
+                            {r.overdue ? "Due now" : `Due ${r.due_at ? new Date(r.due_at).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "soon"}`}
+                          </span>
+                        </span>
+                        <Link href={studyHref(r.concept_id)} className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-ink hover:bg-hover">
+                          Review
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              {report.memories.length > 0 && (
+                <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="known-title">
+                  <h2 id="known-title" className="text-sm font-semibold text-ink">
+                    What your tutor remembers
+                  </h2>
+                  <ul className="mt-3 flex flex-col gap-2 text-sm text-ink-2">
+                    {report.memories.map((m, i) => (
+                      <li key={i} className="flex gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+                        <span>{m.fact}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
           </div>
-          <div className="text-[10px] text-muted font-semibold mt-4 text-center select-none uppercase tracking-wider leading-relaxed">
-            Data compiled from {totalAttempts} questions
+
+          <div className={report.mistakes.total_wrong ? "grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]" : "grid gap-5"}>
+            <Chapters chapters={report.chapters} />
+            <Mistakes report={report} />
           </div>
-        </div>
-      </div>
 
-      <div className="bg-surface border border-line rounded-2xl p-5 shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line mb-4">
-          <h3 className="text-xs font-bold text-muted uppercase tracking-widest select-none">
-            Concept Breakdown
-          </h3>
-          <input
-            type="text"
-            placeholder="Search concepts or chapters..."
-            aria-label="Search concepts or chapters"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-canvas border border-line focus:border-accent/80 text-xs text-ink placeholder-slate-600 rounded-lg px-3 py-1.5 outline-none transition-colors w-full sm:w-[220px]"
-          />
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[600px]">
-            <thead>
-              <tr className="border-b border-line text-[10px] font-bold text-muted uppercase tracking-wider select-none">
-                <SortHeader label="Concept" columnKey="concept" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
-                <SortHeader label="Chapter" columnKey="chapter" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
-                <SortHeader label="Score" columnKey="score" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
-                <SortHeader label="Attempts" columnKey="attempts" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
-                <SortHeader label="Accuracy" columnKey="accuracy" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} align="right" />
-                <SortHeader label="Last Attempted" columnKey="lastAttempted" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
-                <th className="py-3 px-4 text-center">Trend</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1b1c2b]/50 text-xs">
-              {sortedRows.length > 0 ? (
-                sortedRows.map((row) => (
-                  <tr key={`${row.concept}-${row.chapter}`} className="hover:bg-hover transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-ink tracking-wide">{row.concept}</td>
-                    <td className="py-3.5 px-4 text-muted font-semibold">{row.chapter}</td>
-                    <td className="py-3.5 px-4 text-right">
-                      <span
-                        className={`font-extrabold ${
-                          row.score < 50 ? "text-red-400" : row.score < 75 ? "text-yellow-400" : "text-emerald-400"
-                        }`}
-                      >
-                        {row.score}%
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-muted font-semibold">
-                      {row.attempts}
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-ink-2 font-bold">
-                      {row.accuracy}%
-                    </td>
-                    <td className="py-3.5 px-4 text-muted font-semibold">
-                      {row.lastAttempted}
-                    </td>
-                    <td className="py-3.5 px-4 text-center select-none">
-                      {row.trend === "up" && (
-                        <span className="text-emerald-400 font-bold border border-emerald-500/10 bg-emerald-950/20 px-1.5 py-0.5 rounded text-[10px]">
-                          ▲ Up
-                        </span>
-                      )}
-                      {row.trend === "down" && (
-                        <span className="text-red-400 font-bold border border-red-500/10 bg-red-950/20 px-1.5 py-0.5 rounded text-[10px]">
-                          ▼ Down
-                        </span>
-                      )}
-                      {row.trend === "flat" && (
-                        <span className="text-yellow-400 font-bold border border-yellow-500/10 bg-yellow-950/20 px-1.5 py-0.5 rounded text-[10px]">
-                          ▬ Flat
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="text-center py-6 text-muted">
-                    {conceptBreakdownTable.length === 0
-                      ? "Start studying to see your concept breakdown"
-                      : "No matching concepts found"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <Concepts concepts={report.concepts} />
+          <Timeline report={report} />
+        </>
+      )}
     </div>
   );
 }

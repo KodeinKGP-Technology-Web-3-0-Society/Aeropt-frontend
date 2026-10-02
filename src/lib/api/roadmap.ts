@@ -68,10 +68,111 @@ export type LearningPath = {
   daily_goal_minutes: number;
   progress_pct: number;
   current_node: PathNode | null;
+  study_plan?: StudyPlan | null;
   nodes: PathNode[];
   created_at: string;
   updated_at: string;
 };
+
+export type StudyPlanStep = {
+  node_id: string;
+  action: string;
+};
+
+export type StudyPlanLaterChapter = {
+  chapter: string;
+  remaining: number;
+  minutes: number;
+};
+
+export type StudyPlan = {
+  headline: string;
+  why: string;
+  today_node_id: string | null;
+  this_week: StudyPlanStep[];
+  later: StudyPlanLaterChapter[];
+  later_more?: number;
+};
+
+/** Subjects the backend actually has a syllabus file for. */
+export const DEFAULT_SUBJECT = "Physics";
+
+const STAGE_WORDS: Record<string, string> = {
+  theory: "theory",
+  example: "a worked example",
+  practice: "practice",
+  pyq: "a PYQ",
+};
+
+function actionForNode(node: PathNode): string {
+  if (node.node_type.toLowerCase() === "revise") {
+    return "Skip a full theory pass. Do a worked example, then a PYQ.";
+  }
+  const sequence = node.content_sequence?.length
+    ? node.content_sequence
+    : ["theory", "example", "practice"];
+  const words = sequence.slice(0, 3).map((stage) => STAGE_WORDS[stage.toLowerCase()] ?? stage);
+  const path = words.join(" → ") || "theory → a worked example";
+  return `Complete ${path}. Go deeper only if you want more.`;
+}
+
+/** Client fallback when a cached API payload has no `study_plan` yet. */
+export function fallbackStudyPlan(
+  nodes: PathNode[],
+  subject = DEFAULT_SUBJECT,
+  dailyGoalMinutes = 45,
+): StudyPlan {
+  const ordered = [...nodes].sort((a, b) => a.sequence_index - b.sequence_index);
+  const open = ordered.filter((n) => n.status !== "skipped" && n.status !== "completed");
+  const current = open.find((n) => n.status === "in_progress") ?? open[0] ?? null;
+  const limit = Math.max(3, Math.min(5, Math.max(3, Math.floor((dailyGoalMinutes || 45) / 12))));
+  const start = current ? Math.max(0, open.findIndex((n) => n.id === current.id)) : 0;
+  const thisWeekNodes = current ? open.slice(start, start + limit) : [];
+  const weekIds = new Set(thisWeekNodes.map((n) => n.id));
+  const lastSeq = thisWeekNodes.reduce((max, n) => Math.max(max, n.sequence_index), -1);
+
+  const laterCounts = new Map<string, { remaining: number; minutes: number }>();
+  for (const n of open) {
+    if (weekIds.has(n.id) || n.sequence_index <= lastSeq) continue;
+    const chapter = n.chapter || subject;
+    const bucket = laterCounts.get(chapter) ?? { remaining: 0, minutes: 0 };
+    bucket.remaining += 1;
+    bucket.minutes += n.estimated_minutes || 0;
+    laterCounts.set(chapter, bucket);
+  }
+  const laterAll = [...laterCounts.entries()].map(([chapter, counts]) => ({
+    chapter,
+    remaining: counts.remaining,
+    minutes: counts.minutes,
+  }));
+  const later = laterAll.slice(0, 14);
+
+  let headline: string;
+  let why: string;
+  if (!current) {
+    headline = `${subject} path complete`;
+    why = "Every concept on this path is done or skipped. Open a chapter below to review.";
+  } else {
+    const weekChapters: string[] = [];
+    for (const n of thisWeekNodes) {
+      const ch = n.chapter || subject;
+      if (!weekChapters.includes(ch)) weekChapters.push(ch);
+    }
+    if (weekChapters.length === 1) headline = `This week: ${weekChapters[0]}`;
+    else if (weekChapters.length) headline = `This week: ${weekChapters[0]}, then ${weekChapters[1]}`;
+    else headline = `This week on ${subject}`;
+    why = `Follow this order. Prerequisites come first, so do not skip ahead. Today start with ${current.concept_name}.`;
+  }
+
+  return {
+    headline,
+    why,
+    today_node_id: current?.id ?? null,
+    this_week: thisWeekNodes.map((n) => ({ node_id: n.id, action: actionForNode(n) })),
+    later,
+    later_more: Math.max(0, laterAll.length - later.length),
+  };
+}
 
 export type RoadmapNextResponse = {
   nodes: PathNode[];
@@ -81,9 +182,6 @@ export type RoadmapProgressResponse = {
   node: PathNode;
   roadmap: LearningPath;
 };
-
-/** Subjects the backend actually has a syllabus file for. */
-export const DEFAULT_SUBJECT = "Physics";
 
 export async function fetchRoadmapSubjects(): Promise<string[]> {
   return cachedGet(cacheKey(["roadmap", "subjects"]), CacheTTL.roadmap, async () => {

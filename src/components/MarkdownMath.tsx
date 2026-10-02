@@ -7,6 +7,24 @@ import rehypeKatex from "rehype-katex";
 import rehypeKatexSafe from "@/lib/math/rehypeKatexSafe";
 import { prepareMathMarkdown } from "@/lib/math/mathHarden";
 import InteractivePracticeCanvas from "@/components/practice/InteractivePracticeCanvas";
+import { requireAgentApiBase } from "@/lib/api/auth";
+
+/**
+ * Tutor diagrams arrive as `diagram:<id>` (compiled TikZ, served as SVG by the
+ * agent), so stored replies stay short and survive a change of agent host.
+ */
+function resolveDiagramSrc(src: string): { url: string; tikz: boolean } {
+  const m = /^diagram:([0-9a-f]{20})$/.exec(src);
+  if (!m) return { url: src, tikz: false };
+  try {
+    return { url: `${requireAgentApiBase()}/api/v1/diagrams/${m[1]}.svg`, tikz: true };
+  } catch {
+    return { url: "", tikz: true };
+  }
+}
+
+// TeX sizes text in points; at 1.6x a 10pt label matches the 15-16px body text.
+const TIKZ_SCALE = 1.6;
 
 type MarkdownMathProps = {
   content: string;
@@ -24,14 +42,24 @@ const KATEX_OPTIONS = {
 
 function DiagramImage({ src, alt }: { src?: string; alt?: string }) {
   if (!src) return null;
+  const { url, tikz } = resolveDiagramSrc(src);
+  if (!url) return null;
   return (
-    <span className="markdown-diagram-wrap">
+    <span className={tikz ? "markdown-diagram-wrap markdown-diagram-wrap--tikz" : "markdown-diagram-wrap"}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={url}
         alt={alt || "Diagram"}
         loading="lazy"
-        className="markdown-diagram"
+        className={tikz ? "markdown-diagram markdown-diagram--tikz" : "markdown-diagram"}
+        onLoad={
+          tikz
+            ? (event) => {
+                const el = event.currentTarget;
+                if (el.naturalWidth) el.style.width = `${Math.round(el.naturalWidth * TIKZ_SCALE)}px`;
+              }
+            : undefined
+        }
         onError={(event) => {
           const el = event.currentTarget;
           el.style.display = "none";
@@ -44,6 +72,7 @@ function DiagramImage({ src, alt }: { src?: string; alt?: string }) {
           }
         }}
       />
+      {tikz && alt ? <span className="markdown-diagram-caption">{alt}</span> : null}
     </span>
   );
 }

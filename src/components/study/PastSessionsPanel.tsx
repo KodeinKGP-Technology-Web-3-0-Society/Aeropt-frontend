@@ -219,9 +219,9 @@ export default function PastSessionsPanel() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label="Past study sessions"
-        title="Past study sessions"
-        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-hover"
+        aria-label="Past tutor chats"
+        title="Past tutor chats"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-hover hover:text-ink"
       >
         <ClockIcon className="h-4 w-4" />
       </button>

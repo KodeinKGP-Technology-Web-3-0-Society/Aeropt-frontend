@@ -1,377 +1,420 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import {
-  type ClassroomToday,
-  type TodayAction,
-} from "@/lib/api/classroom";
-import { useHomeState } from "./useHomeState";
 import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
+import { useApp } from "@/components/AppContext";
+import type { ClassroomToday } from "@/lib/api/classroom";
+import { fetchPlan, type PlanItem, type StudyPlan } from "@/lib/api/plan";
+import { fetchProgressCached, type ProgressReport } from "@/lib/api/progress";
+import { fetchStudyOverview, type StudyOverview, type UpNextItem } from "@/lib/api/study";
+import { useHomeState } from "./useHomeState";
 
-/* ─── types ──────────────────────────────────────────────────────────── */
-type SubjectMastery = {
-  id: string; label: string; color: string; active: boolean;
-  mastery: number; total: number; mastered: number; coming_soon?: boolean;
-};
-type StreakWeekDay = { date: string; active: boolean; is_today: boolean };
-type Streak = { current_streak: number; week: StreakWeekDay[] };
-type Insight = { type: string; title: string; body?: string; action?: string; action_label?: string; count?: number };
-type PlanItem = { concept_id: string; title: string; status: string; when: string; chapter?: string; estimated_minutes?: number };
+/*
+ * Home answers three questions, in this order:
+ *   1. What should I do right now?     → Continue / today's plan
+ *   2. How am I doing?                  → four numbers, from the same record as /progress
+ *   3. What needs attention?            → reviews, insights, syllabus coverage
+ * A student with no history sees a welcome, how Prepwise works, and one clear
+ * first step instead of a dashboard of zeros.
+ */
 
-/* ─── helpers ────────────────────────────────────────────────────────── */
-function formatAction(action: TodayAction): string {
-  if (action === "lesson") return "Lesson";
-  if (action === "revise") return "Revise";
-  return "Assess";
-}
-function subjectAccent(id: string): string {
-  if (id === "physics") return "#3b82f6";
-  if (id === "chemistry") return "#10b981";
-  return "#f59e0b";
-}
-function subjectBg(id: string): string {
-  if (id === "physics") return "rgba(59,130,246,0.07)";
-  if (id === "chemistry") return "rgba(16,185,129,0.07)";
-  return "rgba(245,158,11,0.07)";
-}
-function insightIcon(type: string): ReactNode {
-  if (type === "weak_concepts")
-    return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+const QUICK_TOPICS = ["Projectile motion", "Newton's laws", "Electric field", "Simple harmonic motion", "Ray optics", "Photoelectric effect"];
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Up late";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
 }
 
-/* ─── layout helpers ─────────────────────────────────────────────────── */
-function Section({ title, action, actionHref, children }: {
-  title: string; action?: string; actionHref?: string; children: ReactNode;
-}) {
+function studyHref(c: { concept_id: string; study_session_id?: string | null }) {
+  const base = `/study/${encodeURIComponent(c.concept_id)}`;
+  return c.study_session_id ? `${base}?session=${c.study_session_id}` : base;
+}
+
+
+/* ── building blocks ───────────────────────────────────────────────────────── */
+
+function Card({ title, action, children, className = "" }: { title?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-muted">{title}</h2>
-        {action && actionHref && (
-          <Link href={actionHref} className="text-[11px] font-semibold text-accent hover:underline">{action}</Link>
-        )}
-      </div>
+    <section className={`flex flex-col rounded-2xl border border-line bg-surface p-5 ${className}`}>
+      {(title || action) && (
+        <div className="mb-3.5 flex items-baseline justify-between gap-3">
+          {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
+          {action}
+        </div>
+      )}
       {children}
     </section>
   );
 }
 
-/* ─── today card ─────────────────────────────────────────────────────── */
-function TodayCard({
-  today, actionPending, actionError, onOpen, onComplete, onDismiss,
-}: {
-  today: ClassroomToday | null;
-  actionPending: boolean;
-  actionError: string | null;
-  onOpen: (t: ClassroomToday) => void;
-  onComplete: () => void;
-  onDismiss: () => void;
-}) {
-  if (!today) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface px-8 py-10 text-center">
-        <div className="rounded-full bg-hover p-4">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-        </div>
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" | null }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface px-4 py-3.5">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value}</p>
+      {sub && <p className={`mt-0.5 text-xs ${tone === "good" ? "text-success" : tone === "bad" ? "text-danger" : "text-muted"}`}>{sub}</p>}
+    </div>
+  );
+}
+
+function Bar({ value, total, label }: { value: number; total: number; label: string }) {
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-hover" role="img" aria-label={label}>
+      <div className="h-full rounded-full bg-accent" style={{ width: `${total ? Math.max(value ? 3 : 0, (value / total) * 100) : 0}%` }} />
+    </div>
+  );
+}
+
+const KIND: Record<UpNextItem["kind"], { tag: string; cta: string }> = {
+  review: { tag: "Review due", cta: "Start review" },
+  resume: { tag: "Continue", cta: "Resume" },
+  next: { tag: "Up next", cta: "Start" },
+  start: { tag: "Start here", cta: "Start" },
+};
+
+/* ── sections ──────────────────────────────────────────────────────────────── */
+
+function ContinueCard({ items }: { items: UpNextItem[] }) {
+  if (!items.length) return null;
+  const [first, ...rest] = items;
+  return (
+    <section className="flex flex-col gap-3">
+      <Link
+        href={studyHref(first)}
+        className="group flex flex-col justify-between gap-5 rounded-2xl border border-accent/40 bg-accent-soft/40 p-6 transition-colors hover:border-accent"
+      >
         <div>
-          <h3 className="font-display text-lg font-semibold text-ink">All caught up!</h3>
-          <p className="mt-1 text-sm text-muted">No tasks for today. The AI tutor is ready when you are.</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-accent">{KIND[first.kind].tag}</p>
+          <p className="mt-2 font-display text-2xl font-semibold leading-tight text-ink first-letter:uppercase sm:text-3xl">{first.name}</p>
+          <p className="mt-1 text-xs text-muted">{first.chapter}</p>
+          <p className="mt-3 text-sm text-ink-2">{first.reason}</p>
         </div>
-        <Link href="/chat" className="mt-2 rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-surface hover:bg-ink/90 transition-colors">
-          Ask a Doubt
-        </Link>
-      </div>
-    );
-  }
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 shadow-sm">
-      <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-2xl bg-ink" />
-      <div className="mt-1">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted">
-          {formatAction(today.action)}{today.provisional ? " · Provisional" : ""} · {today.minutes} min
-        </p>
-        <h3 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink">{today.title}</h3>
-      </div>
-      {actionError && <p className="mt-3 text-sm text-red-500">{actionError}</p>}
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => onOpen(today)} disabled={actionPending}
-          className="rounded-lg bg-ink px-5 py-2.5 text-sm font-bold text-surface hover:bg-ink/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          Start Session →
-        </button>
-        <button type="button" onClick={onComplete} disabled={actionPending}
-          className="rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink hover:bg-hover transition-colors disabled:opacity-50">
-          Mark Complete
-        </button>
-        <button type="button" onClick={onDismiss} disabled={actionPending}
-          className="px-3 py-2 text-xs text-muted hover:text-ink transition-colors disabled:opacity-50">
-          Skip
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── mastery ring ───────────────────────────────────────────────────── */
-function MasteryRing({ mastery, size, stroke, color }: { mastery: number; size: number; stroke: number; color: string }) {
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = (mastery / 100) * circ;
-  return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--color-hover)" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        style={{ transition: "stroke-dasharray 0.6s ease" }} />
-    </svg>
-  );
-}
-
-function SubjectRings({ subjects }: { subjects: SubjectMastery[] }) {
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      {subjects.map((s) => (
-        <div key={s.id} className="flex flex-col items-center gap-3 rounded-xl border border-line p-5 transition-all hover:border-ink"
-          style={{ background: subjectBg(s.id) }}>
-          <div className="relative">
-            <MasteryRing mastery={s.mastery} size={72} stroke={6} color={subjectAccent(s.id)} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-display text-base font-bold tabular-nums text-ink">
-                {s.coming_soon ? "—" : `${s.mastery}%`}
-              </span>
-            </div>
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-ink">{s.label}</p>
-            {s.coming_soon
-              ? <p className="mt-0.5 text-[10px] text-muted">Coming soon</p>
-              : <p className="mt-0.5 text-[10px] text-muted">{s.mastered}/{s.total} mastered</p>}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── streak ─────────────────────────────────────────────────────────── */
-function StreakRow({ streak }: { streak: Streak }) {
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-5 py-4">
-      <div className="flex flex-col">
-        <span className="font-display text-2xl font-bold text-ink">{streak.current_streak}</span>
-        <span className="text-[11px] text-muted">day streak</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {streak.week.map((day, i) => (
-          <div key={day.date} className="flex flex-col items-center gap-1">
-            <div className={`h-7 w-7 rounded-full flex items-center justify-center transition-colors ${
-              day.active ? "bg-ink" : day.is_today ? "border-2 border-ink" : "bg-hover"
-            }`}>
-              {day.active && (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              )}
-            </div>
-            <span className="text-[9px] font-semibold text-muted">{days[i]}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── insights ───────────────────────────────────────────────────────── */
-function InsightCards({ insights }: { insights: Insight[] }) {
-  if (!insights?.length) return null;
-  return (
-    <div className="flex flex-col gap-3">
-      {insights.map((insight, i) => (
-        <div key={`${insight.type}-${i}`} className="flex items-start gap-4 rounded-xl border border-line bg-surface px-5 py-4">
-          <div className="mt-0.5 shrink-0 text-muted">{insightIcon(insight.type)}</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-ink">{insight.title}</p>
-            {insight.body && <p className="mt-0.5 text-[12px] text-muted leading-relaxed">{insight.body}</p>}
-          </div>
-          {insight.action && insight.action_label && (
-            <Link href={insight.action} className="shrink-0 text-[11px] font-bold text-accent hover:underline">
-              {insight.action_label}
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors group-hover:bg-accent-hover">
+          {KIND[first.kind].cta} →
+        </span>
+      </Link>
+      {rest.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {rest.map((item) => (
+            <Link key={item.concept_id} href={studyHref(item)} className="rounded-2xl border border-line bg-surface px-4 py-3 transition-colors hover:border-accent">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted">{KIND[item.kind].tag}</span>
+              <span className="mt-0.5 block truncate text-sm font-semibold text-ink first-letter:uppercase">{item.name}</span>
+              <span className="mt-0.5 line-clamp-2 block text-xs text-muted">{item.reason}</span>
             </Link>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── study queue ────────────────────────────────────────────────────── */
-function StudyQueue({ plan, onOpen }: { plan: PlanItem[]; onOpen: (id: string) => void }) {
-  const real = plan.filter(p => p.concept_id !== "__more__");
-  const more = plan.find(p => p.concept_id === "__more__");
-  if (real.length === 0) {
-    return (
-      <div className="rounded-xl border border-line bg-surface px-5 py-5 text-center text-sm text-muted">
-        Your study queue is empty. Start your first session to generate a plan.
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col divide-y divide-line rounded-xl border border-line bg-surface overflow-hidden">
-      {real.map((item, i) => (
-        <button key={item.concept_id} type="button" onClick={() => onOpen(item.concept_id)}
-          className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-hover focus-visible:outline-none">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-              item.when === "today" ? "bg-ink text-surface" : "bg-hover text-muted"
-            }`}>{i + 1}</span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">{item.title}</p>
-              <p className="mt-0.5 text-[11px] text-muted">
-                {item.chapter && `${item.chapter} · `}
-                {item.estimated_minutes ? `~${item.estimated_minutes} min` : ""}
-                {item.when === "today" && <span className="ml-1 font-semibold text-accent"> · Today</span>}
-              </p>
-            </div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
-      ))}
-      {more && (
-        <div className="flex items-center justify-between px-5 py-3 text-[11px] text-muted">
-          <span>{more.title}</span>
-          <Link href="/plan" className="font-semibold text-accent hover:underline">See full roadmap →</Link>
+          ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function TodaysPlan({ plan }: { plan: StudyPlan | null }) {
+  const today = plan?.week[0];
+  const tomorrow = plan?.week.slice(1).find((d) => !d.rest && d.items.length);
+  const label = (k: PlanItem["kind"]) => (k === "review" ? "Review" : k === "continue" ? "Continue" : k === "done" ? "Done" : "Learn");
+  return (
+    <Card title="Today's plan" action={<Link href="/plan" className="text-xs font-semibold text-accent hover:underline">Full plan →</Link>}>
+      {!plan || !today ? (
+        <p className="rounded-xl bg-hover px-4 py-3 text-sm text-ink-2">Your plan is loading — or open the Plan page to set it up.</p>
+      ) : today.rest ? (
+        <p className="rounded-xl bg-hover px-4 py-3 text-sm text-ink-2">Rest day. Come back tomorrow — or review something light if you feel like it.</p>
+      ) : today.items.length === 0 ? (
+        <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-ink-2">Done for today{today.minutes_done ? ` — ${today.minutes_done} min studied` : ""}. Nice work.</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {today.items.map((it, i) => (
+            <li key={`${it.concept_id}-${i}`}>
+              <Link href={`/study/${encodeURIComponent(it.concept_id)}`} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 transition-colors hover:border-accent">
+                <span className={`w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide ${it.kind === "review" ? "text-danger" : it.kind === "done" ? "text-success" : it.kind === "continue" ? "text-accent" : "text-ink-2"}`}>
+                  {it.kind === "done" ? "✓ " : ""}{label(it.kind)}
+                </span>
+                <span className={`min-w-0 flex-1 truncate text-sm ${it.kind === "done" ? "text-muted line-through decoration-muted/50" : "text-ink"}`}>{it.topic}</span>
+                {it.minutes > 0 && <span className="shrink-0 text-[11px] tabular-nums text-muted">{it.minutes} min</span>}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {plan && (
+        <p className="mt-3 text-xs text-muted">
+          {plan.days_left} days to {plan.settings.exam_label.replace(" (session 1)", "")} ·{" "}
+          <span className={plan.verdict === "behind" ? "font-semibold text-danger" : plan.verdict === "tight" ? "font-semibold text-ink-2" : "font-semibold text-success"}>
+            {plan.verdict === "on_track" ? "on track" : plan.verdict === "tight" ? "pace is tight" : plan.verdict === "behind" ? "behind pace" : "syllabus covered"}
+          </span>
+          {tomorrow ? ` · tomorrow: ${tomorrow.items[0].topic}` : ""}
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function Attention({ report }: { report: ProgressReport }) {
+  const reviews = report.reviews.slice(0, 3);
+  const insights = report.insights.filter((i) => i.action !== "review").slice(0, 3);
+  if (!reviews.length && !insights.length) {
+    return (
+      <Card title="Needs your attention">
+        <p className="text-sm text-muted">Nothing pressing. Reviews and patterns in your mistakes show up here.</p>
+      </Card>
+    );
+  }
+  return (
+    <Card title="Needs your attention" action={<Link href="/progress" className="text-xs font-semibold text-accent hover:underline">Progress →</Link>}>
+      <ul className="flex flex-col gap-2.5">
+        {reviews.map((r) => (
+          <li key={r.concept_id} className="flex items-center justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-ink first-letter:uppercase">Review: {r.name}</span>
+              <span className={`text-xs ${r.overdue ? "font-semibold text-danger" : "text-muted"}`}>
+                {r.overdue ? "Due now" : `Due ${r.due_at ? new Date(r.due_at).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "soon"}`}
+              </span>
+            </span>
+            <Link href={`/study/${encodeURIComponent(r.concept_id)}`} className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-ink hover:bg-hover">
+              Review
+            </Link>
+          </li>
+        ))}
+        {insights.map((ins, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-sm text-ink-2">
+            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${ins.tone === "good" ? "bg-success" : ins.tone === "pattern" ? "bg-warning" : "bg-accent"}`} aria-hidden />
+            <span className="flex-1">
+              {ins.text}
+              {ins.concept_id && ins.action && (
+                <Link href={`/study/${encodeURIComponent(ins.concept_id)}`} className="ml-1.5 whitespace-nowrap text-xs font-semibold text-accent hover:underline">
+                  Study it →
+                </Link>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function SyllabusProgress({ overview, readiness }: { overview: StudyOverview; readiness?: { score: number; label: string } | null }) {
+  const total = overview.syllabus.reduce((a, u) => a + u.total, 0);
+  const started = overview.syllabus.reduce((a, u) => a + u.started, 0);
+  const mastered = overview.syllabus.reduce((a, u) => a + u.mastered, 0);
+  const active = overview.syllabus.filter((u) => u.started > 0).sort((a, b) => b.started / b.total - a.started / a.total).slice(0, 4);
+  return (
+    <Card title="JEE syllabus" action={<Link href="/study" className="text-xs font-semibold text-accent hover:underline">Open study →</Link>}>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-2xl font-semibold tabular-nums text-ink">
+          {started}
+          <span className="text-base text-muted">/{total}</span>
+        </p>
+        <p className="text-xs text-muted">topics started · {mastered} mastered</p>
+      </div>
+      <div className="mt-2">
+        <Bar value={started} total={total} label={`${started} of ${total} syllabus topics started`} />
+      </div>
+      {active.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-2.5">
+          {active.map((u) => (
+            <li key={u.unit}>
+              <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+                <span className="truncate text-ink-2">{u.unit}</span>
+                <span className="shrink-0 tabular-nums text-muted">{u.started}/{u.total}</span>
+              </div>
+              <Bar value={u.started} total={u.total} label={`${u.unit}: ${u.started} of ${u.total}`} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {readiness && readiness.score > 0 && (
+        <Link href="/readiness" className="mt-4 flex items-center justify-between rounded-xl bg-hover px-3 py-2 text-xs text-ink-2 hover:text-ink">
+          <span>Exam readiness</span>
+          <span className="font-semibold tabular-nums">{Math.round(readiness.score)}/100 · {readiness.label}</span>
+        </Link>
+      )}
+    </Card>
+  );
+}
+
+function QuickActions() {
+  const items = [
+    { href: "/study?mode=practice", label: "Practise questions", sub: "Straight to questions, PYQs too" },
+    { href: "/chat", label: "Ask the tutor", sub: "Any physics doubt, with diagrams" },
+    { href: "/doubt", label: "Check my working", sub: "Paste a solution, find the slip" },
+    { href: "/progress", label: "Mistake notebook", sub: "Questions worth another look" },
+    { href: "/plan", label: "This week's plan", sub: "Day by day, until the exam" },
+  ];
+  return (
+    <section aria-label="Shortcuts" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {items.map((it) => (
+        <Link key={it.href} href={it.href} className="rounded-2xl border border-line bg-surface px-4 py-3.5 transition-colors hover:border-accent">
+          <span className="block text-sm font-semibold text-ink">{it.label}</span>
+          <span className="mt-0.5 block text-xs text-muted">{it.sub}</span>
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+/* ── first visit ───────────────────────────────────────────────────────────── */
+
+function Welcome({ firstName, today }: { firstName: string; today: ClassroomToday | null }) {
+  const firstTopic = today?.title;
+  const steps = [
+    { n: 1, title: "Learn it properly", body: "The study room teaches one topic in parts, walks through worked examples, then gives you calibrated JEE questions.", href: "/study", cta: "Open study" },
+    { n: 2, title: "Ask anything, anytime", body: "Stuck on a doubt? The tutor explains step by step, draws diagrams and checks your working.", href: "/chat", cta: "Ask the tutor" },
+    { n: 3, title: "Watch it add up", body: "Every answer is tracked. See your streak, weak spots and a mistake notebook — and your tutor remembers it all.", href: "/progress", cta: "See progress" },
+  ];
+  return (
+    <div className="flex flex-col gap-6">
+      <section className="rounded-2xl border border-accent/40 bg-accent-soft/40 p-6 sm:p-8">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-accent">Welcome to Prepwise</p>
+        <h1 className="mt-2 max-w-2xl font-display text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
+          {firstName ? `Hi ${firstName} — ` : ""}let&apos;s start your JEE Physics prep.
+        </h1>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-2">
+          Your AI tutor teaches each topic step by step, practises with you, and remembers how it went — so every session
+          picks up exactly where you need it.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            href={`/study/${encodeURIComponent(firstTopic || "Units and measurement")}`}
+            className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
+          >
+            Start your first lesson{firstTopic ? `: ${firstTopic}` : ""} →
+          </Link>
+          <Link href="/chat" className="rounded-xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-hover">
+            Ask a doubt instead
+          </Link>
+        </div>
+      </section>
+
+      <section aria-labelledby="how-title">
+        <h2 id="how-title" className="text-[11px] font-bold uppercase tracking-widest text-muted">How it works</h2>
+        <ol className="mt-3 grid gap-3 md:grid-cols-3">
+          {steps.map((s) => (
+            <li key={s.n} className="flex flex-col rounded-2xl border border-line bg-surface p-5">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">{s.n}</span>
+              <p className="mt-3 text-sm font-semibold text-ink">{s.title}</p>
+              <p className="mt-1 flex-1 text-sm leading-relaxed text-muted">{s.body}</p>
+              <Link href={s.href} className="mt-3 text-xs font-semibold text-accent hover:underline">{s.cta} →</Link>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-labelledby="quick-title" className="rounded-2xl border border-line bg-surface p-5">
+        <h2 id="quick-title" className="text-sm font-semibold text-ink">Or jump into any topic</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {QUICK_TOPICS.map((t) => (
+            <Link key={t} href={`/study/${encodeURIComponent(t)}`} className="rounded-full border border-line px-3.5 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-accent hover:text-ink">
+              {t}
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
 
-/* ─── main dashboard ─────────────────────────────────────────────────── */
+/* ── page ──────────────────────────────────────────────────────────────────── */
+
 export default function HomeContent() {
-  const router = useRouter();
-  const {
-    home, loading, error, actionPending, actionError,
-    reload, openToday, openLesson, completeToday, dismissToday,
-  } = useHomeState();
+  const { data } = useApp();
+  const { home, loading } = useHomeState();
+  const [report, setReport] = useState<ProgressReport | null>(null);
+  const [overview, setOverview] = useState<StudyOverview | null>(null);
+  const [plan, setPlan] = useState<StudyPlan | null>(null);
+  const [agentLoaded, setAgentLoaded] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    let live = true;
+    Promise.allSettled([fetchProgressCached(), fetchStudyOverview()]).then(([p, o]) => {
+      if (!live) return;
+      if (p.status === "fulfilled") setReport(p.value);
+      if (o.status === "fulfilled") setOverview(o.value);
+      setAgentLoaded(true);
+    });
+    // The plan card fills in when ready; it never holds the page back.
+    fetchPlan().then((p) => live && setPlan(p)).catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const firstName = (data.user.name || "").split(" ")[0] ?? "";
+  const o = report?.overview;
+  const isNew = agentLoaded && (!o || (o.questions_attempted === 0 && (report?.timeline.length ?? 0) === 0));
+
+  if (!agentLoaded || loading) {
     return (
-      <div className="flex-1 overflow-y-auto px-6 pb-12 pt-[6.75rem] lg:px-8 animate-pulse" aria-busy="true">
-        <div className="mx-auto max-w-3xl space-y-8">
-          <div className="h-8 w-48 rounded-lg bg-hover" />
-          <div className="h-44 rounded-2xl bg-hover" />
-          <div className="h-24 rounded-xl bg-hover" />
-          <div className="h-24 rounded-xl bg-hover" />
+      <main className="px-4 pb-16 pt-24 sm:px-6" aria-busy="true">
+        <div className="mx-auto grid max-w-6xl animate-pulse gap-5 motion-reduce:animate-none">
+          <div className="h-9 w-72 rounded-lg bg-hover" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl bg-hover" />)}</div>
+          <div className="grid gap-5 lg:grid-cols-3"><div className="h-64 rounded-2xl bg-hover lg:col-span-2" /><div className="h-64 rounded-2xl bg-hover" /></div>
         </div>
-      </div>
+      </main>
     );
   }
-
-  if (error) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-6 pb-6 pt-[6.75rem]">
-        <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 text-center">
-          <h3 className="mb-2 text-base font-bold text-ink">Couldn&apos;t load dashboard</h3>
-          <p className="mb-6 text-sm text-muted">{error}</p>
-          <button type="button" onClick={reload}
-            className="rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-surface hover:bg-ink/90 transition-colors">
-            Try again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const streak: Streak = (home as any).streak ?? { current_streak: 0, week: [] };
-  const insights: Insight[] = (home as any).insights ?? [];
-  const subjectMastery: SubjectMastery[] = (home as any).subject_mastery ?? [];
-  /* eslint-enable */
 
   return (
-    <main className="flex-1 overflow-y-auto px-6 pb-16 pt-[6.75rem] lg:px-8">
-      <div className="mx-auto flex max-w-3xl flex-col gap-10">
-
-        <header>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Dashboard</p>
-          <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Your Prepwise
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Personalised JEE prep. The AI knows where you are and what you need next.
-          </p>
-        </header>
-
-        {/* Today */}
-        <section aria-labelledby="today-heading">
-          <h2 id="today-heading" className="sr-only">Today&apos;s Focus</h2>
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-muted">Today&apos;s Focus</span>
-            <Link href="/chat" className="text-[11px] font-semibold text-accent hover:underline">Ask a doubt →</Link>
-          </div>
-          <TodayCard today={home.today} actionPending={actionPending} actionError={actionError}
-            onOpen={openToday} onComplete={completeToday} onDismiss={dismissToday} />
-        </section>
-
-        {/* AI Insights */}
-        {insights.length > 0 && (
-          <Section title="AI Insights">
-            <InsightCards insights={insights} />
-          </Section>
-        )}
-
-        {/* Subject Rings */}
-        {subjectMastery.length > 0 && (
-          <Section title="Mastery Overview">
-            <SubjectRings subjects={subjectMastery} />
-          </Section>
-        )}
-
-        {/* Streak */}
-        <Section title="Consistency">
-          {streak.week.length > 0
-            ? <StreakRow streak={streak} />
-            : <div className="rounded-xl border border-line bg-surface px-5 py-4 text-sm text-muted">Start studying to build your streak.</div>
-          }
-        </Section>
-
-        {/* Agent Study Queue */}
-        <Section title="Your Study Queue" action="Full Roadmap →" actionHref="/plan">
-          <p className="mb-3 text-[12px] leading-relaxed text-muted">
-            The AI picks what you study next — based on prerequisites and your current mastery. No need to scroll through 130+ topics.
-          </p>
-          <StudyQueue plan={home.plan} onOpen={openLesson} />
-        </Section>
-
-        {/* Quick Tools */}
-        <Section title="Quick Tools">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {([
-              { href: "/chat", label: "Ask a Doubt", sub: "AI tutor, instant help",
-                icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-              { href: "/plan", label: "Full Roadmap", sub: "Your complete path",
-                icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> },
-              { href: "/readiness", label: "Progress", sub: "Readiness & analytics",
-                icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-            ] as const).map((tool) => (
-              <Link key={tool.href} href={tool.href}
-                className="group flex items-center gap-4 rounded-xl border border-line bg-surface p-4 transition-all hover:border-ink hover:bg-hover">
-                <div className="rounded-lg bg-hover p-2.5 text-muted group-hover:text-ink transition-colors">{tool.icon}</div>
-                <div>
-                  <p className="text-sm font-semibold text-ink">{tool.label}</p>
-                  <p className="text-[11px] text-muted">{tool.sub}</p>
-                </div>
+    <main className="px-4 pb-16 pt-24 sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        {isNew ? (
+          <Welcome firstName={firstName} today={home.today} />
+        ) : (
+          <>
+            <header className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted">{new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</p>
+                <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
+                  {greeting()}{firstName ? `, ${firstName}` : ""}
+                </h1>
+              </div>
+              <Link href="/chat" className="rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hover">
+                Ask the tutor
               </Link>
-            ))}
-          </div>
-        </Section>
+            </header>
 
+            {o && (
+              <section aria-label="This week" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Stat
+                  label="Streak"
+                  value={`${o.streak_days} day${o.streak_days === 1 ? "" : "s"}`}
+                  sub={o.active_today ? "Today counts ✓" : o.streak_days ? "Study today to keep it" : `Best ${o.best_streak_days}`}
+                  tone={o.active_today ? "good" : null}
+                />
+                <Stat
+                  label="Questions this week"
+                  value={`${o.attempts_7d}`}
+                  sub={o.accuracy_7d != null ? `${Math.round(o.accuracy_7d * 100)}% right` : "None answered yet"}
+                />
+                <Stat label="Time this week" value={`${o.active_minutes_7d} min`} sub={`${o.active_days_30d} active days this month`} />
+                <Stat label="Concepts mastered" value={`${o.concepts_mastered}`} sub={`of ${o.concepts_practised} practised`} />
+              </section>
+            )}
+
+            <div className="grid items-start gap-5 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                {overview?.up_next.length ? (
+                  <ContinueCard items={overview.up_next} />
+                ) : (
+                  <Card title="Continue">
+                    <p className="text-sm text-muted">Pick a topic in the study room to get going.</p>
+                  </Card>
+                )}
+              </div>
+              <TodaysPlan plan={plan} />
+            </div>
+
+            <div className="grid items-start gap-5 lg:grid-cols-2">
+              {report && <Attention report={report} />}
+              {overview && <SyllabusProgress overview={overview} readiness={home.readiness} />}
+            </div>
+          </>
+        )}
+
+        <QuickActions />
       </div>
     </main>
   );

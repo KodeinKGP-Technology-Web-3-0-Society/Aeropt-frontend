@@ -1655,6 +1655,13 @@ textarea:focus-visible,
   :root:not([data-theme="light"]) .altitude-field { opacity: 0.32; }
 }
 
+/* Landing diagrams (public/landing/*.svg) are ink on transparent, like the
+   tutor's own TikZ output: flip them the same way in dark mode. */
+:root[data-theme="dark"] .landing-art { filter: invert(1) hue-rotate(180deg); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .landing-art { filter: invert(1) hue-rotate(180deg); }
+}
+
 .landing-btn {
   transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
@@ -2253,18 +2260,132 @@ textarea:focus-visible,
 
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: var(--scroll-thumb) transparent;
+  scrollbar-color: rgba(113, 113, 122, 0.5) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: var(--scroll-thumb);
+  background: rgba(113, 113, 122, 0.4);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.8);
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ── Study Room notes ────────────────────────────────────────────────────────
+   The teacher writes structured markdown (### headings, numbered steps,
+   bullets, rules). Tailwind's preflight strips list markers and heading sizes
+   and the typography plugin is not installed, so `prose` classes do nothing —
+   this gives that markup its shape. Scoped so chat styling is untouched. */
+.study-notes .markdown-math {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+.study-notes .markdown-math > :first-child { margin-top: 0; }
+.study-notes .markdown-math h1,
+.study-notes .markdown-math h2,
+.study-notes .markdown-math h3,
+.study-notes .markdown-math h4 {
+  color: var(--text-main);
+  font-family: var(--font-source-serif), Georgia, serif;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.4rem 0 0.5rem;
+}
+.study-notes .markdown-math h1 { font-size: 1.35rem; }
+.study-notes .markdown-math h2 { font-size: 1.2rem; }
+.study-notes .markdown-math h3 { font-size: 1.08rem; }
+.study-notes .markdown-math h4 { font-size: 0.98rem; }
+.study-notes .markdown-math ul,
+.study-notes .markdown-math ol {
+  margin: 0.25rem 0 0.9rem;
+  padding-left: 1.4rem;
+}
+.study-notes .markdown-math ul { list-style: disc; }
+.study-notes .markdown-math ol { list-style: decimal; }
+.study-notes .markdown-math ul ul { list-style: circle; margin-bottom: 0.25rem; }
+.study-notes .markdown-math li { margin: 0.3rem 0; padding-left: 0.15rem; }
+.study-notes .markdown-math li::marker { color: var(--text-muted); }
+.study-notes .markdown-math li > p { margin-bottom: 0.35rem; }
+.study-notes .markdown-math hr {
+  border: 0;
+  border-top: 1px solid var(--border-main);
+  margin: 1.25rem 0;
+}
+.study-notes .markdown-math blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0.9rem 0;
+  padding: 0.15rem 0 0.15rem 0.9rem;
+  color: var(--text-main);
+}
+.study-notes .markdown-math table {
+  border-collapse: collapse;
+  display: block;
+  margin: 0.9rem 0;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.88rem;
+}
+.study-notes .markdown-math th,
+.study-notes .markdown-math td {
+  border: 1px solid var(--border-main);
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+}
+.study-notes .markdown-math th { background: var(--bg-hover); color: var(--text-main); }
+.study-notes .markdown-math .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+/* The question the teacher ends on is bold on its own line: give it room. */
+.study-notes .markdown-math > p:last-child > strong:only-child {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--text-main);
+}
+
+/* ── Tutor diagrams (compiled TikZ → SVG) ─────────────────────────────────────
+   Monochrome line art on the paper surface; inverted in dark mode so ink stays
+   ink. Width is set from the SVG's natural size at load (MarkdownMath), so TeX
+   labels match body text; max-width keeps wide plots inside the column. */
+.markdown-diagram-wrap--tikz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  padding: 16px 12px 12px;
+}
+.markdown-math .markdown-diagram.markdown-diagram--tikz,
+.markdown-diagram-wrap .markdown-diagram--tikz {
+  max-width: 100%;
+  max-height: none;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.markdown-diagram-caption {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+:root[data-theme="dark"] .markdown-diagram--tikz {
+  filter: invert(1) hue-rotate(180deg);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .markdown-diagram--tikz { filter: invert(1) hue-rotate(180deg); }
 }

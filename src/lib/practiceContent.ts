@@ -131,3 +131,59 @@ export function extractPracticeQuestion(
   const remainder = `${content.slice(0, start)}${content.slice(end + 1)}`.trim();
   return { data, remainder };
 }
+
+// ── Inline multiple-choice options ──────────────────────────────────────────
+
+export type InlineOption = { label: string; text: string };
+
+/** Character ranges inside $…$, $$…$$, \(…\) or \[…\] — never split there. */
+function mathMask(text: string): boolean[] {
+  const mask = new Array<boolean>(text.length).fill(false);
+  const re = /\$\$[\s\S]*?\$\$|(?<!\\)\$[^$\n]*?(?<!\\)\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    for (let i = m.index; i < m.index + m[0].length; i++) mask[i] = true;
+  }
+  return mask;
+}
+
+const LABEL_SETS = [["1", "2", "3", "4"], ["A", "B", "C", "D"], ["a", "b", "c", "d"]];
+
+/**
+ * Split a question whose options are written inline — "… field? (1) E = … (2) E = …"
+ * as stored from past papers — into the stem and its options, so each option can
+ * sit on its own line. Markers count only outside maths and only as a run of
+ * consecutive labels starting from the first (1/A/a), so "f(1)" in an equation
+ * or a lone "(2)" in prose never splits a question. Returns null when there is
+ * no such run (the text is shown as written).
+ */
+export function splitInlineOptions(text: string): { stem: string; options: InlineOption[] } | null {
+  if (!text) return null;
+  const mask = mathMask(text);
+  const marker = /(^|[\s.:;?,)])\(\s*([1-4A-Da-d])\s*\)/g;
+  const found: { label: string; start: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = marker.exec(text)) !== null) {
+    const start = m.index + m[1].length;
+    if (mask[start]) continue;
+    found.push({ label: m[2], start, end: m.index + m[0].length });
+  }
+  for (const labels of LABEL_SETS) {
+    const run: typeof found = [];
+    for (const f of found) {
+      if (f.label === labels[run.length]) run.push(f);
+      if (run.length === labels.length) break;
+    }
+    if (run.length >= 2) {
+      const stem = text.slice(0, run[0].start).trim();
+      if (!stem) return null;
+      const options = run.map((f, i) => ({
+        label: f.label,
+        text: text.slice(f.end, i + 1 < run.length ? run[i + 1].start : undefined).trim(),
+      }));
+      if (options.some((o) => !o.text)) return null;
+      return { stem, options };
+    }
+  }
+  return null;
+}
