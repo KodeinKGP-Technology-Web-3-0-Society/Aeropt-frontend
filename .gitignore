@@ -52,3 +52,7 @@ split_ts_morph.js
 
 # docs
 JEE Chatbot.pdf
+
+# Playwright output
+/test-results/
+/playwright-report/
