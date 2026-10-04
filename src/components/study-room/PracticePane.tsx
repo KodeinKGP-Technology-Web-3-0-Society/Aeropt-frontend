@@ -14,7 +14,7 @@ const TYPE_LABEL: Record<string, string> = {
   mcq_single: "Multiple choice",
   single_correct: "Single correct",
   mcq_multi: "Multiple correct",
-  multiple_correct: "Multiple correct — pick all that apply",
+  multiple_correct: "Multiple correct: pick all that apply",
   worked_example: "Worked example",
 };
 
@@ -32,6 +32,24 @@ interface PracticePaneProps {
   /** Multiple-choice pick, graded instantly from the key. */
   onChoose: (labels: string[], positionOf: (label: string) => number) => void;
   onAsk: (text: string) => void;
+  /** Serve the next question directly (no tutor turn). */
+  onNext: () => void;
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12l5 5L20 7" />
+    </svg>
+  );
+}
+
+function CrossIcon() {
+  return (
+    <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
 }
 
 const SECONDARY_BTN =
@@ -48,14 +66,23 @@ export default function PracticePane({
   onSubmit,
   onChoose,
   onAsk,
+  onNext,
 }: PracticePaneProps) {
   const [answer, setAnswer] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  const [showSolution, setShowSolution] = useState(false);
 
   const typeLabel = question.question_type ? TYPE_LABEL[question.question_type] ?? null : null;
-  // Past-paper questions store their options inline; each gets its own row.
-  const parsed = useMemo(() => splitInlineOptions(question.question_text), [question.question_text]);
-  const multi = question.question_type === "multiple_correct";
+  // Structured questions (stem / figure / options / parts from ingest) render as given.
+  // Re-splitting question_text is only for older items without structure: it split a figure
+  // description that mentioned "(A), (B), (C), and (D)" into four empty options.
+  const parsed = useMemo(() => {
+    if (question.options?.length) return { stem: question.stem ?? question.question_text, options: question.options };
+    if (question.stem) return null;
+    return splitInlineOptions(question.question_text);
+  }, [question]);
+  const stemText = parsed ? parsed.stem : question.stem ?? question.question_text;
+  const multi = question.answer_kind === "multiple" || question.question_type === "multiple_correct";
   const isMcq = Boolean(parsed);
   const graded = Boolean(result);
   const positionOf = (label: string) => (parsed ? parsed.options.findIndex((o) => o.label === label) + 1 : 0);
@@ -107,10 +134,36 @@ export default function PracticePane({
           <span className="mb-3 inline-block rounded-full bg-hover px-2.5 py-0.5 text-[11px] font-semibold text-ink-2">{typeLabel}</span>
         )}
         <div className="study-notes">
-          <MathErrorBoundary content={parsed ? parsed.stem : question.question_text}>
-            <MarkdownMath content={parsed ? parsed.stem : question.question_text} />
+          <MathErrorBoundary content={stemText}>
+            <MarkdownMath content={stemText} />
           </MathErrorBoundary>
         </div>
+
+        {question.figure && (
+          <figure className="mt-4 rounded-xl border border-dashed border-line bg-hover/40 px-4 py-3">
+            <figcaption className="mb-1 text-[11px] font-bold uppercase tracking-widest text-muted">Figure</figcaption>
+            <div className="study-notes text-sm text-ink-2">
+              <MathErrorBoundary content={question.figure}>
+                <MarkdownMath content={question.figure} />
+              </MathErrorBoundary>
+            </div>
+          </figure>
+        )}
+
+        {!parsed && question.parts?.length ? (
+          <ol className="mt-4 flex flex-col gap-2">
+            {question.parts.map((part) => (
+              <li key={part.label} className="flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 text-sm font-semibold text-ink-2">({part.label})</span>
+                <span className="study-notes min-w-0 flex-1">
+                  <MathErrorBoundary content={part.text}>
+                    <MarkdownMath content={part.text} />
+                  </MathErrorBoundary>
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
 
         {parsed && (
           <div className="mt-4 flex flex-col gap-2" role={multi ? "group" : "radiogroup"} aria-label="Options">
@@ -145,7 +198,7 @@ export default function PracticePane({
                     }`}
                     aria-hidden
                   >
-                    {isKey ? "✓" : wrongPick ? "✗" : o.label}
+                    {isKey ? <CheckIcon /> : wrongPick ? <CrossIcon /> : o.label}
                   </span>
                   <span className="study-notes min-w-0 flex-1 overflow-x-auto">
                     <MathErrorBoundary content={o.text}>
@@ -166,17 +219,33 @@ export default function PracticePane({
           className={`rounded-2xl border px-4 py-3.5 ${result!.correct ? "border-success/40 bg-success/10" : "border-danger/30 bg-danger/5"}`}
         >
           <p className={`text-sm font-semibold ${result!.correct ? "text-success" : "text-danger"}`}>
-            {result!.correct ? "✓ Correct!" : "✗ Not quite."}
+            <span className="inline-flex items-center gap-1.5">
+              {result!.correct ? <CheckIcon /> : <CrossIcon />}
+              {result!.correct ? "Correct." : "Not quite."}
+            </span>
           </p>
-          <p className="mt-0.5 text-sm text-ink-2">
-            {result!.correct
-              ? "Nicely done. Want to see the full working, or move on?"
-              : result!.key.length
-                ? "The correct option is marked in green. Your tutor is walking through the solution in the chat."
-                : "Your tutor has walked through the solution in the chat. Ask about anything that isn't clear."}
-          </p>
+          {result!.answerText && (
+            <p className="mt-0.5 text-sm text-ink-2">
+              {result!.correct ? "The answer is" : "The correct answer is"} <span className="font-semibold text-ink">{result!.answerText}</span>
+              {result!.value ? <>. You answered {result!.value}.</> : "."}
+            </p>
+          )}
+          {(!result!.correct || showSolution) && result!.solution ? (
+            <div className="study-notes mt-3 max-h-96 overflow-y-auto rounded-xl border border-line bg-surface px-4 py-3 text-sm">
+              <MathErrorBoundary content={result!.solution}>
+                <MarkdownMath content={result!.solution} />
+              </MathErrorBoundary>
+            </div>
+          ) : !result!.correct ? (
+            <p className="mt-0.5 text-sm text-ink-2">Your tutor is walking through the solution in the chat.</p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
-            {result!.correct && (
+            {result!.correct && result!.solution && !showSolution && (
+              <button type="button" onClick={() => setShowSolution(true)} className={SECONDARY_BTN}>
+                Show solution
+              </button>
+            )}
+            {result!.correct && !result!.solution && (
               <button type="button" disabled={busy} onClick={() => onAsk("Show me the worked solution for that question.")} className={SECONDARY_BTN}>
                 Show solution
               </button>
@@ -184,7 +253,15 @@ export default function PracticePane({
             <button
               type="button"
               disabled={busy}
-              onClick={() => onAsk("Next question, please.")}
+              onClick={() => onAsk("Explain the solution to that question step by step. Where did I go wrong?")}
+              className={SECONDARY_BTN}
+            >
+              Explain it
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onNext}
               className="cursor-pointer rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-ink-on transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next question →
@@ -205,16 +282,16 @@ export default function PracticePane({
             <button type="button" disabled={busy} onClick={() => onAsk("Can I get a hint for this question?")} className={SECONDARY_BTN}>
               Hint
             </button>
-            <button type="button" disabled={busy} onClick={() => onAsk("I don't understand the question — what exactly is it asking?")} className={SECONDARY_BTN}>
+            <button type="button" disabled={busy} onClick={() => onAsk("I don't understand the question. What exactly is it asking?")} className={SECONDARY_BTN}>
               What&apos;s it asking?
             </button>
-            <button type="button" disabled={busy} onClick={() => onAsk("Explain the concept behind this question — which idea applies and why?")} className={SECONDARY_BTN}>
+            <button type="button" disabled={busy} onClick={() => onAsk("Explain the concept behind this question. Which idea applies, and why?")} className={SECONDARY_BTN}>
               Explain the concept
             </button>
           </div>
           <p className="text-[11px] text-muted">
             {multi ? "Select every correct option, then Submit." : "Pick an option, then Submit."} You&apos;ll see right or wrong instantly. Hints and
-            explanations don&apos;t count against you — any other doubt, type it in the chat.
+            explanations don&apos;t count against you. For any other doubt, type in the chat.
           </p>
         </div>
       ) : (
@@ -244,16 +321,16 @@ export default function PracticePane({
             <button type="button" disabled={busy} onClick={() => onAsk("Can I get a hint for this question?")} className={SECONDARY_BTN}>
               Hint
             </button>
-            <button type="button" disabled={busy} onClick={() => onAsk("I don't understand the question — what exactly is it asking?")} className={SECONDARY_BTN}>
+            <button type="button" disabled={busy} onClick={() => onAsk("I don't understand the question. What exactly is it asking?")} className={SECONDARY_BTN}>
               What&apos;s it asking?
             </button>
-            <button type="button" disabled={busy} onClick={() => onAsk("Explain the concept behind this question — which idea applies and why?")} className={SECONDARY_BTN}>
+            <button type="button" disabled={busy} onClick={() => onAsk("Explain the concept behind this question. Which idea applies, and why?")} className={SECONDARY_BTN}>
               Explain the concept
             </button>
             <button
               type="button"
               disabled={busy}
-              onClick={() => onAsk("I'm stuck — please show me the full solution.")}
+              onClick={() => onAsk("I'm stuck. Please show me the full solution.")}
               className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
               Show solution
@@ -261,7 +338,7 @@ export default function PracticePane({
           </div>
           <p className="text-[11px] text-muted">
             Enter to submit · Shift+Enter for a new line. Hints and explanations don&apos;t count against you; asking for the solution counts
-            as an attempt. Any other doubt — type it in the chat.
+            as an attempt. For any other doubt, type in the chat.
           </p>
         </form>
       )}

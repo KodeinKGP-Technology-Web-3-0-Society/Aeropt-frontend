@@ -16,6 +16,7 @@ import {
 } from "@/lib/practiceContent";
 import type { Message } from "./types";
 import type { AgentChatResponse, FlashcardItem } from "@/lib/api/agent";
+import { plainProse } from "@/lib/plainProse";
 
 function TypingIndicator() {
   return (
@@ -155,7 +156,7 @@ export default function AssistantResponse({
     return (
       <article className="lesson-response assistant-plain">
         <MathErrorBoundary content={message.content}>
-          <MarkdownMath content={message.content} />
+          <MarkdownMath content={plainProse(message.content)} />
         </MathErrorBoundary>
         <div className="practice-open-canvas-wrap">
           <button
@@ -233,7 +234,7 @@ export default function AssistantResponse({
         </div>
       ) : (
         <MathErrorBoundary content={message.content}>
-          <MarkdownMath content={message.content} />
+          <MarkdownMath content={plainProse(message.content)} />
         </MathErrorBoundary>
       )}
       {extras}

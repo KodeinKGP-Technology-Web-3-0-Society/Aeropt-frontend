@@ -45,11 +45,11 @@ export default function SettingsContent() {
 
         {/* Profile Card */}
         <div className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
-          <h3 className="text-xs font-bold text-ink uppercase tracking-widest mb-4">Profile details</h3>
+          <h3 className="text-xs font-bold text-ink mb-4">Profile details</h3>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="settings-full-name" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+                <label htmlFor="settings-full-name" className="block text-[10px] font-bold text-muted mb-2">
                   Full Name
                 </label>
                 <input
@@ -62,7 +62,7 @@ export default function SettingsContent() {
                 />
               </div>
               <div>
-                <label htmlFor="settings-badge" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+                <label htmlFor="settings-badge" className="block text-[10px] font-bold text-muted mb-2">
                   Target Exam Badge
                 </label>
                 <input
@@ -76,7 +76,7 @@ export default function SettingsContent() {
             </div>
 
             <div>
-              <label htmlFor="settings-email" className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+              <label htmlFor="settings-email" className="block text-[10px] font-bold text-muted mb-2">
                 Registered Email
               </label>
               <input
@@ -91,7 +91,7 @@ export default function SettingsContent() {
 
             <button
               type="submit"
-              className="mt-2 cursor-pointer rounded-lg bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-accent-on transition-colors hover:bg-accent-hover"
+              className="mt-2 cursor-pointer rounded-lg bg-accent px-5 py-2.5 text-xs font-semibold text-accent-on transition-colors hover:bg-accent-hover"
             >
               Save Changes
             </button>
@@ -100,12 +100,12 @@ export default function SettingsContent() {
 
         {/* Study Preferences Card */}
         <div className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
-          <h3 className="text-xs font-bold text-ink uppercase tracking-widest">Study Preferences</h3>
+          <h3 className="text-xs font-bold text-ink">Study preferences</h3>
           
           <div className="flex items-center justify-between py-2 border-b border-line/50">
             <div>
               <p className="text-xs font-bold text-ink-2">Daily Study Reminders</p>
-              <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Get alerts when your daily streak is in danger</p>
+              <p className="text-[10px] text-muted font-semibold mt-0.5">Get alerts when your daily streak is in danger</p>
             </div>
             <button
               type="button"
@@ -128,7 +128,7 @@ export default function SettingsContent() {
           <div className="flex items-center justify-between py-2 border-b border-line/50">
             <div>
               <p className="text-xs font-bold text-ink-2">Target Level Strategy</p>
-              <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Align recommendation algorithms with target</p>
+              <p className="text-[10px] text-muted font-semibold mt-0.5">Tune recommendations to your target exam</p>
             </div>
             <select
               aria-label="Target level strategy"
@@ -145,7 +145,7 @@ export default function SettingsContent() {
           <div className="flex items-center justify-between py-2 border-b border-line/50">
             <div>
               <p className="text-xs font-bold text-ink-2">Application Theme</p>
-              <p className="text-[10px] text-muted font-semibold mt-0.5 uppercase tracking-wide">Switch between Light and Dark mode</p>
+              <p className="text-[10px] text-muted font-semibold mt-0.5">Switch between Light and Dark mode</p>
             </div>
             <select
               aria-label="Application theme"
@@ -161,12 +161,12 @@ export default function SettingsContent() {
 
         {/* Danger Zone */}
         <div className="space-y-4 rounded-2xl border border-danger/30 bg-danger/5 p-6">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-danger">Danger Zone</h3>
+          <h3 className="text-xs font-bold text-danger">Danger zone</h3>
           <p className="text-xs font-medium text-muted">Log out from your current learning session on this device.</p>
           <button
             type="button"
             onClick={() => void logout()}
-            className="cursor-pointer rounded-lg border border-danger/50 bg-transparent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-danger transition-colors hover:bg-danger/10"
+            className="cursor-pointer rounded-lg border border-danger/50 bg-transparent px-5 py-2.5 text-xs font-bold text-danger transition-colors hover:bg-danger/10"
           >
             Sign Out Account
           </button>

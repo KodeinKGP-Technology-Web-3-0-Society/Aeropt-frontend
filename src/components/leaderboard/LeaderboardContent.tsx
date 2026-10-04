@@ -43,18 +43,18 @@ export default function LeaderboardContent() {
     <main className="flex-1 overflow-y-auto px-6 pb-16 pt-24 lg:px-8">
       <div className="mx-auto flex max-w-3xl flex-col gap-10">
         <header>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Community</p>
+          <p className="text-[11px] font-bold text-muted">Community</p>
           <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             Leaderboard
           </h1>
           <p className="mt-1 text-sm text-muted">
-            See how you stack up against the most consistent students on Prepwise.
+            See how you stack up against the most consistent students on JeePath.
           </p>
         </header>
 
         <section>
           <div className="rounded-2xl border border-line bg-surface overflow-hidden">
-            <div className="grid grid-cols-12 gap-4 border-b border-line bg-hover px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-muted">
+            <div className="grid grid-cols-12 gap-4 border-b border-line bg-hover px-6 py-4 text-[11px] font-bold text-muted">
               <div className="col-span-2">Rank</div>
               <div className="col-span-6">Student</div>
               <div className="col-span-4 text-right">Streak</div>

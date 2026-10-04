@@ -14,6 +14,7 @@ import StudyHistory from "./StudyHistory";
 import StudyResults from "./StudyResults";
 import StudyWelcome from "./StudyWelcome";
 import { useStudySession, type StudyMessage } from "./useStudySession";
+import { plainProse } from "@/lib/plainProse";
 
 // Moving on is a button (PhaseActions), not a phrase the model may ignore.
 const QUICK_REPLIES: Record<StudyPhase, string[]> = {
@@ -46,7 +47,7 @@ function PhaseActions({
     return (
       <div className="flex flex-wrap items-center gap-2">
         {!lastPart && parts.length > 0 && (
-          <button type="button" disabled={busy} onClick={() => onSend(`Got it — next ${unit}, please.`)} className={`${btn} border border-line bg-surface text-ink hover:bg-hover`}>
+          <button type="button" disabled={busy} onClick={() => onSend(`Got it. Next ${unit}, please.`)} className={`${btn} border border-line bg-surface text-ink hover:bg-hover`}>
             Next {unit}
           </button>
         )}
@@ -103,7 +104,7 @@ function MessageBubble({ message }: { message: StudyMessage }) {
   return (
     <article className="study-notes">
       <MathErrorBoundary content={message.content}>
-        <MarkdownMath content={message.content} />
+        <MarkdownMath content={plainProse(message.content)} />
       </MathErrorBoundary>
     </article>
   );
@@ -194,7 +195,7 @@ function Composer({
             onClick={onStop}
             disabled={stopping}
             aria-label={stopping ? "Stopping" : "Stop the tutor"}
-            title="Stop — use this if you sent that by mistake"
+            title="Stop: use this if you sent that by mistake"
             className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-ink text-ink-on transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {stopping ? (
@@ -253,6 +254,8 @@ export default function StudyRoom({
     advancing,
     answered,
     answerChoice,
+    answerValue,
+    nextQuestion,
     retry,
     restart,
     reload,
@@ -372,7 +375,7 @@ export default function StudyRoom({
       onSend={(t) => void send(t)}
       placeholder={
         question
-          ? "Ask about this question — or answer it in the practice panel"
+          ? "Ask about this question, or answer it in the practice panel"
           : finished
             ? "Any last doubts?"
             : "Answer the question, or ask anything…"
@@ -447,7 +450,7 @@ export default function StudyRoom({
                   (study.mode ?? requestedMode) === "practice"
                     ? "Give me the first question."
                     : learner?.returning
-                      ? "I've studied this before — let's recap and get going."
+                      ? "I've studied this before. Let's recap and get going."
                       : "Let's begin.",
                 )
               }
@@ -466,9 +469,10 @@ export default function StudyRoom({
                 difficulty={study.difficulty_level}
                 busy={busy}
                 result={showingResult ? answered : null}
-                onSubmit={(a) => void send(`My answer: ${a}`)}
+                onSubmit={(a) => void answerValue(a, question)}
                 onChoose={(labels, positionOf) => void answerChoice(labels, question, positionOf)}
                 onAsk={(t) => void send(t)}
+                onNext={() => void nextQuestion()}
               />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">

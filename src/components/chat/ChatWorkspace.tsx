@@ -583,7 +583,7 @@ export default function ChatWorkspace({ sessionId, conceptId, surface }: ChatWor
       scope="ChatWorkspace"
       resetKey={sessionId}
       title="This study session hit a snag"
-      description="Your progress is saved — every turn is stored on the server. Reload to pick the conversation back up."
+      description="Your progress is saved. Every turn is stored on the server. Reload to pick the conversation back up."
     >
       <ChatWorkspaceInner sessionId={sessionId} conceptId={conceptId} surface={surface} />
     </ErrorBoundary>

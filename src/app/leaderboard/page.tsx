@@ -3,7 +3,7 @@ import LeaderboardContent from "@/components/leaderboard/LeaderboardContent";
 import StudySidebar from "@/components/study/StudySidebar";
 
 export const metadata: Metadata = {
-  title: "Leaderboard | Prepwise",
+  title: "Leaderboard | JeePath",
 };
 
 export default function LeaderboardPage() {

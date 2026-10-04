@@ -54,7 +54,7 @@ function KnownAboutYou({ learner }: { learner: StudyLearnerSnapshot }) {
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ink-2/40" aria-hidden />
             <span>
               You worked on <span className="font-semibold text-ink">{s.concept_name}</span> in this chapter {s.when}
-              {s.questions_served ? ` (${s.questions_correct}/${s.questions_served})` : ""} — the tutor will connect to it.
+              {s.questions_served ? ` (${s.questions_correct}/${s.questions_served})` : ""}. The tutor will connect to it.
             </span>
           </li>
         ))}
@@ -129,8 +129,8 @@ export default function StudyWelcome({
         {definition && <p className="mt-2 text-sm leading-relaxed text-ink-2 first-letter:uppercase">{definition}.</p>}
         <p className="mt-4 text-sm leading-relaxed text-muted">
           {practice
-            ? "Practice only — no lesson. Calibrated questions one at a time, difficulty adjusting as you go. Stuck? Ask for a hint, ask what the question means, or ask about the concept behind it."
-            : "A guided session in four steps: learn the idea, walk through worked examples, practise calibrated questions, then see your results. Go at your pace — ask anything along the way."}
+            ? "Practice only, no lesson. Calibrated questions one at a time, difficulty adjusting as you go. Stuck? Ask for a hint, ask what the question means, or ask about the concept behind it."
+            : "A guided session in four steps: learn the idea, walk through worked examples, practise calibrated questions, then see your results. Go at your pace and ask anything along the way."}
         </p>
       </header>
 

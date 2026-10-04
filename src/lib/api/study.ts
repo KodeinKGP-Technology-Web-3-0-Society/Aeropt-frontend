@@ -9,6 +9,11 @@ import {
 export type StudyPhase = "learn" | "examples" | "practice" | "evaluation" | "completed";
 export type StudyOutcome = "mastered" | "needs_review" | "incomplete" | null;
 
+export interface StudyPracticeOption {
+  label: string;
+  text: string;
+}
+
 export interface StudyPracticeQuestion {
   content_id: string;
   question_text: string;
@@ -16,6 +21,17 @@ export interface StudyPracticeQuestion {
   difficulty: number;
   has_solution: boolean;
   source?: string | null;
+  /** Structured layout from ingest (agent local_ingest/structure.py). When present, render
+   *  these — never re-split question_text, which broke on figures that mention "(A), (B)". */
+  stem?: string | null;
+  figure?: string | null;
+  options?: StudyPracticeOption[] | null;
+  /** Sub-questions (a), (b), … of a multi-part problem — not options. */
+  parts?: StudyPracticeOption[] | null;
+  /** The answer's form only (never the answer): option buttons or a number box. */
+  answer_kind?: "choice" | "multiple" | "number" | "choice_or_number" | null;
+  /** True when /study/answer can grade it instantly from the official key. */
+  instant_grading?: boolean;
 }
 
 /** The numbers the room renders: phase stepper, score strip, practice pane. */
@@ -208,19 +224,45 @@ export async function stopStudyTurn(studySessionId: string): Promise<void> {
 
 export type ChoiceResult =
   | { graded: false }
-  | { graded: true; correct: boolean; key: number[]; chosen: number[]; study: StudyState };
+  | {
+      graded: true;
+      correct: boolean;
+      key: number[];
+      chosen: number[];
+      /** The official answer as shown ("(A), (C)", "anything from 1.15 to 1.25"). */
+      answer_text?: string;
+      /** The stored, verified solution — shown at once instead of waiting for the tutor. */
+      solution?: string;
+      study: StudyState;
+    };
 
 /**
  * Grade a multiple-choice pick against the stored key — instant, no model call.
  * `choice` is the option labels as shown ("2", or "A","C" for multiple correct).
  * `{graded: false}` means the question has no readable key: ask the tutor instead.
  */
-export async function submitStudyChoice(studySessionId: string, choice: string[]): Promise<ChoiceResult> {
+export async function submitStudyChoice(
+  studySessionId: string,
+  choice: string[],
+  value?: string,
+): Promise<ChoiceResult> {
   const userId = auth.getSupabaseUserId();
   if (!userId) throw new Error("User not authenticated.");
   return auth.apiRequest<ChoiceResult>(`${auth.requireAgentApiBase()}/api/v1/study/answer`, {
     method: "POST",
-    body: JSON.stringify({ user_id: userId, study_session_id: studySessionId, choice }),
+    body: JSON.stringify({ user_id: userId, study_session_id: studySessionId, choice, value }),
+  });
+}
+
+export type NextQuestionResult = { served: boolean; revisit?: boolean; reason?: string | null; study: StudyState };
+
+/** Serve the next practice question directly — retrieval only, no tutor turn (milliseconds). */
+export async function nextStudyQuestion(studySessionId: string): Promise<NextQuestionResult> {
+  const userId = auth.getSupabaseUserId();
+  if (!userId) throw new Error("User not authenticated.");
+  return auth.apiRequest<NextQuestionResult>(`${auth.requireAgentApiBase()}/api/v1/study/next`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, study_session_id: studySessionId }),
   });
 }
 

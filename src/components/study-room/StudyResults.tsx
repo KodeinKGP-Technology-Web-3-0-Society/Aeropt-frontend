@@ -6,7 +6,7 @@ const OUTCOME: Record<string, { label: string; tone: string; note: string }> = {
   mastered: {
     label: "Mastered",
     tone: "bg-success/12 text-success",
-    note: "Saved to your record — your tutor will build on this next time.",
+    note: "Saved to your record. Your tutor will build on this next time.",
   },
   needs_review: {
     label: "Needs review",
@@ -16,7 +16,7 @@ const OUTCOME: Record<string, { label: string; tone: string; note: string }> = {
   incomplete: {
     label: "Not finished",
     tone: "bg-hover text-ink-2",
-    note: "No practice answered yet — come back to try some questions.",
+    note: "No practice answered yet. Come back to try some questions.",
   },
 };
 
@@ -70,7 +70,7 @@ export default function StudyResults({
         <div className="rounded-xl bg-canvas px-4 py-3">
           <dt className="text-[11px] font-semibold text-muted">Readiness</dt>
           <dd className="mt-1 text-2xl font-semibold tabular-nums text-ink">
-            {readiness != null ? Math.round(readiness) : "—"}
+            {readiness != null ? Math.round(readiness) : "–"}
             <span className="text-base text-muted">/100</span>
           </dd>
           {delta != null && Math.abs(delta) >= 0.5 && (

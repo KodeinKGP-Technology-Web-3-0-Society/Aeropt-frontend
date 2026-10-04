@@ -14,7 +14,7 @@ import { useHomeState } from "./useHomeState";
  *   1. What should I do right now?     → Continue / today's plan
  *   2. How am I doing?                  → four numbers, from the same record as /progress
  *   3. What needs attention?            → reviews, insights, syllabus coverage
- * A student with no history sees a welcome, how Prepwise works, and one clear
+ * A student with no history sees a welcome, how JeePath works, and one clear
  * first step instead of a dashboard of zeros.
  */
 
@@ -93,7 +93,8 @@ function ContinueCard({ items }: { items: UpNextItem[] }) {
           <p className="mt-3 text-sm text-ink-2">{first.reason}</p>
         </div>
         <span className="inline-flex w-fit items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors group-hover:bg-accent-hover">
-          {KIND[first.kind].cta} →
+          {KIND[first.kind].cta}
+          <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </span>
       </Link>
       {rest.length > 0 && (
@@ -116,7 +117,7 @@ function TodaysPlan({ plan }: { plan: StudyPlan | null }) {
   const tomorrow = plan?.week.slice(1).find((d) => !d.rest && d.items.length);
   const label = (k: PlanItem["kind"]) => (k === "review" ? "Review" : k === "continue" ? "Continue" : k === "done" ? "Done" : "Learn");
   return (
-    <Card title="Today's plan" action={<Link href="/plan" className="text-xs font-semibold text-accent hover:underline">Full plan →</Link>}>
+    <Card title="Today's plan" action={<Link href="/plan" className="text-xs font-semibold text-accent hover:underline">Full plan</Link>}>
       {!plan || !today ? (
         <p className="rounded-xl bg-hover px-4 py-3 text-sm text-ink-2">Your plan is loading — or open the Plan page to set it up.</p>
       ) : today.rest ? (
@@ -162,7 +163,7 @@ function Attention({ report }: { report: ProgressReport }) {
     );
   }
   return (
-    <Card title="Needs your attention" action={<Link href="/progress" className="text-xs font-semibold text-accent hover:underline">Progress →</Link>}>
+    <Card title="Needs your attention" action={<Link href="/progress" className="text-xs font-semibold text-accent hover:underline">Progress</Link>}>
       <ul className="flex flex-col gap-2.5">
         {reviews.map((r) => (
           <li key={r.concept_id} className="flex items-center justify-between gap-3">
@@ -184,7 +185,7 @@ function Attention({ report }: { report: ProgressReport }) {
               {ins.text}
               {ins.concept_id && ins.action && (
                 <Link href={`/study/${encodeURIComponent(ins.concept_id)}`} className="ml-1.5 whitespace-nowrap text-xs font-semibold text-accent hover:underline">
-                  Study it →
+                  Study it
                 </Link>
               )}
             </span>
@@ -201,7 +202,7 @@ function SyllabusProgress({ overview, readiness }: { overview: StudyOverview; re
   const mastered = overview.syllabus.reduce((a, u) => a + u.mastered, 0);
   const active = overview.syllabus.filter((u) => u.started > 0).sort((a, b) => b.started / b.total - a.started / a.total).slice(0, 4);
   return (
-    <Card title="JEE syllabus" action={<Link href="/study" className="text-xs font-semibold text-accent hover:underline">Open study →</Link>}>
+    <Card title="JEE syllabus" action={<Link href="/study" className="text-xs font-semibold text-accent hover:underline">Open study</Link>}>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-2xl font-semibold tabular-nums text-ink">
           {started}
@@ -267,7 +268,7 @@ function Welcome({ firstName, today }: { firstName: string; today: ClassroomToda
   return (
     <div className="flex flex-col gap-6">
       <section className="rounded-2xl border border-accent/40 bg-accent-soft/40 p-6 sm:p-8">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-accent">Welcome to Prepwise</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-accent">Welcome to JeePath</p>
         <h1 className="mt-2 max-w-2xl font-display text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
           {firstName ? `Hi ${firstName} — ` : ""}let&apos;s start your JEE Physics prep.
         </h1>
@@ -278,9 +279,10 @@ function Welcome({ firstName, today }: { firstName: string; today: ClassroomToda
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href={`/study/${encodeURIComponent(firstTopic || "Units and measurement")}`}
-            className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
           >
-            Start your first lesson{firstTopic ? `: ${firstTopic}` : ""} →
+            Start your first lesson{firstTopic ? `: ${firstTopic}` : ""}
+            <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
           <Link href="/chat" className="rounded-xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-hover">
             Ask a doubt instead
@@ -296,7 +298,7 @@ function Welcome({ firstName, today }: { firstName: string; today: ClassroomToda
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">{s.n}</span>
               <p className="mt-3 text-sm font-semibold text-ink">{s.title}</p>
               <p className="mt-1 flex-1 text-sm leading-relaxed text-muted">{s.body}</p>
-              <Link href={s.href} className="mt-3 text-xs font-semibold text-accent hover:underline">{s.cta} →</Link>
+              <Link href={s.href} className="mt-3 text-xs font-semibold text-accent hover:underline">{s.cta}</Link>
             </li>
           ))}
         </ol>

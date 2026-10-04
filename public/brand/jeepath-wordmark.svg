@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48">
+  <rect width="220" height="48" fill="#faf8f3"/>
+  <g>
+    <path d="M31 11.5 V28.5 C31 37.5 25 42 18 42 C13.2 42 10 39.4 8.6 36" fill="none" stroke="#1c2535" stroke-width="8.4" stroke-linecap="butt"/>
+    <circle cx="8.6" cy="36" r="4.2" fill="#1c2535"/>
+    <path d="M31 15 V28.5 C31 37.5 25 42 18 42 C13.2 42 10 39.4 8.6 36" fill="none" stroke="#faf8f3" stroke-width="1.5" stroke-dasharray="2.6 2.6" stroke-linecap="round"/>
+    <path d="M15 11.5 H39" stroke="#1c2535" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M34.6 11.5 V2.6" stroke="#1c2535" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M34.6 2.6 L43 5.1 L34.6 7.6 Z" fill="#15827f"/>
+  </g>
+  <text x="52" y="35" font-family="DejaVu Sans, sans-serif" font-size="25" font-weight="700" fill="#1c2535" letter-spacing="-0.6">Jee<tspan fill="#15827f">Path</tspan><tspan font-size="14" font-weight="500" fill="#6b7280">.ai</tspan></text>
+</svg>

@@ -5,16 +5,14 @@ import Link from "next/link";
 import Lenis from "lenis";
 import {
   motion,
-  useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
-  type MotionValue,
 } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import PrepwiseLogo from "@/components/PrepwiseLogo";
+import JeePathLogo from "@/components/JeePathLogo";
 import { DoubtMock, LessonMock, PlanMock, PracticeMock, ProgressMock } from "./landing/Mockups";
 
 /*
@@ -53,7 +51,7 @@ const STEPS = [
   {
     kicker: "Practise",
     title: "Real JEE questions, graded instantly.",
-    body: "Calibrated textbook questions and 846 past-paper questions. Tap an option, see right or wrong at once; difficulty adjusts as you go.",
+    body: "Official JEE Advanced questions with their official answers, plus NCERT and textbook practice. Pick an option or type a number and see right or wrong at once. Difficulty adjusts as you go.",
     mock: <PracticeMock />,
   },
   {
@@ -95,70 +93,30 @@ function useLenis(wrapper: RefObject<HTMLDivElement | null>, content: RefObject<
 
 /* ── hero: 3D stage of product screens ─────────────────────────────────────── */
 
-function Floating({ src, alt, className, y, rotate }: { src: string; alt: string; className: string; y: MotionValue<number>; rotate?: MotionValue<number> }) {
-  return (
-    <motion.img
-      src={src}
-      alt={alt}
-      aria-hidden
-      style={{ y, rotate }}
-      className={`landing-art pointer-events-none absolute select-none rounded-2xl border border-line bg-surface/90 p-3 shadow-[0_20px_50px_-25px_oklch(22%_0.03_250/0.35)] ${className}`}
-    />
-  );
-}
 
 function Hero({ scroller, reduce }: { scroller: RefObject<HTMLDivElement | null>; reduce: boolean }) {
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ container: scroller, target: ref, offset: ["start start", "end start"] });
   const p = useSpring(scrollYProgress, { stiffness: 120, damping: 24, mass: 0.4 });
 
-  // Mouse tilt, eased.
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const tiltY = useSpring(useTransform(mx, [-1, 1], [-7, 7]), { stiffness: 90, damping: 18 });
-  const tiltX = useSpring(useTransform(my, [-1, 1], [6, -6]), { stiffness: 90, damping: 18 });
-
-  const stageRotX = useTransform(p, [0, 1], [16, 0]);
-  const stageRotY = useTransform(p, [0, 1], [-18, 0]);
-  const rotX = useTransform([stageRotX, tiltX], ([a, b]) => (a as number) + (b as number));
-  const rotY = useTransform([stageRotY, tiltY], ([a, b]) => (a as number) + (b as number));
-  const stageScale = useTransform(p, [0, 1], [1, 1.08]);
-  const frontX = useTransform(p, [0, 1], ["34%", "70%"]);
-  const frontY = useTransform(p, [0, 1], ["30%", "60%"]);
-  const backX = useTransform(p, [0, 1], ["-30%", "-62%"]);
-  const sideOpacity = useTransform(p, [0, 0.7], [1, 0]);
   const textY = useTransform(p, [0, 1], [0, -120]);
   const textOpacity = useTransform(p, [0, 0.6], [1, 0]);
-  const f1 = useTransform(p, [0, 1], [0, -260]);
-  const f2 = useTransform(p, [0, 1], [0, -160]);
-  const f3 = useTransform(p, [0, 1], [0, -340]);
-  const r1 = useTransform(p, [0, 1], [-6, 8]);
-  const r2 = useTransform(p, [0, 1], [5, -10]);
 
   return (
     <section
       ref={ref}
       className="relative min-h-[100svh] overflow-hidden px-5 pb-24 pt-28 sm:px-8"
-      onPointerMove={(e) => {
-        if (reduce) return;
-        const r = e.currentTarget.getBoundingClientRect();
-        mx.set(((e.clientX - r.left) / r.width) * 2 - 1);
-        my.set(((e.clientY - r.top) / r.height) * 2 - 1);
-      }}
     >
       {/* contour field: the brand's "altitude" lines */}
       <div className="altitude-field" aria-hidden />
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <motion.div style={reduce ? undefined : { y: textY, opacity: textOpacity }}>
-          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-ink-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" /> AI tutor for JEE Physics
-          </p>
-          <h1 className="mt-5 font-display text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-[4.2rem]">
-            JEE Physics, taught by a tutor that <span className="text-accent">remembers you.</span>
+          <h1 className="font-display text-[2.6rem] font-semibold leading-[1.08] tracking-tight text-ink sm:text-6xl lg:text-[4rem]">
+            Crack JEE Physics, one topic at a time.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-2">
-            Lessons that move at your pace, real past-paper questions graded instantly, doubts answered with diagrams — and a
-            plan to exam day that rebuilds itself every time you study.
+            Short lessons at your own pace. Real JEE Advanced questions with official answers, checked the moment you submit.
+            Ask any doubt and get a worked explanation with a diagram. Your study plan updates itself as you go.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link href="/auth?tab=signup" className="rounded-xl bg-ink px-6 py-3.5 text-sm font-semibold text-ink-on shadow-[0_10px_30px_-12px_oklch(22%_0.03_250/0.6)] transition-transform hover:-translate-y-0.5 active:translate-y-0">
@@ -168,37 +126,19 @@ function Hero({ scroller, reduce }: { scroller: RefObject<HTMLDivElement | null>
               Log in
             </Link>
           </div>
-          <p className="mt-6 text-xs text-muted">20 units · 239 syllabus topics · 846 past-paper questions</p>
+          <p className="mt-6 text-xs text-muted">20 units · 239 syllabus topics · 342 official JEE Advanced questions</p>
         </motion.div>
 
-        <div className="relative h-[460px] sm:h-[540px]" style={{ perspective: 1400 }}>
-          <motion.div
-            className="relative h-full w-full"
-            style={reduce ? undefined : { rotateX: rotX, rotateY: rotY, scale: stageScale, transformStyle: "preserve-3d" }}
-          >
-            <motion.div
-              className="absolute left-0 top-0 w-[72%] max-sm:w-[86%]"
-              style={reduce ? undefined : { x: backX, opacity: sideOpacity, translateZ: -140, transformStyle: "preserve-3d" }}
-            >
-              <ProgressMock />
-            </motion.div>
-            <div className="absolute left-[12%] top-[12%] w-[76%] max-sm:left-[4%] max-sm:w-[92%]" style={{ transform: "translateZ(0px)" }}>
-              <LessonMock />
-            </div>
-            <motion.div
-              className="absolute left-0 top-0 w-[64%] max-sm:w-[80%]"
-              style={reduce ? { left: "30%", top: "40%" } : { x: frontX, y: frontY, opacity: sideOpacity, translateZ: 160 }}
-            >
-              <PracticeMock />
-            </motion.div>
-          </motion.div>
-          {!reduce && (
-            <>
-              <Floating src="/landing/orbit.svg" alt="" className="-left-10 -top-6 hidden w-44 lg:block" y={f1} rotate={r1} />
-              <Floating src="/landing/shm.svg" alt="" className="-bottom-8 -right-6 hidden w-52 lg:block" y={f2} rotate={r2} />
-              <Floating src="/landing/dipole.svg" alt="" className="-right-14 top-4 hidden w-36 xl:block" y={f3} />
-            </>
-          )}
+        <div className="relative h-[460px] sm:h-[540px]">
+          <div className="absolute left-0 top-0 w-[72%] max-sm:w-[86%] opacity-90">
+            <ProgressMock />
+          </div>
+          <div className="absolute left-[12%] top-[12%] w-[76%] max-sm:left-[4%] max-sm:w-[92%]">
+            <LessonMock />
+          </div>
+          <div className="absolute left-[34%] top-[30%] w-[64%] max-sm:left-[16%] max-sm:w-[80%]">
+            <PracticeMock />
+          </div>
         </div>
       </div>
     </section>
@@ -230,8 +170,11 @@ function Story({ scroller, reduce }: { scroller: RefObject<HTMLDivElement | null
           {STEPS.map((s) => (
             <div key={s.kicker} className="grid items-center gap-8 lg:grid-cols-2">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-accent">{s.kicker}</p>
-                <h3 className="mt-2 font-display text-3xl font-semibold text-ink">{s.title}</h3>
+                <p className="text-sm font-semibold text-ink-2">
+                  <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-line text-xs tabular-nums text-ink">{STEPS.indexOf(s) + 1}</span>
+                  {s.kicker}
+                </p>
+                <h3 className="mt-3 font-display text-3xl font-semibold text-ink">{s.title}</h3>
                 <p className="mt-3 text-ink-2">{s.body}</p>
               </div>
               {s.mock}
@@ -263,8 +206,9 @@ function Story({ scroller, reduce }: { scroller: RefObject<HTMLDivElement | null
                     i === active ? "translate-y-0 opacity-100" : i < active ? "-translate-y-6 opacity-0" : "translate-y-6 opacity-0"
                   }`}
                 >
-                  <p className="text-xs font-bold uppercase tracking-widest text-accent">
-                    {String(i + 1).padStart(2, "0")} · {s.kicker}
+                  <p className="text-sm font-semibold text-ink-2">
+                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-line text-xs tabular-nums text-ink">{i + 1}</span>
+                    {s.kicker}
                   </p>
                   <h3 className="mt-3 font-display text-3xl font-semibold leading-tight text-ink sm:text-[2.6rem]">{s.title}</h3>
                   <p className="mt-4 max-w-md text-base leading-relaxed text-ink-2 sm:text-lg">{s.body}</p>
@@ -314,7 +258,6 @@ function DiagramStrip({ scroller, reduce }: { scroller: RefObject<HTMLDivElement
 
   const heading = (
     <div className="mx-auto max-w-6xl px-5 sm:px-8">
-      <p className="text-xs font-bold uppercase tracking-widest text-accent">Drawn for you</p>
       <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold leading-tight text-ink sm:text-5xl">
         When a picture explains it better, the tutor draws one.
       </h2>
@@ -361,8 +304,7 @@ function SyllabusRing({ scroller, reduce }: { scroller: RefObject<HTMLDivElement
   return (
     <section ref={ref} className="relative overflow-hidden px-5 py-28 sm:px-8">
       <div className="mx-auto max-w-6xl text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-accent">The whole syllabus</p>
-        <h2 className="mx-auto mt-2 max-w-3xl font-display text-3xl font-semibold leading-tight text-ink sm:text-5xl">
+        <h2 className="mx-auto max-w-3xl font-display text-3xl font-semibold leading-tight text-ink sm:text-5xl">
           Every unit of JEE Main Physics. Nothing you&apos;ll be tested on is missing.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-ink-2">
@@ -416,25 +358,30 @@ function Reveal({ children, delay = 0, reduce }: { children: ReactNode; delay?: 
 }
 
 function Numbers({ reduce }: { reduce: boolean }) {
+  // Verified counts from the retrieval index (agent: make extract-status). Coaching test-paper
+  // questions are not counted as past papers.
   const stats = [
-    ["846", "past JEE questions", "Main and Advanced, with answer keys"],
-    ["4,967", "practice questions", "calibrated by difficulty"],
-    ["486", "worked examples", "walked through step by step"],
-    ["239", "syllabus topics", "every NTA unit, mapped"],
+    ["342", "official JEE Advanced questions", "with the official answer key"],
+    ["28", "NCERT Physics chapters", "Class 11 and 12, every one"],
+    ["239", "JEE Main syllabus topics", "every NTA unit covered"],
+    ["4,000+", "questions with checked answers", "official keys and verified solutions"],
   ];
   return (
-    <section className="px-5 py-24 sm:px-8">
-      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(([n, label, sub], i) => (
-          <Reveal key={label} delay={i * 0.08} reduce={reduce}>
-            <div className="h-full rounded-3xl border border-line bg-surface p-6">
-              <p className="font-display text-5xl font-semibold tabular-nums tracking-tight text-ink">{n}</p>
-              <p className="mt-2 font-semibold text-ink">{label}</p>
-              <p className="mt-1 text-sm text-muted">{sub}</p>
+    <section className="px-5 py-20 sm:px-8">
+      <Reveal reduce={reduce}>
+        <dl className="mx-auto grid max-w-6xl border-y border-line sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map(([n, label, sub], i) => (
+            <div key={label} className={`px-6 py-8 ${i ? "border-t border-line sm:border-t-0 lg:border-l" : ""} ${i === 2 ? "sm:border-t lg:border-t-0" : ""} ${i % 2 ? "sm:border-l" : ""}`}>
+              <dt className="sr-only">{label}</dt>
+              <dd>
+                <p className="font-display text-4xl font-semibold tabular-nums tracking-tight text-ink">{n}</p>
+                <p className="mt-2 font-semibold text-ink">{label}</p>
+                <p className="mt-1 text-sm text-muted">{sub}</p>
+              </dd>
             </div>
-          </Reveal>
-        ))}
-      </div>
+          ))}
+        </dl>
+      </Reveal>
     </section>
   );
 }
@@ -444,7 +391,6 @@ function PlanBlock({ reduce }: { reduce: boolean }) {
     <section className="px-5 py-24 sm:px-8">
       <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
         <Reveal reduce={reduce}>
-          <p className="text-xs font-bold uppercase tracking-widest text-accent">Plan</p>
           <h2 className="mt-2 font-display text-3xl font-semibold leading-tight text-ink sm:text-5xl">A plan to exam day that keeps itself honest.</h2>
           <p className="mt-4 max-w-lg text-ink-2">
             Tell it your exam and your hours. It schedules every topic and every review, tells you plainly if you&apos;re behind and
@@ -461,14 +407,14 @@ function PlanBlock({ reduce }: { reduce: boolean }) {
 
 function FinalCta({ reduce }: { reduce: boolean }) {
   return (
-    <section className="px-5 pb-28 pt-12 sm:px-8">
+    <section className="border-t border-line px-5 py-20 sm:px-8">
       <Reveal reduce={reduce}>
-        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-ink px-6 py-16 text-center sm:px-12">
-          <img src="/landing/orbit.svg" alt="" aria-hidden className="pointer-events-none absolute -left-10 -top-10 w-72 opacity-[0.12] invert" />
-          <img src="/landing/lens.svg" alt="" aria-hidden className="pointer-events-none absolute -bottom-6 -right-10 w-80 opacity-[0.12] invert" />
-          <h2 className="relative font-display text-3xl font-semibold leading-tight text-ink-on sm:text-5xl">Your first lesson takes two minutes to start.</h2>
-          <p className="relative mx-auto mt-4 max-w-xl text-ink-on/75">Pick a topic, or let the tutor start you at the beginning of the syllabus.</p>
-          <Link href="/auth?tab=signup" className="relative mt-8 inline-block rounded-xl bg-accent px-7 py-3.5 text-sm font-semibold text-accent-on transition-transform hover:-translate-y-0.5">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-display text-3xl font-semibold leading-tight text-ink sm:text-4xl">Start your first lesson in two minutes.</h2>
+            <p className="mt-2 text-ink-2">Pick a topic, or begin at the start of the syllabus.</p>
+          </div>
+          <Link href="/auth?tab=signup" className="shrink-0 rounded-xl bg-ink px-7 py-3.5 text-sm font-semibold text-ink-on transition-colors hover:bg-ink/90">
             Start free
           </Link>
         </div>
@@ -503,9 +449,8 @@ export default function LandingPage() {
         <motion.div className="fixed inset-x-0 top-0 z-[60] h-[2px] origin-left bg-accent" style={{ scaleX: bar }} aria-hidden />
         <header className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${scrolled ? "border-b border-line bg-surface/80 backdrop-blur-md" : "border-b border-transparent"}`}>
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-            <Link href="/" className="flex items-center gap-2.5">
-              <PrepwiseLogo size={28} />
-              <span className="font-display text-lg font-semibold tracking-tight text-ink">Prepwise</span>
+            <Link href="/" className="flex items-center" aria-label="JeePath home">
+              <JeePathLogo size={30} textClassName="text-lg" domain />
             </Link>
             <nav className="flex items-center gap-1 text-sm font-medium sm:gap-2" aria-label="Main">
               <a href="#how" onClick={goTo("how")} className="hidden rounded-lg px-3 py-2 text-ink-2 hover:text-ink sm:block">How it works</a>
@@ -527,10 +472,7 @@ export default function LandingPage() {
 
         <footer className="border-t border-line px-5 py-10 sm:px-8">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-muted sm:flex-row">
-            <div className="flex items-center gap-2 text-ink">
-              <PrepwiseLogo size={20} />
-              <span className="font-display font-semibold">Prepwise</span>
-            </div>
+            <JeePathLogo size={22} textClassName="text-base" />
             <p>JEE Physics, one topic at a time.</p>
             <div className="flex gap-4">
               <Link href="/auth" className="hover:text-ink">Log in</Link>

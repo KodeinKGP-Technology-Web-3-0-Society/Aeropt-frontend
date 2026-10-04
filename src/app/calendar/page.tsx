@@ -3,7 +3,7 @@ import CalendarContent from "@/components/calendar/CalendarContent";
 import StudySidebar from "@/components/study/StudySidebar";
 
 export const metadata: Metadata = {
-  title: "Calendar | Prepwise",
+  title: "Calendar | JeePath",
 };
 
 export default function CalendarPage() {

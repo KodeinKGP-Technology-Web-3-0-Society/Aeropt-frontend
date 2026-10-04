@@ -3,7 +3,6 @@
 import React from "react";
 import * as onboarding from "@/lib/api/onboarding";
 import type { CoverageDepth, SubjectDepth } from "@/lib/api/onboarding";
-import { SlideDots } from "@/components/slides/SlideShell";
 import { TOTAL_STEPS, useOnboardingState } from "./useOnboardingState";
 
 const JOURNEY_OPTIONS: { id: onboarding.JourneyType; title: string; subtitle: string }[] = [
@@ -58,9 +57,9 @@ function SlideCard({
 }) {
   return (
     <div className="w-full max-w-[640px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-surface border border-line rounded-[24px] p-8 shadow-[var(--shadow-card)]">
-        <h2 className="text-[38px] leading-tight font-bold text-ink mb-3">{title}</h2>
-        {subtitle && <p className="text-base text-muted mb-8">{subtitle}</p>}
+      <div className="rounded-xl border border-line bg-surface p-6 sm:p-8">
+        <h2 className="mb-2 text-[28px] font-semibold leading-tight text-ink">{title}</h2>
+        {subtitle && <p className="mb-8 text-base text-ink-2">{subtitle}</p>}
         <div className="mb-10 space-y-4">{children}</div>
         <div className="flex gap-4">
           {onBack && (
@@ -79,7 +78,7 @@ function SlideCard({
             onClick={onNext}
             className="flex-1 py-3.5 rounded-lg bg-accent hover:bg-accent-hover transition-colors disabled:opacity-50 text-white text-base font-semibold shadow-sm"
           >
-            {loading ? "Setting up..." : nextLabel}
+            {loading ? "Saving…" : nextLabel}
           </button>
         </div>
       </div>
@@ -119,7 +118,7 @@ function SegmentedChoice<T extends string>({
           className={`py-2.5 rounded-lg text-[13px] font-medium border transition-colors ${
             value === opt.id
               ? "border-accent bg-accent/10 text-accent"
-              : "border-line-strong bg-hover text-muted hover:border-accent/40"
+              : "border-line bg-surface text-ink-2 hover:border-accent/50"
           }`}
         >
           {opt.label}
@@ -148,7 +147,7 @@ export default function OnboardingFlow() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas">
-        <p className="text-base text-muted">Setting up your classroom...</p>
+        <p className="text-base text-muted">Setting up your plan…</p>
       </div>
     );
   }
@@ -156,38 +155,34 @@ export default function OnboardingFlow() {
   return (
     <div className="h-screen overflow-y-auto bg-canvas px-4 py-12 md:py-16 font-sans text-ink">
       <div className="max-w-[640px] mx-auto relative">
-        <div className="flex items-center justify-between mb-10 min-h-[32px]">
-          <span className="w-10" />
-          <div className="text-center">
-            <p className="text-[14px] uppercase tracking-widest text-accent font-semibold">
-              Enter the Classroom
-            </p>
-            <p className="text-sm text-muted mt-1">
-              Step {step} of {TOTAL_STEPS}
-              {persisting ? " · Saving…" : ""}
-            </p>
+        <header className="mb-8">
+          <h1 className="text-xl font-semibold text-ink">Set up your study plan</h1>
+          <div className="mt-4 flex gap-1.5" aria-hidden>
+            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+              <span key={i} className={`h-1 flex-1 rounded-full ${i < step ? "bg-accent" : "bg-line"}`} />
+            ))}
           </div>
-          <span className="w-10" />
-        </div>
+          <p className="mt-2 text-sm text-muted">
+            Step {step} of {TOTAL_STEPS}
+            {persisting ? " · Saving…" : ""}
+          </p>
+        </header>
 
         {error && (
           <div
             role="alert"
             aria-live="assertive"
-            className="mb-4 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg p-2.5 text-center"
+            className="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
           >
             {error}
           </div>
         )}
 
-        <div className="mb-6">
-          <SlideDots total={TOTAL_STEPS} current={step - 1} />
-        </div>
 
         {step === 1 && (
           <SlideCard
             title="Your goals"
-            subtitle="Where you are heading — we'll tune teaching to this."
+            subtitle="Tell us where you are starting from and which exam you are aiming for."
             onNext={() => void advanceFrom(1)}
             loading={persisting}
           >
@@ -197,14 +192,27 @@ export default function OnboardingFlow() {
                   key={opt.id}
                   type="button"
                   onClick={() => setState((s) => ({ ...s, journey_type: opt.id }))}
-                  className={`w-full text-left p-5 rounded-xl border transition-all duration-200 ${
-                    state.journey_type === opt.id
-                      ? "border-accent bg-accent/10 shadow-none"
-                      : "border-line-strong bg-hover hover:border-accent/40"
+                  aria-pressed={state.journey_type === opt.id}
+                  className={`flex w-full items-start justify-between gap-4 rounded-lg border px-4 py-3.5 text-left transition-colors ${
+                    state.journey_type === opt.id ? "border-accent ring-1 ring-accent" : "border-line hover:border-accent/50"
                   }`}
                 >
-                  <p className="font-semibold text-[18px] text-ink">{opt.title}</p>
-                  <p className="text-base text-muted mt-1">{opt.subtitle}</p>
+                  <span>
+                    <span className="block font-semibold text-ink">{opt.title}</span>
+                    <span className="mt-0.5 block text-sm text-ink-2">{opt.subtitle}</span>
+                  </span>
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                      state.journey_type === opt.id ? "border-accent bg-accent text-accent-on" : "border-line"
+                    }`}
+                  >
+                    {state.journey_type === opt.id && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -254,14 +262,14 @@ export default function OnboardingFlow() {
         {step === 2 && (
           <SlideCard
             title="How much do you know?"
-            subtitle="A quick self-check. No quiz — just tap how confident you feel."
+            subtitle="A quick self-check, not a test. Tap how confident you feel in each subject."
             onBack={() => goToStep(1)}
             onNext={() => void advanceFrom(2)}
             loading={persisting}
           >
-            <div className="space-y-5">
+            <div className="divide-y divide-line">
               {onboarding.ONBOARDING_SUBJECTS.map((subject) => (
-                <div key={subject} className="p-4 rounded-xl border border-line-strong bg-hover">
+                <div key={subject} className="py-4 first:pt-0">
                   <p className="text-base font-medium text-ink mb-3">{subject}</p>
                   <SegmentedChoice
                     groupLabel={`${subject} confidence`}
@@ -283,7 +291,7 @@ export default function OnboardingFlow() {
                 <p className="text-sm text-muted mb-4">Optional. Rate broad topics, not every chapter.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {physicsUnits.map((unit) => (
-                    <div key={unit.name} className="p-4 rounded-xl border border-line-strong bg-hover">
+                    <div key={unit.name} className="rounded-lg border border-line p-4">
                       <p className="text-sm font-medium text-ink mb-3">{unit.name}</p>
                       <SegmentedChoice
                         groupLabel={`${unit.name} coverage`}
@@ -310,7 +318,7 @@ export default function OnboardingFlow() {
             subtitle="We'll size your daily queue and teaching depth to fit."
             onBack={() => goToStep(2)}
             onNext={() => void finishOnboarding()}
-            nextLabel="Enter Classroom"
+            nextLabel="Start studying"
             loading={saving}
           >
             <div>
@@ -350,7 +358,7 @@ export default function OnboardingFlow() {
                   ? "Shorter explanations and fewer slides."
                   : state.preferred_depth === "deep"
                     ? "More intuition and an extra worked angle."
-                    : "Balanced teaching — our default pace."}
+                    : "Balanced explanations at a steady pace."}
               </p>
             </div>
           </SlideCard>

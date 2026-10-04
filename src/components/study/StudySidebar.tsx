@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "
 import { useApp } from "@/components/AppContext";
 import PastSessionsPanel from "@/components/study/PastSessionsPanel";
 import { fetchProgressCached } from "@/lib/api/progress";
+import { JeePathMark } from "@/components/JeePathLogo";
 
 export type StudySidebarContext = {
   conceptName?: string | null;
@@ -94,13 +95,11 @@ function MenuIcon(p: SVGProps<SVGSVGElement>) {
 
 function Logo() {
   return (
-    <Link href="/home" className="flex shrink-0 items-center gap-2 rounded-lg pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Prepwise home">
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-on" aria-hidden>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 18 10 6l4 8 2-4 4 8" />
-        </svg>
+    <Link href="/home" className="flex shrink-0 items-center gap-2 rounded-lg pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="JeePath home">
+      <JeePathMark size={28} />
+      <span className="font-display text-[17px] font-bold tracking-tight text-ink max-sm:hidden">
+        Jee<span className="text-accent">Path</span>
       </span>
-      <span className="font-display text-[17px] font-semibold tracking-tight text-ink max-sm:hidden">Prepwise</span>
     </Link>
   );
 }
@@ -119,8 +118,8 @@ function StreakChip() {
   }, []);
   if (!streak) return null;
   const label = streak.days
-    ? `${streak.days}-day streak${streak.today ? "" : " — study today to keep it"}`
-    : "No streak yet — answer a question to start one";
+    ? `${streak.days}-day streak${streak.today ? "" : ". Study today to keep it"}`
+    : "No streak yet. Answer a question to start one";
   return (
     <Link
       href="/progress"

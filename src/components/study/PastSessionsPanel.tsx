@@ -17,6 +17,7 @@ import {
   type HistoryErrorCopy,
 } from "@/lib/api/chatHistory";
 import { FOCUS_RING } from "@/lib/focusRing";
+import { plainProse } from "@/lib/plainProse";
 
 
 function ClockIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -94,7 +95,7 @@ function SessionPreview({ sessionId }: { sessionId: string }) {
           <div className="mt-0.5 max-h-28 overflow-hidden text-[11px] leading-relaxed text-ink-2">
             {/* Maths in a transcript must still render: reuse the one renderer. */}
             <MathErrorBoundary content={turn.content}>
-              <MarkdownMath content={turn.content} />
+              <MarkdownMath content={turn.role === "user" ? turn.content : plainProse(turn.content)} />
             </MathErrorBoundary>
           </div>
         </li>

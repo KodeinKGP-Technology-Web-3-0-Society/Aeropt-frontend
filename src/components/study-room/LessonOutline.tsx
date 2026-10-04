@@ -18,8 +18,8 @@ export default function LessonOutline({ study, compact = false }: { study: Study
       <p className="truncate text-xs text-muted">
         <span className="font-semibold text-ink-2">
           {TITLES[phase]} · part {current + 1} of {parts.length}
-        </span>{" "}
-        — {parts[current]}
+        </span>
+        : {parts[current]}
       </p>
     );
   }

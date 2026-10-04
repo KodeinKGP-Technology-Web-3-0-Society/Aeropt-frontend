@@ -44,7 +44,7 @@ export default function CalendarContent() {
     <main className="flex-1 overflow-y-auto px-6 pb-16 pt-24 lg:px-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-10">
         <header>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Study Path</p>
+          <p className="text-[11px] font-bold text-muted">Study path</p>
           <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             AI Planner
           </h1>
@@ -73,7 +73,7 @@ export default function CalendarContent() {
                     >
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? "text-surface/80" : "text-muted"}`}>
+                          <span className={`text-[10px] font-bold ${isToday ?"text-surface/80" : "text-muted"}`}>
                             {eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                           </span>
                           {isToday && <span className="flex h-2 w-2 rounded-full bg-accent animate-pulse"></span>}
@@ -95,7 +95,7 @@ export default function CalendarContent() {
                             Start
                           </Link>
                         ) : (
-                          <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Planned</span>
+                          <span className="text-[10px] font-bold text-muted">Planned</span>
                         )}
                       </div>
                     </div>

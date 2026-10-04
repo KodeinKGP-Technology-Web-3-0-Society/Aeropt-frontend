@@ -21,7 +21,7 @@ import {
  */
 
 const fmt = (iso: string | null | undefined, opts: Intl.DateTimeFormatOptions) =>
-  iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString([], opts) : "—";
+  iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString([], opts) : "–";
 
 const VERDICT: Record<StudyPlan["verdict"], { label: string; tone: string }> = {
   on_track: { label: "On track", tone: "bg-success/12 text-success" },
@@ -68,7 +68,7 @@ function Countdown({ plan }: { plan: StudyPlan }) {
       </p>
       <p className="mt-1 text-xs text-muted">
         {fmt(s.exam_date, { day: "numeric", month: "long", year: "numeric" })}
-        {s.exam_date_estimated ? " (estimated — set the exact date in Adjust plan)" : ""}
+        {s.exam_date_estimated ? " (estimated; set the exact date in Adjust plan)" : ""}
       </p>
       {s.revision_weeks > 0 && (
         <p className="mt-3 rounded-lg bg-hover px-3 py-2 text-xs text-ink-2">
@@ -87,11 +87,11 @@ function Pace({ plan, onUseMinutes, saving }: { plan: StudyPlan; onUseMinutes: (
   let text: string;
   if (plan.verdict === "done") text = "Every syllabus topic is mastered. Keep reviewing and practising PYQs until the exam.";
   else if (plan.verdict === "on_track")
-    text = `At ${s.daily_minutes} min a day you finish the syllabus by ${fmt(plan.finish_date, { day: "numeric", month: "short" })} — before revision starts.`;
+    text = `At ${s.daily_minutes} min a day you finish the syllabus by ${fmt(plan.finish_date, { day: "numeric", month: "short" })}, before revision starts.`;
   else if (plan.verdict === "tight")
     text = `At ${s.daily_minutes} min a day you finish by ${fmt(plan.finish_date, { day: "numeric", month: "short" })}, eating into revision time.`;
   else
-    text = `At ${s.daily_minutes} min a day you'd finish around ${fmt(plan.finish_date, { day: "numeric", month: "short", year: "numeric" })} — after the exam.`;
+    text = `At ${s.daily_minutes} min a day you'd finish around ${fmt(plan.finish_date, { day: "numeric", month: "short", year: "numeric" })}, which is after the exam.`;
   const needsMore = plan.minutes_needed != null && plan.minutes_needed > s.daily_minutes && plan.verdict !== "done";
   return (
     <section className="rounded-2xl border border-line bg-surface p-5">
@@ -156,7 +156,7 @@ function DayCard({ day, isToday }: { day: PlanDay; isToday: boolean }) {
       {day.rest ? (
         <p className="mt-2 text-xs text-muted">Rest day</p>
       ) : day.items.length === 0 ? (
-        <p className="mt-2 text-xs text-muted">{isToday && day.minutes_done ? `Done for today — ${day.minutes_done} min studied.` : "Free"}</p>
+        <p className="mt-2 text-xs text-muted">{isToday && day.minutes_done ? `Done for today: ${day.minutes_done} min studied.` : "Free"}</p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1.5">
           {day.items.map((it, i) => (
@@ -223,7 +223,7 @@ function Roadmap({ plan }: { plan: StudyPlan }) {
   return (
     <section className="rounded-2xl border border-line bg-surface" aria-labelledby="roadmap-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
-        <h2 id="roadmap-title" className="text-sm font-semibold text-ink">Roadmap — JEE Main syllabus</h2>
+        <h2 id="roadmap-title" className="text-sm font-semibold text-ink">Roadmap: JEE Main syllabus</h2>
         <span className="text-[11px] text-muted">dates are when you&apos;ll finish each unit at your current pace</span>
       </div>
       <ol className="mt-3 divide-y divide-line">
@@ -449,7 +449,7 @@ export default function PlanContent() {
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Plan</p>
             <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">Your road to {plan.settings.exam_label.replace(" (session 1)", "")}</h1>
-            <p className="mt-1 text-sm text-muted">Rebuilt from your progress every time you open it — study a topic and the plan moves on by itself.</p>
+            <p className="mt-1 text-sm text-muted">Rebuilt from your progress every time you open it. Study a topic and the plan moves on by itself.</p>
           </div>
           <button type="button" onClick={() => setAdjusting((a) => !a)} aria-expanded={adjusting}
             className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hover">

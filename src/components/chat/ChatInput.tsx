@@ -45,7 +45,7 @@ export default function ChatInput({
       lower.includes("dns") ||
       lower.includes("name or service not known")
     ) {
-      return "Couldn't fetch sources — try again.";
+      return "Couldn't fetch sources. Try again.";
     }
     return raw;
   }

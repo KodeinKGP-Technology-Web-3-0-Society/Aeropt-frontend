@@ -31,10 +31,10 @@ const ERROR_LABEL: Record<string, string> = {
   unclassified: "Unclassified",
 };
 
-const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+const pct = (v: number | null | undefined) => (v == null ? "–" : `${Math.round(v * 100)}%`);
 
 function ago(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "–";
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 2) return "just now";
   if (mins < 60) return `${mins} min ago`;
@@ -177,7 +177,7 @@ function Concepts({ concepts }: { concepts: ProgressConcept[] }) {
                 </td>
                 <td className="px-3 py-2.5 text-right text-xs tabular-nums">
                   {c.trend == null || Math.abs(c.trend) < 0.01 ? (
-                    <span className="text-muted">—</span>
+                    <span className="text-muted">–</span>
                   ) : (
                     <span className={c.trend > 0 ? "text-success" : "text-danger"}>
                       {c.trend > 0 ? "▲" : "▼"} {Math.abs(Math.round(c.trend * 100))} pts
@@ -264,7 +264,7 @@ function Mistakes({ report }: { report: ProgressReport }) {
               )}
               {m.concept_id && !m.fixed && (
                 <Link href={studyHref(m.concept_id)} className="mt-2 inline-block text-xs font-semibold text-accent hover:underline">
-                  Practise this concept →
+                  Practise this concept
                 </Link>
               )}
             </li>
@@ -364,7 +364,7 @@ export default function ProgressContent() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Progress</p>
+          <p className="text-[11px] font-bold text-muted">Progress</p>
           <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">How you&apos;re doing</h1>
         </div>
         <p className="text-xs text-muted">
@@ -379,7 +379,7 @@ export default function ProgressContent() {
         <div className="rounded-2xl border border-line bg-surface p-10 text-center">
           <h2 className="font-display text-xl font-semibold text-ink">Nothing to show yet</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-            Every question you answer, topic you study and doubt you ask is recorded here — your accuracy, what&apos;s getting
+            Every question you answer, topic you study and doubt you ask is recorded here: your accuracy, what&apos;s getting
             stronger, and the mistakes worth another look.
           </p>
           <Link href="/study" className="mt-5 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
@@ -400,7 +400,7 @@ export default function ProgressContent() {
                   <p className="text-ink-2">{ins.text}</p>
                   {ins.concept_id && ins.action && (
                     <Link href={studyHref(ins.concept_id)} className="text-xs font-semibold text-accent hover:underline">
-                      {ins.action === "review" ? "Start review →" : "Study it →"}
+                      {ins.action === "review" ? "Start review" : "Study it"}
                     </Link>
                   )}
                 </div>

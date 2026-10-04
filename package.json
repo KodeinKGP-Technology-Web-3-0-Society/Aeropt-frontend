@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:math": "node --experimental-strip-types src/lib/math/markdownMath.selftest.ts",
     "test:practice": "node --experimental-strip-types src/lib/practiceContent.selftest.ts",
+    "test:prose": "node --experimental-strip-types src/lib/plainProse.selftest.ts",
     "test:latex": "node scripts/latex-contract.test.mjs",
     "latex:audit": "node scripts/katex-audit.mjs fixtures/latex-corpus.json --max 0 --field text",
     "test:render": "node scripts/render-check.mjs fixtures/latex-agent-output.json",

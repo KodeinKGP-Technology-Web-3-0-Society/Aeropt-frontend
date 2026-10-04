@@ -6,6 +6,7 @@ import {
   startStudySession,
   stopStudyTurn,
   submitStudyChoice,
+  nextStudyQuestion,
   type StudyLearnerSnapshot,
   type StudyPhase,
   type StudyPracticeQuestion,
@@ -35,6 +36,12 @@ export type AnsweredQuestion = {
   chosen: number[];
   key: number[];
   correct: boolean;
+  /** The official answer as shown ("(A), (C)", "anything from 1.15 to 1.25"). */
+  answerText?: string;
+  /** The stored, verified solution, shown at once — no tutor turn needed. */
+  solution?: string;
+  /** What the student typed, for a numerical answer. */
+  value?: string;
 };
 
 export type StudyActivity = {
@@ -55,7 +62,7 @@ const nextId = () => `m${Date.now().toString(36)}${(idSeq++).toString(36)}`;
 /** What the room says to the tutor after the student skips ahead. */
 const KICKOFF: Partial<Record<StudyPhase, string>> = {
   examples: "Let's move on to the worked examples.",
-  practice: "I'm ready to practise — give me a question.",
+  practice: "I'm ready to practise. Give me a question.",
 };
 
 /**
@@ -193,7 +200,7 @@ export function useStudySession(
             return copy;
           });
           if (!opts.auto) setRestored({ text: query, nonce: Date.now() });
-          setNotice("Stopped. Your message is back in the box — edit it or send something else.");
+          setNotice("Stopped. Your message is back in the box. Edit it or send something else.");
           return;
         }
         // A typed answer the tutor graded: keep the question on screen with its
@@ -283,23 +290,32 @@ export function useStudySession(
           return;
         }
         setStudy(res.study);
-        setAnswered({ question, chosen: labels.map(positionOf), key: res.key, correct: res.correct });
+        setAnswered({
+          question,
+          chosen: labels.map(positionOf),
+          key: res.key,
+          correct: res.correct,
+          answerText: res.answer_text,
+          solution: res.solution,
+        });
         const keyLabel = (n: number) => {
           const style = labels[0] ?? "1";
           return /[A-D]/.test(style) ? "ABCD"[n - 1] : /[a-d]/.test(style) ? "abcd"[n - 1] : String(n);
         };
-        const keyShown = res.key.map((n) => `(${keyLabel(n)})`).join(", ");
+        const keyShown = res.answer_text || res.key.map((n) => `(${keyLabel(n)})`).join(", ");
         setMessages((prev) => [
           ...prev,
           { id: nextId(), role: "user", content: `My answer: ${shown}` },
           {
             id: nextId(),
             role: "assistant",
-            content: res.correct ? `✓ **Correct** — the answer is ${keyShown}.` : `✗ **Not quite** — you chose ${shown}; the answer is ${keyShown}.`,
+            content: res.correct ? `**Correct.** The answer is ${keyShown}.` : `**Not quite.** You chose ${shown}; the answer is ${keyShown}.`,
           },
         ]);
         setGrading(false);
-        if (!res.correct) {
+        // A wrong answer used to start a tutor turn here (~20 s). The verified solution now
+        // comes back with the grade and the pane shows it; "Explain it" asks the tutor.
+        if (!res.correct && !res.solution) {
           await send(`I chose ${shown} but the answer is ${keyShown}. Please walk me through the correct solution.`, { auto: true });
         }
       } catch (err) {
@@ -309,6 +325,69 @@ export function useStudySession(
     },
     [study, pendingQuery, grading, send],
   );
+
+  /**
+   * A numerical answer, graded instantly against the official range when the question has a
+   * structured key; anything else (no key, an answer that is not a number) goes to the tutor.
+   */
+  const answerValue = useCallback(
+    async (value: string, question: StudyPracticeQuestion) => {
+      if (!study || pendingQuery !== null || grading || !value.trim()) return;
+      if (!question.instant_grading) {
+        await send(`My answer: ${value}`);
+        return;
+      }
+      setGrading(true);
+      setSendError(null);
+      setNotice(null);
+      try {
+        const res = await submitStudyChoice(study.study_session_id, [], value);
+        setGrading(false);
+        if (!res.graded) {
+          await send(`My answer: ${value}`);
+          return;
+        }
+        setStudy(res.study);
+        setAnswered({ question, chosen: [], key: [], correct: res.correct, answerText: res.answer_text, solution: res.solution, value });
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "user", content: `My answer: ${value}` },
+          {
+            id: nextId(),
+            role: "assistant",
+            content: res.correct
+              ? `**Correct.** The answer is ${res.answer_text}.`
+              : `**Not quite.** You answered ${value}; the answer is ${res.answer_text}.`,
+          },
+        ]);
+      } catch (err) {
+        setGrading(false);
+        setSendError(err instanceof Error ? err.message : "Could not check that answer. Try again.");
+      }
+    },
+    [study, pendingQuery, grading, send],
+  );
+
+  /** The next question straight from the index — no tutor turn. Falls back to asking the tutor. */
+  const nextQuestion = useCallback(async () => {
+    if (!study || pendingQuery !== null || grading) return;
+    setGrading(true);
+    setSendError(null);
+    try {
+      const res = await nextStudyQuestion(study.study_session_id);
+      setGrading(false);
+      if (!res.served) {
+        await send("Next question, please.");
+        return;
+      }
+      setStudy(res.study);
+      setAnswered(null);
+      setNotice(res.revisit ? "You've seen every new question here, so this one is a revisit. Try it fresh." : null);
+    } catch {
+      setGrading(false);
+      await send("Next question, please.");
+    }
+  }, [study, pendingQuery, grading, send]);
 
   const advance = useCallback(async () => {
     if (!study || pendingQuery !== null || advancing) return;
@@ -386,6 +465,8 @@ export function useStudySession(
     grading,
     answered,
     answerChoice,
+    answerValue,
+    nextQuestion,
     advancing,
     stopping,
     restored,
