@@ -50,7 +50,10 @@ const nextConfig: NextConfig = {
   // retrieval index and every other service: a /study compile hit 2 GB and
   // ~280 s of CPU and froze the machine.
   turbopack: { root: __dirname },
-  allowedDevOrigins: ["their-shake-probe-knives.trycloudflare.com"],
+  // Dev assets are cross-origin when the page is opened as 127.0.0.1 while
+  // Next's own host is localhost (and the reverse). Module scripts then 403
+  // and the server-rendered "Loading..." never hydrates. Keep the tunnel host.
+  allowedDevOrigins: ["127.0.0.1", "localhost", "their-shake-probe-knives.trycloudflare.com"],
   // .env.local uses same-origin bases (/api/v1, /agent-api) so a tunnel to :3000
   // reaches everything; forward them to the two services. Tutor turns take
   // 40 s+ and Next's default proxy timeout is 30 s, so raise it.
