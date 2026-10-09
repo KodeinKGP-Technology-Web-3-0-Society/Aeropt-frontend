@@ -280,6 +280,8 @@ export async function sendStudyMessage(
   payload: { sessionId: string; studySessionId: string; query: string },
   signal?: AbortSignal,
   onStatus?: (event: StudyStatusEvent) => void,
+  /** The reviewed reply, word by word, before the final `result` frame. */
+  onToken?: (token: string) => void,
 ): Promise<StudyMessageResponse> {
   const userId = auth.getSupabaseUserId();
   if (!userId) throw new AgentStreamError("You're signed out. Sign in again to continue.", { kind: "protocol" });
@@ -361,6 +363,14 @@ export async function sendStudyMessage(
             onStatus?.(JSON.parse(data) as StudyStatusEvent);
           } catch {
             /* a malformed status line is cosmetic; keep reading */
+          }
+          continue;
+        }
+        if (event === "token" && data) {
+          try {
+            onToken?.(JSON.parse(data) as string);
+          } catch {
+            /* a malformed token only costs a word of animation; the result carries the full text */
           }
           continue;
         }

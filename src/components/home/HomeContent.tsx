@@ -5,17 +5,20 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useApp } from "@/components/AppContext";
 import type { ClassroomToday } from "@/lib/api/classroom";
 import { fetchPlan, type PlanItem, type StudyPlan } from "@/lib/api/plan";
-import { fetchProgressCached, type ProgressReport } from "@/lib/api/progress";
+import { fetchProgressCached, type ProgressOverview, type ProgressReport } from "@/lib/api/progress";
 import { fetchStudyOverview, type StudyOverview, type UpNextItem } from "@/lib/api/study";
 import { useHomeState } from "./useHomeState";
 
 /*
  * Home answers three questions, in this order:
  *   1. What should I do right now?     → Continue / today's plan
- *   2. How am I doing?                  → four numbers, from the same record as /progress
+ *   2. How am I doing?                  → one line of numbers, from the same record as /progress
  *   3. What needs attention?            → reviews, insights, syllabus coverage
  * A student with no history sees a welcome, how JeePath works, and one clear
  * first step instead of a dashboard of zeros.
+ *
+ * Layout: sections are grouped by space, headings and hairlines, not boxes.
+ * The only filled shape on the page is the one teal button for the next step.
  */
 
 const QUICK_TOPICS = ["Projectile motion", "Newton's laws", "Electric field", "Simple harmonic motion", "Ray optics", "Photoelectric effect"];
@@ -36,33 +39,35 @@ function studyHref(c: { concept_id: string; study_session_id?: string | null }) 
 
 /* ── building blocks ───────────────────────────────────────────────────────── */
 
-function Card({ title, action, children, className = "" }: { title?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+function Section({ title, action, children, className = "" }: { title: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`flex flex-col rounded-2xl border border-line bg-surface p-5 ${className}`}>
-      {(title || action) && (
-        <div className="mb-3.5 flex items-baseline justify-between gap-3">
-          {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
-          {action}
-        </div>
-      )}
-      {children}
+    <section className={className}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+        {action}
+      </div>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" | null }) {
+function TextLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface px-4 py-3.5">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value}</p>
-      {sub && <p className={`mt-0.5 text-xs ${tone === "good" ? "text-success" : tone === "bad" ? "text-danger" : "text-muted"}`}>{sub}</p>}
-    </div>
+    <Link href={href} className="text-sm text-ink-2 underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent">
+      {children}
+    </Link>
+  );
+}
+
+function Arrow() {
+  return (
+    <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
   );
 }
 
 function Bar({ value, total, label }: { value: number; total: number; label: string }) {
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-hover" role="img" aria-label={label}>
+    <div className="h-1 w-full overflow-hidden rounded-full bg-hover" role="img" aria-label={label}>
       <div className="h-full rounded-full bg-accent" style={{ width: `${total ? Math.max(value ? 3 : 0, (value / total) * 100) : 0}%` }} />
     </div>
   );
@@ -70,42 +75,84 @@ function Bar({ value, total, label }: { value: number; total: number; label: str
 
 const KIND: Record<UpNextItem["kind"], { tag: string; cta: string }> = {
   review: { tag: "Review due", cta: "Start review" },
-  resume: { tag: "Continue", cta: "Resume" },
+  resume: { tag: "Continue where you left off", cta: "Resume" },
   next: { tag: "Up next", cta: "Start" },
   start: { tag: "Start here", cta: "Start" },
 };
 
 /* ── sections ──────────────────────────────────────────────────────────────── */
 
-function ContinueCard({ items }: { items: UpNextItem[] }) {
-  if (!items.length) return null;
+function WeekLine({ o }: { o: ProgressOverview }) {
+  const n = (v: ReactNode) => <span className="font-semibold tabular-nums text-ink">{v}</span>;
+  const streak = o.streak_days ? (
+    <>
+      {n(`${o.streak_days}-day`)} streak
+      {o.active_today ? <span className="text-success">, today counts</span> : ", study today to keep it"}
+    </>
+  ) : o.best_streak_days ? (
+    <>No streak right now (best {n(o.best_streak_days)})</>
+  ) : (
+    <>No streak yet</>
+  );
+  const parts = [
+    streak,
+    <>
+      {n(o.attempts_7d)} questions this week{o.accuracy_7d != null ? <>, {n(`${Math.round(o.accuracy_7d * 100)}%`)} right</> : null}
+    </>,
+    <>{n(`${o.active_minutes_7d} min`)} studied this week</>,
+    <>
+      {n(o.concepts_mastered)} of {o.concepts_practised} practised concepts mastered
+    </>,
+  ];
+  return (
+    <p aria-label="This week" className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-2">
+      {parts.map((p, i) => (
+        <span key={i}>{p}</span>
+      ))}
+    </p>
+  );
+}
+
+function Continue({ items }: { items: UpNextItem[] }) {
+  if (!items.length) {
+    return (
+      <section>
+        <p className="text-sm text-ink-2">
+          Nothing queued yet. <TextLink href="/study">Pick a topic in the study room</TextLink> to get going.
+        </p>
+      </section>
+    );
+  }
   const [first, ...rest] = items;
   return (
-    <section className="flex flex-col gap-3">
-      <Link
-        href={studyHref(first)}
-        className="group flex flex-col justify-between gap-5 rounded-2xl border border-accent/40 bg-accent-soft/40 p-6 transition-colors hover:border-accent"
-      >
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-accent">{KIND[first.kind].tag}</p>
-          <p className="mt-2 font-display text-2xl font-semibold leading-tight text-ink first-letter:uppercase sm:text-3xl">{first.name}</p>
-          <p className="mt-1 text-xs text-muted">{first.chapter}</p>
-          <p className="mt-3 text-sm text-ink-2">{first.reason}</p>
-        </div>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors group-hover:bg-accent-hover">
+    <section aria-label="Continue">
+      <Link href={studyHref(first)} className="group block">
+        <p className={`text-sm font-medium ${first.kind === "review" ? "text-danger" : "text-accent"}`}>{KIND[first.kind].tag}</p>
+        <p className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink first-letter:uppercase sm:text-4xl">{first.name}</p>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-2">
+          <span className="text-muted">{first.chapter}.</span> {first.reason}
+        </p>
+        <span className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors group-hover:bg-accent-hover">
           {KIND[first.kind].cta}
-          <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          <Arrow />
         </span>
       </Link>
       {rest.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {rest.map((item) => (
-            <Link key={item.concept_id} href={studyHref(item)} className="rounded-2xl border border-line bg-surface px-4 py-3 transition-colors hover:border-accent">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted">{KIND[item.kind].tag}</span>
-              <span className="mt-0.5 block truncate text-sm font-semibold text-ink first-letter:uppercase">{item.name}</span>
-              <span className="mt-0.5 line-clamp-2 block text-xs text-muted">{item.reason}</span>
-            </Link>
-          ))}
+        <div className="mt-10">
+          <h2 className="text-sm font-medium text-muted">After that</h2>
+          <ul className="mt-1 divide-y divide-line border-t border-line">
+            {rest.map((item) => (
+              <li key={item.concept_id}>
+                <Link href={studyHref(item)} className="group flex items-baseline gap-4 py-3">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-ink first-letter:uppercase group-hover:text-accent">{item.name}</span>
+                    <span className="mt-0.5 line-clamp-1 block text-xs text-muted">{item.reason}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted">{KIND[item.kind].tag}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>
@@ -117,23 +164,26 @@ function TodaysPlan({ plan }: { plan: StudyPlan | null }) {
   const tomorrow = plan?.week.slice(1).find((d) => !d.rest && d.items.length);
   const label = (k: PlanItem["kind"]) => (k === "review" ? "Review" : k === "continue" ? "Continue" : k === "done" ? "Done" : "Learn");
   return (
-    <Card title="Today's plan" action={<Link href="/plan" className="text-xs font-semibold text-accent hover:underline">Full plan</Link>}>
+    <Section title="Today's plan" action={<TextLink href="/plan">Full plan</TextLink>}>
       {!plan || !today ? (
-        <p className="rounded-xl bg-hover px-4 py-3 text-sm text-ink-2">Your plan is loading — or open the Plan page to set it up.</p>
+        <p className="text-sm text-muted">Loading your plan. If it never shows, set it up on the Plan page.</p>
       ) : today.rest ? (
-        <p className="rounded-xl bg-hover px-4 py-3 text-sm text-ink-2">Rest day. Come back tomorrow — or review something light if you feel like it.</p>
+        <p className="text-sm text-ink-2">Rest day. Come back tomorrow, or review something light if you feel like it.</p>
       ) : today.items.length === 0 ? (
-        <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-ink-2">Done for today{today.minutes_done ? ` — ${today.minutes_done} min studied` : ""}. Nice work.</p>
+        <p className="text-sm text-ink-2">
+          <span className="font-medium text-success">Done for today.</span>
+          {today.minutes_done ? ` ${today.minutes_done} min studied.` : ""}
+        </p>
       ) : (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="divide-y divide-line border-y border-line">
           {today.items.map((it, i) => (
             <li key={`${it.concept_id}-${i}`}>
-              <Link href={`/study/${encodeURIComponent(it.concept_id)}`} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 transition-colors hover:border-accent">
-                <span className={`w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide ${it.kind === "review" ? "text-danger" : it.kind === "done" ? "text-success" : it.kind === "continue" ? "text-accent" : "text-ink-2"}`}>
+              <Link href={`/study/${encodeURIComponent(it.concept_id)}`} className="group flex items-baseline gap-3 py-3">
+                <span className={`w-16 shrink-0 text-xs font-medium ${it.kind === "review" ? "text-danger" : it.kind === "done" ? "text-success" : it.kind === "continue" ? "text-accent" : "text-muted"}`}>
                   {it.kind === "done" ? "✓ " : ""}{label(it.kind)}
                 </span>
-                <span className={`min-w-0 flex-1 truncate text-sm ${it.kind === "done" ? "text-muted line-through decoration-muted/50" : "text-ink"}`}>{it.topic}</span>
-                {it.minutes > 0 && <span className="shrink-0 text-[11px] tabular-nums text-muted">{it.minutes} min</span>}
+                <span className={`min-w-0 flex-1 truncate text-sm group-hover:text-accent ${it.kind === "done" ? "text-muted line-through decoration-muted/50" : "text-ink"}`}>{it.topic}</span>
+                {it.minutes > 0 && <span className="shrink-0 text-xs tabular-nums text-muted">{it.minutes} min</span>}
               </Link>
             </li>
           ))}
@@ -141,14 +191,14 @@ function TodaysPlan({ plan }: { plan: StudyPlan | null }) {
       )}
       {plan && (
         <p className="mt-3 text-xs text-muted">
-          {plan.days_left} days to {plan.settings.exam_label.replace(" (session 1)", "")} ·{" "}
+          {plan.days_left} days to {plan.settings.exam_label.replace(" (session 1)", "")},{" "}
           <span className={plan.verdict === "behind" ? "font-semibold text-danger" : plan.verdict === "tight" ? "font-semibold text-ink-2" : "font-semibold text-success"}>
             {plan.verdict === "on_track" ? "on track" : plan.verdict === "tight" ? "pace is tight" : plan.verdict === "behind" ? "behind pace" : "syllabus covered"}
           </span>
-          {tomorrow ? ` · tomorrow: ${tomorrow.items[0].topic}` : ""}
+          {tomorrow ? `. Tomorrow: ${tomorrow.items[0].topic}` : ""}
         </p>
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -157,42 +207,40 @@ function Attention({ report }: { report: ProgressReport }) {
   const insights = report.insights.filter((i) => i.action !== "review").slice(0, 3);
   if (!reviews.length && !insights.length) {
     return (
-      <Card title="Needs your attention">
-        <p className="text-sm text-muted">Nothing pressing. Reviews and patterns in your mistakes show up here.</p>
-      </Card>
+      <Section title="Needs attention">
+        <p className="text-sm text-muted">Nothing pressing. Due reviews and patterns in your mistakes show up here.</p>
+      </Section>
     );
   }
   return (
-    <Card title="Needs your attention" action={<Link href="/progress" className="text-xs font-semibold text-accent hover:underline">Progress</Link>}>
-      <ul className="flex flex-col gap-2.5">
+    <Section title="Needs attention" action={<TextLink href="/progress">Progress</TextLink>}>
+      <ul className="flex flex-col gap-4">
         {reviews.map((r) => (
-          <li key={r.concept_id} className="flex items-center justify-between gap-3">
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-medium text-ink first-letter:uppercase">Review: {r.name}</span>
-              <span className={`text-xs ${r.overdue ? "font-semibold text-danger" : "text-muted"}`}>
+          <li key={r.concept_id}>
+            <Link href={`/study/${encodeURIComponent(r.concept_id)}`} className="group block">
+              <span className="block text-sm font-medium text-ink first-letter:uppercase group-hover:text-accent">Review {r.name}</span>
+              <span className={`text-xs ${r.overdue ? "font-medium text-danger" : "text-muted"}`}>
                 {r.overdue ? "Due now" : `Due ${r.due_at ? new Date(r.due_at).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "soon"}`}
               </span>
-            </span>
-            <Link href={`/study/${encodeURIComponent(r.concept_id)}`} className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-ink hover:bg-hover">
-              Review
             </Link>
           </li>
         ))}
         {insights.map((ins, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm text-ink-2">
-            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${ins.tone === "good" ? "bg-success" : ins.tone === "pattern" ? "bg-warning" : "bg-accent"}`} aria-hidden />
+          <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-ink-2">
+            <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${ins.tone === "good" ? "bg-success" : ins.tone === "pattern" ? "bg-warning" : "bg-accent"}`} aria-hidden />
             <span className="flex-1">
               {ins.text}
               {ins.concept_id && ins.action && (
-                <Link href={`/study/${encodeURIComponent(ins.concept_id)}`} className="ml-1.5 whitespace-nowrap text-xs font-semibold text-accent hover:underline">
-                  Study it
-                </Link>
+                <>
+                  {" "}
+                  <TextLink href={`/study/${encodeURIComponent(ins.concept_id)}`}>Study it</TextLink>
+                </>
               )}
             </span>
           </li>
         ))}
       </ul>
-    </Card>
+    </Section>
   );
 }
 
@@ -202,19 +250,16 @@ function SyllabusProgress({ overview, readiness }: { overview: StudyOverview; re
   const mastered = overview.syllabus.reduce((a, u) => a + u.mastered, 0);
   const active = overview.syllabus.filter((u) => u.started > 0).sort((a, b) => b.started / b.total - a.started / a.total).slice(0, 4);
   return (
-    <Card title="JEE syllabus" action={<Link href="/study" className="text-xs font-semibold text-accent hover:underline">Open study</Link>}>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-2xl font-semibold tabular-nums text-ink">
-          {started}
-          <span className="text-base text-muted">/{total}</span>
-        </p>
-        <p className="text-xs text-muted">topics started · {mastered} mastered</p>
-      </div>
+    <Section title="JEE syllabus" action={<TextLink href="/study">Study room</TextLink>}>
+      <p className="text-sm text-ink-2">
+        <span className="text-2xl font-semibold tabular-nums text-ink">{started}</span>
+        <span className="tabular-nums text-muted"> / {total}</span> topics started, {mastered} mastered
+      </p>
       <div className="mt-2">
         <Bar value={started} total={total} label={`${started} of ${total} syllabus topics started`} />
       </div>
       {active.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-2.5">
+        <ul className="mt-5 flex flex-col gap-3">
           {active.map((u) => (
             <li key={u.unit}>
               <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
@@ -227,32 +272,29 @@ function SyllabusProgress({ overview, readiness }: { overview: StudyOverview; re
         </ul>
       )}
       {readiness && readiness.score > 0 && (
-        <Link href="/readiness" className="mt-4 flex items-center justify-between rounded-xl bg-hover px-3 py-2 text-xs text-ink-2 hover:text-ink">
-          <span>Exam readiness</span>
-          <span className="font-semibold tabular-nums">{Math.round(readiness.score)}/100 · {readiness.label}</span>
-        </Link>
+        <p className="mt-5 text-sm text-ink-2">
+          Exam readiness <span className="font-semibold tabular-nums text-ink">{Math.round(readiness.score)}/100</span> ({readiness.label}).{" "}
+          <TextLink href="/readiness">Details</TextLink>
+        </p>
       )}
-    </Card>
+    </Section>
   );
 }
 
-function QuickActions() {
+function Shortcuts() {
   const items = [
-    { href: "/study?mode=practice", label: "Practise questions", sub: "Straight to questions, PYQs too" },
-    { href: "/chat", label: "Ask the tutor", sub: "Any physics doubt, with diagrams" },
-    { href: "/doubt", label: "Check my working", sub: "Paste a solution, find the slip" },
-    { href: "/progress", label: "Mistake notebook", sub: "Questions worth another look" },
-    { href: "/plan", label: "This week's plan", sub: "Day by day, until the exam" },
+    { href: "/study?mode=practice", label: "Practise questions" },
+    { href: "/doubt", label: "Check my working" },
+    { href: "/progress", label: "Mistake notebook" },
+    { href: "/plan", label: "This week's plan" },
+    { href: "/chat", label: "Ask the tutor" },
   ];
   return (
-    <section aria-label="Shortcuts" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <nav aria-label="Shortcuts" className="flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-5">
       {items.map((it) => (
-        <Link key={it.href} href={it.href} className="rounded-2xl border border-line bg-surface px-4 py-3.5 transition-colors hover:border-accent">
-          <span className="block text-sm font-semibold text-ink">{it.label}</span>
-          <span className="mt-0.5 block text-xs text-muted">{it.sub}</span>
-        </Link>
+        <TextLink key={it.href} href={it.href}>{it.label}</TextLink>
       ))}
-    </section>
+    </nav>
   );
 }
 
@@ -261,54 +303,53 @@ function QuickActions() {
 function Welcome({ firstName, today }: { firstName: string; today: ClassroomToday | null }) {
   const firstTopic = today?.title;
   const steps = [
-    { n: 1, title: "Learn it properly", body: "The study room teaches one topic in parts, walks through worked examples, then gives you calibrated JEE questions.", href: "/study", cta: "Open study" },
-    { n: 2, title: "Ask anything, anytime", body: "Stuck on a doubt? The tutor explains step by step, draws diagrams and checks your working.", href: "/chat", cta: "Ask the tutor" },
-    { n: 3, title: "Watch it add up", body: "Every answer is tracked. See your streak, weak spots and a mistake notebook — and your tutor remembers it all.", href: "/progress", cta: "See progress" },
+    { title: "Learn it properly", body: "The study room teaches one topic in parts, walks through worked examples, then gives you calibrated JEE questions.", href: "/study", cta: "Open the study room" },
+    { title: "Ask anything, anytime", body: "Stuck on a doubt? The tutor explains step by step, draws diagrams and checks your working.", href: "/chat", cta: "Ask the tutor" },
+    { title: "Watch it add up", body: "Every answer is tracked: your streak, weak spots and a mistake notebook. Your tutor remembers all of it.", href: "/progress", cta: "See progress" },
   ];
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-2xl border border-accent/40 bg-accent-soft/40 p-6 sm:p-8">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-accent">Welcome to JeePath</p>
-        <h1 className="mt-2 max-w-2xl font-display text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
-          {firstName ? `Hi ${firstName} — ` : ""}let&apos;s start your JEE Physics prep.
+    <div className="flex flex-col gap-16">
+      <section>
+        <h1 className="max-w-2xl text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
+          {firstName ? `Hi ${firstName}, let's` : "Let's"} start your JEE Physics prep.
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-2">
-          Your AI tutor teaches each topic step by step, practises with you, and remembers how it went — so every session
+        <p className="mt-3 max-w-xl text-base leading-relaxed text-ink-2">
+          Your tutor teaches each topic step by step, practises with you, and remembers how it went, so every session
           picks up exactly where you need it.
         </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
           <Link
             href={`/study/${encodeURIComponent(firstTopic || "Units and measurement")}`}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
           >
             Start your first lesson{firstTopic ? `: ${firstTopic}` : ""}
-            <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <Arrow />
           </Link>
-          <Link href="/chat" className="rounded-xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-hover">
-            Ask a doubt instead
-          </Link>
+          <TextLink href="/chat">Or ask a doubt instead</TextLink>
         </div>
       </section>
 
       <section aria-labelledby="how-title">
-        <h2 id="how-title" className="text-[11px] font-bold uppercase tracking-widest text-muted">How it works</h2>
-        <ol className="mt-3 grid gap-3 md:grid-cols-3">
-          {steps.map((s) => (
-            <li key={s.n} className="flex flex-col rounded-2xl border border-line bg-surface p-5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">{s.n}</span>
-              <p className="mt-3 text-sm font-semibold text-ink">{s.title}</p>
-              <p className="mt-1 flex-1 text-sm leading-relaxed text-muted">{s.body}</p>
-              <Link href={s.href} className="mt-3 text-xs font-semibold text-accent hover:underline">{s.cta}</Link>
+        <h2 id="how-title" className="text-base font-semibold text-ink">How it works</h2>
+        <ol className="mt-4 grid gap-x-10 gap-y-8 md:grid-cols-3">
+          {steps.map((s, i) => (
+            <li key={s.title} className="border-t border-line pt-4">
+              <p className="text-sm font-semibold text-ink">
+                <span className="mr-2 tabular-nums text-muted">{i + 1}</span>
+                {s.title}
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{s.body}</p>
+              <p className="mt-3"><TextLink href={s.href}>{s.cta}</TextLink></p>
             </li>
           ))}
         </ol>
       </section>
 
-      <section aria-labelledby="quick-title" className="rounded-2xl border border-line bg-surface p-5">
-        <h2 id="quick-title" className="text-sm font-semibold text-ink">Or jump into any topic</h2>
+      <section aria-labelledby="quick-title">
+        <h2 id="quick-title" className="text-base font-semibold text-ink">Or jump into any topic</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {QUICK_TOPICS.map((t) => (
-            <Link key={t} href={`/study/${encodeURIComponent(t)}`} className="rounded-full border border-line px-3.5 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-accent hover:text-ink">
+            <Link key={t} href={`/study/${encodeURIComponent(t)}`} className="rounded-full border border-line px-3.5 py-1.5 text-sm text-ink-2 transition-colors hover:border-accent hover:text-ink">
               {t}
             </Link>
           ))}
@@ -336,7 +377,7 @@ export default function HomeContent() {
       if (o.status === "fulfilled") setOverview(o.value);
       setAgentLoaded(true);
     });
-    // The plan card fills in when ready; it never holds the page back.
+    // The plan section fills in when ready; it never holds the page back.
     fetchPlan().then((p) => live && setPlan(p)).catch(() => undefined);
     return () => {
       live = false;
@@ -350,10 +391,14 @@ export default function HomeContent() {
   if (!agentLoaded || loading) {
     return (
       <main className="px-4 pb-16 pt-24 sm:px-6" aria-busy="true">
-        <div className="mx-auto grid max-w-6xl animate-pulse gap-5 motion-reduce:animate-none">
+        <div className="mx-auto flex max-w-6xl animate-pulse flex-col gap-4 motion-reduce:animate-none">
+          <div className="h-3 w-40 rounded bg-hover" />
           <div className="h-9 w-72 rounded-lg bg-hover" />
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl bg-hover" />)}</div>
-          <div className="grid gap-5 lg:grid-cols-3"><div className="h-64 rounded-2xl bg-hover lg:col-span-2" /><div className="h-64 rounded-2xl bg-hover" /></div>
+          <div className="h-4 w-full max-w-2xl rounded bg-hover" />
+          <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <div className="flex flex-col gap-3"><div className="h-4 w-28 rounded bg-hover" /><div className="h-10 w-96 max-w-full rounded-lg bg-hover" /><div className="h-4 w-80 max-w-full rounded bg-hover" /></div>
+            <div className="flex flex-col gap-3"><div className="h-4 w-32 rounded bg-hover" /><div className="h-4 w-full rounded bg-hover" /><div className="h-4 w-full rounded bg-hover" /></div>
+          </div>
         </div>
       </main>
     );
@@ -361,62 +406,33 @@ export default function HomeContent() {
 
   return (
     <main className="px-4 pb-16 pt-24 sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-14">
         {isNew ? (
           <Welcome firstName={firstName} today={home.today} />
         ) : (
           <>
-            <header className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs text-muted">{new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</p>
-                <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
-                  {greeting()}{firstName ? `, ${firstName}` : ""}
-                </h1>
-              </div>
-              <Link href="/chat" className="rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hover">
-                Ask the tutor
-              </Link>
+            <header>
+              <p className="text-sm text-muted">{new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
+                {greeting()}{firstName ? `, ${firstName}` : ""}
+              </h1>
+              {o && <WeekLine o={o} />}
             </header>
 
-            {o && (
-              <section aria-label="This week" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Stat
-                  label="Streak"
-                  value={`${o.streak_days} day${o.streak_days === 1 ? "" : "s"}`}
-                  sub={o.active_today ? "Today counts ✓" : o.streak_days ? "Study today to keep it" : `Best ${o.best_streak_days}`}
-                  tone={o.active_today ? "good" : null}
-                />
-                <Stat
-                  label="Questions this week"
-                  value={`${o.attempts_7d}`}
-                  sub={o.accuracy_7d != null ? `${Math.round(o.accuracy_7d * 100)}% right` : "None answered yet"}
-                />
-                <Stat label="Time this week" value={`${o.active_minutes_7d} min`} sub={`${o.active_days_30d} active days this month`} />
-                <Stat label="Concepts mastered" value={`${o.concepts_mastered}`} sub={`of ${o.concepts_practised} practised`} />
-              </section>
-            )}
-
-            <div className="grid items-start gap-5 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                {overview?.up_next.length ? (
-                  <ContinueCard items={overview.up_next} />
-                ) : (
-                  <Card title="Continue">
-                    <p className="text-sm text-muted">Pick a topic in the study room to get going.</p>
-                  </Card>
-                )}
+            <div className="grid items-start gap-x-16 gap-y-14 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              <div className="flex flex-col gap-14">
+                <Continue items={overview?.up_next ?? []} />
+                <TodaysPlan plan={plan} />
               </div>
-              <TodaysPlan plan={plan} />
-            </div>
-
-            <div className="grid items-start gap-5 lg:grid-cols-2">
-              {report && <Attention report={report} />}
-              {overview && <SyllabusProgress overview={overview} readiness={home.readiness} />}
+              <aside className="flex flex-col gap-12 lg:border-l lg:border-line lg:pl-10">
+                {report && <Attention report={report} />}
+                {overview && <SyllabusProgress overview={overview} readiness={home.readiness} />}
+              </aside>
             </div>
           </>
         )}
 
-        <QuickActions />
+        <Shortcuts />
       </div>
     </main>
   );

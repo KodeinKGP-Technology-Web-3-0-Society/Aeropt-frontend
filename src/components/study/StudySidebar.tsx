@@ -30,16 +30,16 @@ type NavItem = {
   hint?: string;
 };
 
-// Four destinations, always labelled. Everything else lives in the account menu.
+// Five destinations, always labelled. Everything else lives in the account menu.
 const PRIMARY: NavItem[] = [
   { label: "Home", href: "/home", icon: HomeIcon, also: ["/dashboard"] },
   { label: "Study", href: "/study", icon: StudyIcon },
+  { label: "Chat", href: "/chat", icon: ChatIcon, hint: "Ask the tutor anything, any time" },
   { label: "Plan", href: "/plan", icon: PlanIcon, also: ["/lesson", "/assess", "/calendar"] },
   { label: "Progress", href: "/progress", icon: ProgressIcon, also: ["/readiness"] },
 ];
 
 const SECONDARY: NavItem[] = [
-  { label: "AI tutor chat", href: "/chat", icon: ChatIcon, hint: "Ask anything, any time" },
   { label: "Doubt solver", href: "/doubt", icon: DoubtIcon, hint: "One question, with your working checked" },
   { label: "Exam readiness", href: "/readiness", icon: ReadinessIcon },
   { label: "Settings", href: "/settings", icon: GearIcon },

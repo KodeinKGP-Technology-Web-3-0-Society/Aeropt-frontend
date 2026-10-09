@@ -40,8 +40,12 @@ const KATEX_OPTIONS = {
   output: "htmlAndMathml" as const,
 };
 
+// Reserved placeholder domains (RFC 2606) are never a real image: a model that
+// invents a diagram URL picks them. Render nothing rather than a broken-image box.
+const PLACEHOLDER_HOST = /^https?:\/\/([a-z0-9-]+\.)*example\.(com|org|net)(\/|$)/i;
+
 function DiagramImage({ src, alt }: { src?: string; alt?: string }) {
-  if (!src) return null;
+  if (!src || PLACEHOLDER_HOST.test(src)) return null;
   const { url, tikz } = resolveDiagramSrc(src);
   if (!url) return null;
   return (

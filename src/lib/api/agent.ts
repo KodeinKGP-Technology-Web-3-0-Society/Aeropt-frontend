@@ -1,4 +1,5 @@
 import { getAccessToken, requireAgentApiBase } from "@/lib/api/auth";
+import type { StudyStatusEvent } from "./study";
 import type { StudyStage } from "@/lib/api/roadmap";
 
 /**
@@ -165,7 +166,13 @@ export type ChatSessionSummary = {
   interaction_count: number;
   updated_at?: string | null;
   preview?: string | null;
+  /** Name the student gave the chat; null means show the first question. */
+  title?: string | null;
+  kind?: string | null;
 };
+
+/** Sessions the general chat page owns; room sessions (study, lesson, doubt) have none. */
+export type ChatSessionKind = "chat";
 
 export type ChatTurnItem = {
   turn_id: string;
@@ -236,8 +243,10 @@ async function agentFetch(path: string, init?: RequestInit): Promise<Response> {
 export async function fetchChatSessions(
   userId: string,
   limit = 20,
+  kind?: ChatSessionKind,
 ): Promise<ChatSessionSummary[]> {
   const params = new URLSearchParams({ user_id: userId, limit: String(limit) });
+  if (kind) params.set("kind", kind);
   const response = await agentFetch(`/api/v1/chat/sessions?${params}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
@@ -247,11 +256,11 @@ export async function fetchChatSessions(
   return payload.sessions ?? [];
 }
 
-export async function createChatSession(userId: string): Promise<string> {
+export async function createChatSession(userId: string, kind?: ChatSessionKind): Promise<string> {
   const response = await agentFetch(`/api/v1/chat/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId }),
+    body: JSON.stringify(kind ? { user_id: userId, kind } : { user_id: userId }),
   });
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
@@ -262,6 +271,33 @@ export async function createChatSession(userId: string): Promise<string> {
     throw new Error("Session created without an id.");
   }
   return payload.session_id;
+}
+
+/** Rename a chat; an empty title goes back to showing the first question. */
+export async function renameChatSession(
+  userId: string,
+  sessionId: string,
+  title: string,
+): Promise<string | null> {
+  const response = await agentFetch(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, title }),
+  });
+  const data = (await response.json().catch(() => ({}))) as { title?: string | null; detail?: string; error?: string };
+  if (!response.ok) throw new Error(sessionApiError(response, data));
+  return data.title ?? null;
+}
+
+export async function deleteChatSession(userId: string, sessionId: string): Promise<void> {
+  const params = new URLSearchParams({ user_id: userId });
+  const response = await agentFetch(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}?${params}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+    throw new Error(sessionApiError(response, data));
+  }
 }
 
 export async function fetchChatSessionDetail(
@@ -373,7 +409,7 @@ export async function sendChatMessage(payload: {
   studentWork?: string | null;
   assessAction?: "build" | "grade" | null;
   submissions?: Array<{ item_id: string; answer: string }> | null;
-}, onToken?: (token: string) => void): Promise<AgentChatResponse> {
+}, onToken?: (token: string) => void, onStatus?: (event: StudyStatusEvent) => void): Promise<AgentChatResponse> {
   const body: Record<string, unknown> = {
     user_id: payload.userId,
     session_id: payload.sessionId,
@@ -503,6 +539,12 @@ export async function sendChatMessage(payload: {
             onToken?.(token);
           } catch (e) {
             console.error("Failed to parse token", e);
+          }
+        } else if (eventType === "status") {
+          try {
+            onStatus?.(JSON.parse(eventData) as StudyStatusEvent);
+          } catch {
+            /* a malformed status line is cosmetic; keep reading */
           }
         } else if (eventType === "result") {
           finalResult = JSON.parse(eventData) as AgentChatResponse;

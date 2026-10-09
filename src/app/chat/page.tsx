@@ -1,27 +1,42 @@
 "use client";
 
 import AuthGuard from "@/components/AuthGuard";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import StudySidebar from "@/components/study/StudySidebar";
+import TutorChat from "@/components/tutorchat/TutorChat";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback } from "react";
 
-/** Bare /chat no longer creates a blank tutor session — rooms own sessions. */
-function RedirectHome() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace("/home");
-  }, [router]);
+/** General tutor chat: any doubt, any topic, with its own history. The open chat
+ * lives in `?c=<session id>` so a refresh or a shared link reopens it. Room
+ * sessions (Study Room, lesson, doubt) are not listed here; the tutor still sees
+ * them through the cross-room digest. */
+function GeneralChat() {
+  const params = useSearchParams();
+  const initial = (params.get("c") || "").trim() || null;
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas text-ink">
-      <p className="text-sm text-muted">Returning home…</p>
-    </div>
-  );
+  const onSessionChange = useCallback((id: string | null) => {
+    const url = id ? `/chat?c=${encodeURIComponent(id)}` : "/chat";
+    window.history.replaceState(null, "", url);
+  }, []);
+
+  return <TutorChat initialSessionId={initial} onSessionChange={onSessionChange} />;
 }
 
 export default function ChatPage() {
   return (
     <AuthGuard>
-      <RedirectHome />
+      <div className="flex h-dvh bg-canvas">
+        <StudySidebar />
+        <Suspense
+          fallback={
+            <main className="flex flex-1 items-center justify-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-line border-t-accent" />
+            </main>
+          }
+        >
+          <GeneralChat />
+        </Suspense>
+      </div>
     </AuthGuard>
   );
 }

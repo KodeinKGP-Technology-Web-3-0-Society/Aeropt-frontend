@@ -1488,15 +1488,19 @@ textarea:focus-visible,
   margin: 8px 0 0;
 }
 
+/* Display maths sits on the page like a textbook equation: centred, no box.
+   A tinted pill per equation turned a derivation into a stack of buttons and
+   spent the teal accent (10% of the page) on every line of algebra. */
 .markdown-math .katex-display {
-  margin: 14px 0;
-  padding: 10px 12px;
+  margin: 0.9rem 0;
+  padding: 0.15rem 0;
   overflow-x: auto;
   overflow-y: hidden;
   text-align: center;
-  background: var(--accent-soft);
-  border: 1px solid color-mix(in oklch, var(--accent) 18%, transparent);
-  border-radius: 10px;
+}
+/* Consecutive steps of one derivation read as one block. */
+.markdown-math .katex-display + .katex-display {
+  margin-top: -0.35rem;
 }
 
 .markdown-math .katex {

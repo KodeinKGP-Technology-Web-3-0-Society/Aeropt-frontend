@@ -244,6 +244,7 @@ export default function StudyRoom({
     busy,
     activity,
     elapsed,
+    streamingText,
     evaluation,
     send,
     advance,
@@ -265,7 +266,7 @@ export default function StudyRoom({
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, busy, study?.current_phase, activity.length]);
+  }, [messages.length, busy, study?.current_phase, activity.length, streamingText]);
 
   const phase: StudyPhase = study?.current_phase ?? "learn";
   const finished = phase === "evaluation" || phase === "completed";
@@ -328,7 +329,13 @@ export default function StudyRoom({
       {messages.map((m) => (
         <MessageBubble key={m.id} message={m} />
       ))}
-      {busy && (
+      {busy && streamingText ? (
+        <article className="study-notes" aria-live="polite">
+          <MathErrorBoundary content={streamingText}>
+            <MarkdownMath content={plainProse(streamingText)} />
+          </MathErrorBoundary>
+        </article>
+      ) : busy && (
         <LiveActivity
           activity={activity}
           elapsed={elapsed}

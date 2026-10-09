@@ -26,6 +26,11 @@ const pct = (v?: number | null) => (v == null ? null : `${Math.round(v * 100)}%`
 
 // ── Search ────────────────────────────────────────────────────────────────────
 
+const MODES = [
+  { key: "learn", label: "Learn a topic", hint: "A short lesson, worked examples, then questions." },
+  { key: "practice", label: "Practise questions", hint: "Straight to questions, no theory." },
+] as const;
+
 function TopicSearch({ initialMode }: { initialMode: "learn" | "practice" }) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
@@ -35,72 +40,69 @@ function TopicSearch({ initialMode }: { initialMode: "learn" | "practice" }) {
     if (trimmed) router.push(`/study/${encodeURIComponent(trimmed)}${mode === "practice" ? "?mode=practice" : ""}`);
   };
   return (
-    <div className="flex flex-col gap-3">
-    <div className="flex w-fit rounded-xl border border-line bg-surface p-1" role="radiogroup" aria-label="How do you want to study?">
-      {([
-        { key: "learn", label: "Learn a topic", sub: "lesson → examples → questions" },
-        { key: "practice", label: "Practise questions", sub: "skip the theory" },
-      ] as const).map((m) => (
-        <button
-          key={m.key}
-          type="button"
-          role="radio"
-          aria-checked={mode === m.key}
-          onClick={() => setMode(m.key)}
-          className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-left transition-colors ${
-            mode === m.key ? "bg-accent-soft text-ink" : "text-ink-2 hover:text-ink"
-          }`}
-        >
-          <span className="block text-sm font-semibold">{m.label}</span>
-          <span className="block text-[11px] text-muted">{m.sub}</span>
-        </button>
-      ))}
-    </div>
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        go(topic);
-      }}
-      className="w-full"
-    >
-      <label htmlFor="study-topic" className="sr-only">
-        Topic
-      </label>
-      <div className="relative flex items-center">
-        <input
-          id="study-topic"
-          aria-label="Topic"
-          type="text"
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          placeholder={mode === "practice" ? "Practise any JEE Physics topic — e.g. projectile motion" : "Study any JEE Physics topic — e.g. LC oscillations"}
-          className="h-12 w-full rounded-xl border border-line bg-surface pl-4 pr-14 text-sm text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-accent"
-        />
-        <button
-          type="submit"
-          disabled={!topic.trim()}
-          aria-label="Open study room"
-          className="absolute right-1.5 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-accent text-accent-on transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M5 12h14" />
-            <path d="m12 5 7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {SUGGESTIONS.map((s) => (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-6 border-b border-line" role="radiogroup" aria-label="How do you want to study?">
+        {MODES.map((m) => (
           <button
-            key={s}
+            key={m.key}
             type="button"
-            onClick={() => go(s)}
-            className="cursor-pointer rounded-full border border-line px-3 py-1 text-xs text-ink-2 transition-colors hover:border-accent hover:text-ink"
+            role="radio"
+            aria-checked={mode === m.key}
+            onClick={() => setMode(m.key)}
+            className={`-mb-px cursor-pointer border-b-2 pb-2.5 text-sm font-medium transition-colors ${
+              mode === m.key ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+            }`}
           >
-            {s}
+            {m.label}
           </button>
         ))}
       </div>
-    </form>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          go(topic);
+        }}
+        className="w-full"
+      >
+        <label htmlFor="study-topic" className="sr-only">
+          Topic
+        </label>
+        <div className="relative flex items-center">
+          <input
+            id="study-topic"
+            aria-label="Topic"
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder={mode === "practice" ? "Practise any JEE Physics topic, e.g. projectile motion" : "Study any JEE Physics topic, e.g. LC oscillations"}
+            className="h-12 w-full rounded-lg border border-line bg-surface pl-4 pr-14 text-sm text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-accent"
+          />
+          <button
+            type="submit"
+            disabled={!topic.trim()}
+            aria-label="Open study room"
+            className="absolute right-1.5 flex h-9 w-9 cursor-pointer items-center justify-center rounded-md bg-accent text-accent-on transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+        <p className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1.5 text-sm">
+          <span className="text-muted">{MODES.find((m) => m.key === mode)?.hint} Try</span>
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => go(s)}
+              className="cursor-pointer text-ink-2 underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent"
+            >
+              {s}
+            </button>
+          ))}
+        </p>
+      </form>
     </div>
   );
 }
@@ -108,8 +110,8 @@ function TopicSearch({ initialMode }: { initialMode: "learn" | "practice" }) {
 // ── Up next ───────────────────────────────────────────────────────────────────
 
 const KIND_LABEL: Record<UpNextItem["kind"], { tag: string; cta: string }> = {
-  review: { tag: "Review", cta: "Start review" },
-  resume: { tag: "Continue", cta: "Resume" },
+  review: { tag: "Review due", cta: "Start review" },
+  resume: { tag: "Continue where you left off", cta: "Resume" },
   next: { tag: "Up next", cta: "Start" },
   start: { tag: "Start here", cta: "Start" },
 };
@@ -118,50 +120,43 @@ function UpNext({ items }: { items: UpNextItem[] }) {
   if (!items.length) return null;
   const [first, ...rest] = items;
   return (
-    <section aria-labelledby="up-next-title">
-      <h2 id="up-next-title" className="text-[11px] font-bold uppercase tracking-widest text-muted">
-        What to study next
-      </h2>
-      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Link
-          href={conceptHref(first)}
-          className="group flex flex-col justify-between gap-4 rounded-2xl border border-accent/40 bg-accent-soft/40 p-5 transition-colors hover:border-accent"
-        >
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-accent">{KIND_LABEL[first.kind].tag}</span>
-            <p className="mt-1.5 font-display text-2xl font-semibold text-ink first-letter:uppercase">{first.name}</p>
-            <p className="text-xs text-muted">{first.chapter}</p>
-            <p className="mt-3 text-sm text-ink-2">{first.reason}</p>
-          </div>
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors group-hover:bg-accent-hover">
-            {KIND_LABEL[first.kind].cta} →
-          </span>
-        </Link>
-        {rest.length > 0 && (
-          <div className="flex flex-col gap-3">
+    <section aria-label="What to study next" className="grid items-start gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <Link href={conceptHref(first)} className="group block">
+        <p className={`text-sm font-medium ${first.kind === "review" ? "text-danger" : "text-accent"}`}>{KIND_LABEL[first.kind].tag}</p>
+        <p className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink first-letter:uppercase">{first.name}</p>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-2">
+          <span className="text-muted">{first.chapter}.</span> {first.reason}
+        </p>
+        <span className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors group-hover:bg-accent-hover">
+          {KIND_LABEL[first.kind].cta} →
+        </span>
+      </Link>
+      {rest.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium text-muted">After that</h2>
+          <ul className="mt-1 divide-y divide-line border-t border-line">
             {rest.map((item) => (
-              <Link
-                key={item.concept_id}
-                href={conceptHref(item)}
-                className="flex flex-1 flex-col justify-center rounded-2xl border border-line bg-surface px-4 py-3.5 transition-colors hover:border-accent"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted">{KIND_LABEL[item.kind].tag}</span>
-                <span className="mt-0.5 text-sm font-semibold text-ink first-letter:uppercase">{item.name}</span>
-                <span className="mt-0.5 text-xs text-muted">{item.reason}</span>
-              </Link>
+              <li key={item.concept_id}>
+                <Link href={conceptHref(item)} className="group block py-3">
+                  <span className="block text-sm font-medium text-ink first-letter:uppercase group-hover:text-accent">{item.name}</span>
+                  <span className="mt-0.5 line-clamp-2 block text-xs text-muted">
+                    {KIND_LABEL[item.kind].tag}. {item.reason}
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
-        )}
-      </div>
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
 
-// ── The three tables ──────────────────────────────────────────────────────────
+// ── The three lists ───────────────────────────────────────────────────────────
 
 function ConceptRow({ c, detail }: { c: OverviewConcept; detail: string | null }) {
   return (
-    <li className="group flex items-center gap-1 rounded-lg transition-colors hover:bg-hover">
+    <li className="group -mx-2 flex items-center gap-1 rounded-md transition-colors hover:bg-hover">
       <Link href={conceptHref(c)} className="flex min-w-0 flex-1 items-baseline justify-between gap-3 px-2 py-1.5">
         <span className="truncate text-sm text-ink first-letter:uppercase">{c.name}</span>
         {detail && <span className="shrink-0 text-xs tabular-nums text-muted">{detail}</span>}
@@ -169,13 +164,15 @@ function ConceptRow({ c, detail }: { c: OverviewConcept; detail: string | null }
       <Link
         href={`/study/${encodeURIComponent(c.concept_id)}?mode=practice`}
         title={`Practise questions on ${c.name}`}
-        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-accent opacity-70 transition-opacity hover:bg-accent-soft group-hover:opacity-100"
+        className="shrink-0 rounded px-2 py-1 text-xs font-medium text-accent opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
       >
         Practise
       </Link>
     </li>
   );
 }
+
+const BUCKET_LIMIT = 8;
 
 function Bucket({
   title,
@@ -192,29 +189,45 @@ function Bucket({
   detail: (c: OverviewConcept) => string | null;
   accent: string;
 }) {
+  const [showAll, setShowAll] = useState(false);
+  const total = groups.reduce((a, g) => a + g.concepts.length, 0);
+  // Cut the list at BUCKET_LIMIT concepts across chapters, keeping chapter headings.
+  const limit = showAll ? total : BUCKET_LIMIT;
+  const before = groups.map((_, i) => groups.slice(0, i).reduce((a, g) => a + g.concepts.length, 0));
+  const shown = groups
+    .map((g, i) => ({ ...g, concepts: g.concepts.slice(0, Math.max(0, limit - before[i])) }))
+    .filter((g) => g.concepts.length);
+  const id = `bucket-${title.replace(/\s+/g, "-").toLowerCase()}`;
   return (
-    <section className="flex flex-col rounded-2xl border border-line bg-surface" aria-labelledby={`bucket-${title}`}>
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
-        <h2 id={`bucket-${title}`} className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <span className={`h-2 w-2 rounded-full ${accent}`} aria-hidden />
-          {title}
-        </h2>
-        <span className="text-xs tabular-nums text-muted">{count}</span>
-      </header>
+    <section aria-labelledby={id}>
+      <h2 id={id} className="flex items-center gap-2 border-b border-line pb-2.5 text-base font-semibold text-ink">
+        <span className={`h-2 w-2 rounded-full ${accent}`} aria-hidden />
+        {title}
+        <span className="text-sm font-normal tabular-nums text-muted">{count}</span>
+      </h2>
       {groups.length === 0 ? (
-        <p className="px-4 py-5 text-sm text-muted">{empty}</p>
+        <p className="pt-3 text-sm text-muted">{empty}</p>
       ) : (
-        <div className="flex max-h-80 flex-col gap-3 overflow-y-auto px-2 py-3">
-          {groups.map((g) => (
+        <div className="flex flex-col gap-4 pt-3">
+          {shown.map((g) => (
             <div key={g.chapter}>
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{g.chapter}</p>
-              <ul className="mt-1">
+              <p className="text-xs font-medium text-muted">{g.chapter}</p>
+              <ul className="mt-0.5">
                 {g.concepts.map((c) => (
                   <ConceptRow key={c.concept_id} c={c} detail={detail(c)} />
                 ))}
               </ul>
             </div>
           ))}
+          {total > BUCKET_LIMIT && (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="w-fit cursor-pointer text-sm text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-accent"
+            >
+              {showAll ? "Show fewer" : `Show all ${total}`}
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -235,7 +248,7 @@ function Bar({ started, mastered, total, label }: { started: number; mastered: n
   const s = total ? (started / total) * 100 : 0;
   const m = total ? (mastered / total) * 100 : 0;
   return (
-    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-hover" role="img" aria-label={label}>
+    <div className="relative h-1 w-full overflow-hidden rounded-full bg-hover" role="img" aria-label={label}>
       <div className="absolute inset-y-0 left-0 rounded-full bg-accent/35" style={{ width: `${s}%` }} />
       <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${m}%` }} />
     </div>
@@ -246,86 +259,89 @@ function Coverage({ overview }: { overview: StudyOverview }) {
   return (
     <section aria-labelledby="coverage-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="coverage-title" className="text-[11px] font-bold uppercase tracking-widest text-muted">
+        <h2 id="coverage-title" className="text-base font-semibold text-ink">
           Still to cover
         </h2>
-        <span className="text-[11px] text-muted">bar: dark = mastered · light = started</span>
+        <span className="text-xs text-muted">Bar: dark is mastered, light is started</span>
       </div>
       {overview.coverage.length > 0 && (
-        <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-3 divide-y divide-line border-t border-line">
           {overview.coverage.map((c) => (
-            <div key={c.chapter_id} className="rounded-2xl border border-line bg-surface p-4">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="truncate text-sm font-semibold text-ink">{c.chapter}</p>
-                <span className="shrink-0 text-xs tabular-nums text-muted">
-                  {c.started}/{c.total}
-                </span>
-              </div>
-              <div className="mt-2">
-                <Bar started={c.started} mastered={c.mastered} total={c.total} label={`${c.chapter}: ${c.started} of ${c.total} started, ${c.mastered} mastered`} />
+            <li key={c.chapter_id} className="grid gap-x-10 gap-y-2 py-4 md:grid-cols-[16rem_minmax(0,1fr)]">
+              <div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-sm font-semibold text-ink">{c.chapter}</p>
+                  <span className="shrink-0 text-xs tabular-nums text-muted">
+                    {c.started}/{c.total}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <Bar started={c.started} mastered={c.mastered} total={c.total} label={`${c.chapter}: ${c.started} of ${c.total} started, ${c.mastered} mastered`} />
+                </div>
               </div>
               {c.next.length > 0 ? (
-                <>
-                  <p className="mt-3 text-xs text-muted">Next in this unit (syllabus order)</p>
-                  <ol className="mt-1.5 flex flex-wrap gap-1.5">
-                    {c.next.map((n, i) => (
-                      <li key={n.concept_id}>
-                        <Link
-                          href={`/study/${encodeURIComponent(n.concept_id)}`}
-                          className={`inline-block rounded-full border px-2.5 py-1 text-xs transition-colors first-letter:uppercase ${
-                            i === 0 ? "border-accent/50 font-semibold text-ink" : "border-line text-ink-2 hover:border-accent"
-                          }`}
-                        >
-                          {n.name}
-                        </Link>
-                      </li>
-                    ))}
-                    {c.remaining > c.next.length && <li className="self-center text-xs text-muted">+{c.remaining - c.next.length} more</li>}
-                  </ol>
-                </>
+                <ol className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={`Next in ${c.chapter}, in syllabus order`}>
+                  <li className="text-muted">Next</li>
+                  {c.next.map((n, i) => (
+                    <li key={n.concept_id}>
+                      <Link
+                        href={`/study/${encodeURIComponent(n.concept_id)}`}
+                        className={`inline-block transition-colors first-letter:uppercase hover:text-accent ${i === 0 ? "font-medium text-ink" : "text-ink-2"}`}
+                      >
+                        {n.name}
+                      </Link>
+                    </li>
+                  ))}
+                  {c.remaining > c.next.length && <li className="text-xs text-muted">+{c.remaining - c.next.length} more</li>}
+                </ol>
               ) : (
-                <p className="mt-3 text-xs text-success">Every topic in this unit started.</p>
+                <p className="text-sm text-success">Every topic in this unit started.</p>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      <details className="group mt-3 rounded-2xl border border-line bg-surface">
-        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-ink">
-          Full JEE Main syllabus
+      <details className="group border-y border-line">
+        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 py-4 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-muted transition-transform group-open:rotate-90">
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+            Full JEE Main syllabus
+          </span>
           <span className="text-xs font-normal text-muted">
-            {overview.syllabus.reduce((a, u) => a + u.started, 0)} of {overview.syllabus.reduce((a, u) => a + u.total, 0)} topics started ·{" "}
+            {overview.syllabus.reduce((a, u) => a + u.started, 0)} of {overview.syllabus.reduce((a, u) => a + u.total, 0)} topics started,{" "}
             {overview.syllabus.length} units
           </span>
         </summary>
-        <div className="border-t border-line px-4 py-4">
-          <p className="mb-4 text-xs text-muted">
+        <div className="pb-6">
+          <p className="mb-6 max-w-3xl text-xs leading-relaxed text-muted">
             Unit and topic list follows the NTA JEE Main 2026-27 syllabus as published by ALLEN. Topics marked{" "}
             <span className="font-semibold text-ink-2">tutor-taught</span> have no textbook section in your course
-            material — the tutor teaches them directly.
+            material, so the tutor teaches them directly.
           </p>
-          <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
+          <div className="grid gap-x-12 gap-y-8 md:grid-cols-2">
             {overview.syllabus.map((u, i) => (
               <section key={u.unit} aria-label={u.unit}>
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-ink-2">
-                    <span className="mr-1.5 tabular-nums text-muted">{i + 1}.</span>
+                  <p className="text-sm font-semibold text-ink">
+                    <span className="mr-2 tabular-nums text-muted">{i + 1}</span>
                     {u.unit}
                   </p>
-                  <span className="shrink-0 text-[11px] tabular-nums text-muted">
+                  <span className="shrink-0 text-xs tabular-nums text-muted">
                     {u.started}/{u.total}
                   </span>
                 </div>
                 <div className="mt-1.5">
                   <Bar started={u.started} mastered={u.mastered} total={u.total} label={`${u.unit}: ${u.started} of ${u.total} topics started, ${u.mastered} mastered`} />
                 </div>
-                <ul className="mt-2 flex flex-wrap gap-1.5">
+                <ul className="mt-2.5 flex flex-wrap gap-1.5">
                   {u.topics.map((t) => (
                     <li key={t.concept_id + t.topic}>
                       <Link
                         href={`/study/${encodeURIComponent(t.concept_id)}`}
-                        title={t.tutor_taught ? "No textbook section — taught directly by the tutor" : undefined}
+                        title={t.tutor_taught ? "No textbook section, taught directly by the tutor" : undefined}
                         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors hover:border-accent ${
                           t.status === "new" ? "border-line text-ink-2" : "border-accent/40 text-ink"
                         }`}
@@ -341,7 +357,7 @@ function Coverage({ overview }: { overview: StudyOverview }) {
               </section>
             ))}
           </div>
-          <p className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
+          <p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
             {(["mastered", "started", "review", "new"] as const).map((k) => (
               <span key={k} className="inline-flex items-center gap-1.5">
                 <span className={`h-1.5 w-1.5 rounded-full ${TOPIC_STATUS[k].dot}`} aria-hidden />
@@ -377,22 +393,19 @@ function StudyHome() {
 
   return (
     <main className="flex-1 overflow-y-auto px-4 pb-16 pt-24 sm:px-6">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="shrink-0">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Study room</p>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">What are we learning today?</h1>
-          </div>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-14">
+        <header className="flex flex-col gap-3 md:flex-row md:items-baseline md:justify-between">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink">What are we learning today?</h1>
           <button
             type="button"
             onClick={() => setHistoryOpen(true)}
-            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
+            className="flex w-fit cursor-pointer items-center gap-1.5 text-sm text-ink-2 transition-colors hover:text-ink"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
               <path d="M3 3v5h5M12 7v5l3 2" />
             </svg>
-            History
+            Past sessions
           </button>
         </header>
 
@@ -409,7 +422,7 @@ function StudyHome() {
           <>
             <UpNext items={overview.up_next} />
 
-            <section aria-label="Where you stand" className="grid gap-4 lg:grid-cols-3">
+            <section aria-label="Where you stand" className="grid gap-x-12 gap-y-10 lg:grid-cols-3">
               <Bucket
                 title="Needs review"
                 count={overview.counts.needs_review}
@@ -430,7 +443,7 @@ function StudyHome() {
                 title="Mastered"
                 count={overview.counts.mastered}
                 groups={overview.mastered}
-                empty="Nothing mastered yet — finish a study session to get here."
+                empty="Nothing mastered yet. Finish a study session to get here."
                 detail={(c) => pct(c.proficiency)}
                 accent="bg-success"
               />

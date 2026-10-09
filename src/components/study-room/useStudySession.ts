@@ -69,7 +69,8 @@ const KICKOFF: Partial<Record<StudyPhase, string>> = {
  * Fold a status event into the activity list. Repeats of a tool (two retrievals)
  * share a line with a count; "Thinking" stays the backdrop for whatever runs inside it.
  */
-function foldActivity(list: StudyActivity[], event: StudyStatusEvent): StudyActivity[] {
+/** Fold one status event into the activity list (shared with the general chat). */
+export function foldActivity(list: StudyActivity[], event: StudyStatusEvent): StudyActivity[] {
   const next = [...list];
   const idx = next.findIndex((a) => a.name === event.name);
   if (event.state === "start") {
@@ -99,6 +100,8 @@ export function useStudySession(
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [activity, setActivity] = useState<StudyActivity[]>([]);
+  // The reply as it streams in; null when no reply text has arrived yet.
+  const [streamingText, setStreamingText] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [evaluation, setEvaluation] = useState<{
     summary: string | null;
@@ -173,6 +176,7 @@ export function useStudySession(
       setNotice(null);
       setElapsed(0);
       setActivity([]);
+      setStreamingText(null);
       if (opts.echo !== false) {
         setMessages((prev) => [...prev, { id: nextId(), role: "user", content: query, auto: opts.auto }]);
       }
@@ -185,6 +189,7 @@ export function useStudySession(
           { sessionId: startInfo.session_id, studySessionId: study.study_session_id, query },
           controller.signal,
           (event) => setActivity((list) => foldActivity(list, event)),
+          (token) => setStreamingText((current) => (current ?? "") + token),
         );
         if (res.cancelled) {
           // Stopped: the message never happened. Take it out and hand it back.
@@ -257,6 +262,7 @@ export function useStudySession(
         });
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
+        setStreamingText(null);
         setPendingQuery(null);
         setActivity([]);
         setStopping(false);
@@ -474,6 +480,7 @@ export function useStudySession(
     stop,
     activity,
     elapsed,
+    streamingText,
     evaluation,
     send,
     advance,

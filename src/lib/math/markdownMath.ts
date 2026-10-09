@@ -331,10 +331,17 @@ function wrapUndelimitedLatex(text: string): string {
  * - split packed formulas on \n
  * - if mixed prose+math, keep math lines as $$ and prose as text (don't dump naked latex)
  */
+const MULTILINE_ENV_RE = /\\begin\{(aligned|alignedat|gathered|split|cases|array|[pbvBV]?matrix)\}/;
+
 function cleanDisplayMathBlocks(text: string): string {
   return text.replace(/\$\$([\s\S]*?)\$\$/g, (_full, inner: string) => {
     const raw = String(inner).split("$").join("").trim();
     if (!raw) return "";
+
+    // A multi-line environment (an aligned derivation, cases, a matrix) is one
+    // formula: its line breaks are \\ inside it. Splitting it per line handed KaTeX
+    // "\begin{aligned}" alone, which fell back to a code block per line.
+    if (MULTILINE_ENV_RE.test(raw) && /\\end\{/.test(raw)) return `$$\n${raw}\n$$`;
 
     const lines = splitFormulaSeparators(raw);
     if (!lines.length) return "";
@@ -377,6 +384,9 @@ function expandLiteralNewlinesInProse(text: string): string {
 function isDiagramLayoutFragment(line: string): boolean {
   const s = line.trim();
   if (!s || s.length > 36) return false;
+  // Markdown structure is never a diagram label: a list item ("* ", "- ", "1. ")
+  // or a heading. Joining these flattened nested formula lists into one line.
+  if (/^([*+-]|\d+[.)])(\s|$)/.test(s) || /^#{1,6}\s/.test(s)) return false;
   if (/^\(\d+\)\s+\S/.test(s) && s.length > 18) return false;
   if (/[.!?]/.test(s)) return false;
   if (isLatexHeavy(s)) return false;
@@ -403,13 +413,17 @@ function collapseDiagramLines(text: string): string {
         buffer = [];
       };
 
-      for (const line of lines) {
+      for (const [li, line] of lines.entries()) {
         if (!line.trim()) {
           flush();
           out.push("");
           continue;
         }
-        if (isDiagramLayoutFragment(line)) {
+        // The text was split around maths, so the first piece continues the line
+        // before a formula and the last runs into the next one. Only a whole line
+        // can be a diagram label; "(Arc length)" after "$s = r\theta$" is not.
+        const wholeLine = (li > 0 || index === 0) && (li < lines.length - 1 || index === parts.length - 1);
+        if (wholeLine && isDiagramLayoutFragment(line)) {
           buffer.push(line.trim());
         } else {
           flush();
@@ -666,6 +680,21 @@ export const MATH_GOLDEN_FIXTURES: MathFixture[] = [
       '**If we have a capacitor $C$ and an inductor $L$, and we want the "sloshing" to happen faster, should we increase or decrease the value of $L$?**',
     mustInclude: ["$C$ and an inductor $L$, and we want", "the value of $L$?"],
     mustNotInclude: ["$C $and", "$L, and"],
+  },
+  {
+    id: "aligned-derivation-stays-one-block",
+    surface: "chat",
+    input: "Substitute:\n\n$$\n\\begin{aligned}\nm(R - x) + M(-x) &= 0 \\\\\nx &= \\frac{mR}{m + M}\n\\end{aligned}\n$$\n\nDone.",
+    mustInclude: ["$$\n\\begin{aligned}\nm(R - x) + M(-x) &= 0 \\\\\nx &= \\frac{mR}{m + M}\n\\end{aligned}\n$$"],
+    mustNotInclude: ["```", "\\begin{aligned}\n$$"],
+  },
+  {
+    id: "nested-formula-list-keeps-its-lines",
+    surface: "chat",
+    input:
+      "*   **The Bridge Equations:** linear and angular quantities:\n    *   $s = r\\theta$ (Arc length)\n    *   $v = \\omega r$ (Linear velocity)\n*   **Next:** more",
+    mustInclude: ["\n    *   $s = r\\theta$ (Arc length)\n    *   $v = \\omega r$"],
+    mustNotInclude: ["(Arc length) *"],
   },
   {
     id: "nu-macro-survives-stray-n-split",

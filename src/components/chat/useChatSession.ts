@@ -98,7 +98,7 @@ function buildAssistantMessage(response: AgentChatResponse): Message {
 }
 
 
-function turnsToMessages(turns: ChatTurnItem[], sessionId: string): Message[] {
+export function turnsToMessages(turns: ChatTurnItem[], sessionId: string): Message[] {
   return turns.map((turn) => {
     const agent =
       turn.role === "user" ? null : presentationToAgentResponse(sessionId, turn);

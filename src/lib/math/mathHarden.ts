@@ -181,6 +181,43 @@ function renderableSpanCount(text: string): number {
   return n;
 }
 
+// TikZ is drawing code, not maths: KaTeX cannot parse it, so it reached the student
+// as its source, one code span per line. The agent compiles these into
+// `diagram:<id>` images; one that still arrives here (an older stored turn, a reply
+// cut off mid-picture) becomes a short note instead.
+const DRAWING_RE = /\\begin\{(tikzpicture|circuitikz)\}[\s\S]*?(?:\\end\{\1\}|$)/g;
+const DRAWING_NOTE = "*(A diagram belongs here but could not be drawn.)*";
+
+const occurrences = (text: string, token: string) => text.split(token).length - 1;
+
+export function replaceDrawingCode(raw: string): string {
+  if (!/\\begin\{(?:tikzpicture|circuitikz)\}/.test(raw)) return raw;
+  let out = "";
+  let pos = 0;
+  for (const m of raw.matchAll(DRAWING_RE)) {
+    let start = m.index;
+    let end = start + m[0].length;
+    // Take a fence or display-maths wrapper with it, but only one that is really
+    // open around the picture: "$$a$$ <picture> $$b$$" keeps both formulas.
+    const head = raw.slice(0, start).trimEnd();
+    const tail = raw.slice(end);
+    const next = tail.trimStart();
+    const nextAt = end + tail.length - next.length;
+    const fence = /```[A-Za-z]*$/.exec(head);
+    if (fence && occurrences(head, "```") % 2 === 1 && next.startsWith("```")) {
+      [start, end] = [fence.index, nextAt + 3];
+    } else if (head.endsWith("$$") && occurrences(head, "$$") % 2 === 1 && next.startsWith("$$")) {
+      [start, end] = [head.length - 2, nextAt + 2];
+    } else if (head.endsWith("\\[") && next.startsWith("\\]")) {
+      [start, end] = [head.length - 2, nextAt + 2];
+    }
+    start = Math.max(start, pos);
+    out += `${raw.slice(pos, start)}\n\n${DRAWING_NOTE}\n\n`;
+    pos = end;
+  }
+  return (out + raw.slice(pos)).replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /**
  * The full chat pipeline, with a guarantee attached: preprocessing may not make a
  * message worse.
@@ -192,6 +229,7 @@ function renderableSpanCount(text: string): number {
  */
 export function prepareMathMarkdown(raw: string, mode: "full" | "formula" = "full"): string {
   if (!raw?.trim()) return "";
+  raw = replaceDrawingCode(raw);
   if (mode === "formula") return hardenMathSpans(preprocessFormulaSlideMath(raw));
 
   const aggressive = hardenMathSpans(preprocessMarkdownMath(raw));
