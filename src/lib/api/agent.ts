@@ -1,4 +1,4 @@
-import { getAccessToken, requireAgentApiBase } from "@/lib/api/auth";
+import { authedFetch, getAccessToken, requireAgentApiBase } from "@/lib/api/auth";
 import type { StudyStatusEvent } from "./study";
 import type { StudyStage } from "@/lib/api/roadmap";
 
@@ -234,7 +234,7 @@ function sessionApiError(response: Response, data: { detail?: string; error?: st
 async function agentFetch(path: string, init?: RequestInit): Promise<Response> {
   const base = requireAgentApiBase();
   try {
-    return await fetch(`${base}${path}`, init);
+    return await authedFetch(`${base}${path}`, init);
   } catch {
     throw new Error("Unable to reach the tutor service. Check your connection and try again.");
   }
@@ -461,7 +461,7 @@ export async function sendChatMessage(payload: {
   let response: Response;
   armStallTimer();
   try {
-    response = await fetch(`${base}/api/v1/chat/message`, {
+    response = await authedFetch(`${base}/api/v1/chat/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/agent";
 import { invalidateCache } from "@/lib/api/apiCache";
 import { classroomHomeShouldRefresh } from "@/lib/api/classroom";
-import { getSupabaseUserId, getAgentApiBase } from "@/lib/api/auth";
+import { authedFetch, getAgentApiBase, getAuthHeaders, getSupabaseUserId } from "@/lib/api/auth";
 import type { Session, Message, StructuredResponse } from "./types";
 import { asPracticeBatch, asPracticeData, extractPracticeQuestion } from "@/lib/practiceContent";
 import { StudyStage } from "@/lib/api/roadmap";
@@ -280,13 +280,10 @@ export function useChatSession(
     const body = JSON.stringify({ user_id: userId, session_id: sessId });
     const url = `${agentBaseUrl}/api/v1/chat/end-session`;
     try {
-      if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-        const ok = navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
-        if (ok) return;
-      }
+      // Not sendBeacon: it cannot carry the Authorization header the agent requires.
       void fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body,
         keepalive: true,
       });
@@ -304,7 +301,7 @@ export function useChatSession(
     setError("");
     endingBeaconSentRef.current = true;
     try {
-      await fetch(`${agentBaseUrl}/api/v1/chat/end-session`, {
+      await authedFetch(`${agentBaseUrl}/api/v1/chat/end-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, session_id: activeSessionId }),

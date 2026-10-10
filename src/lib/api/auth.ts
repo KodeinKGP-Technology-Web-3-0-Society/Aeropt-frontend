@@ -325,6 +325,22 @@ export async function parseResponseError(response: Response): Promise<string> {
   }
 }
 
+/**
+ * A raw `fetch` with the access token attached and one silent refresh on 401, for
+ * callers that need the Response itself (SSE streams). Network errors still throw.
+ */
+export async function authedFetch(url: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  const authHeaders = getAuthHeaders();
+  if (authHeaders.Authorization) headers.set("Authorization", authHeaders.Authorization);
+  const response = await fetch(url, { ...init, headers });
+  if (response.status !== 401) return response;
+  const newToken = await refreshAccessToken();
+  if (!newToken) return response;
+  headers.set("Authorization", `Bearer ${newToken}`);
+  return fetch(url, { ...init, headers });
+}
+
 export async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   const authHeaders = getAuthHeaders();

@@ -309,7 +309,7 @@ export async function sendStudyMessage(
     armStall();
     let response: Response;
     try {
-      response = await fetch(`${auth.requireAgentApiBase()}/api/v1/study/message`, {
+      response = await auth.authedFetch(`${auth.requireAgentApiBase()}/api/v1/study/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
