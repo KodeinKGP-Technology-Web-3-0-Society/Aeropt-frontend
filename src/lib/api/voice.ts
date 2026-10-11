@@ -51,11 +51,13 @@ export async function transcribeAudio(
   languageCode?: string,
 ): Promise<VoiceTranscribeResponse> {
   const base = requireAgentApiBase();
+  // Clean MIME type to avoid codecs suffix (e.g. audio/webm;codecs=opus -> audio/webm)
+  const rawMime = audioBlob.type || "audio/webm";
+  const cleanMime = rawMime.split(";")[0].trim().toLowerCase() || "audio/webm";
+  const ext = cleanMime.includes("wav") ? "wav" : cleanMime.includes("mp4") ? "m4a" : "webm";
+  const normalizedBlob = new Blob([audioBlob], { type: cleanMime });
   const formData = new FormData();
-  // Determine file extension from MIME type
-  const mimeType = audioBlob.type || "audio/webm";
-  const ext = mimeType.includes("wav") ? "wav" : mimeType.includes("mp4") ? "m4a" : "webm";
-  formData.append("file", audioBlob, `doubt_audio.${ext}`);
+  formData.append("file", normalizedBlob, `doubt_audio.${ext}`);
   if (languageCode) {
     formData.append("language_code", languageCode);
   }
