@@ -17,6 +17,7 @@ import {
 import type { Message } from "./types";
 import type { AgentChatResponse, FlashcardItem } from "@/lib/api/agent";
 import { plainProse } from "@/lib/plainProse";
+import AudioTutorPlayer from "@/components/voice/AudioTutorPlayer";
 
 function TypingIndicator() {
   return (
@@ -233,9 +234,16 @@ export default function AssistantResponse({
           ))}
         </div>
       ) : (
-        <MathErrorBoundary content={message.content}>
-          <MarkdownMath content={plainProse(message.content)} />
-        </MathErrorBoundary>
+        <div>
+          <MathErrorBoundary content={message.content}>
+            <MarkdownMath content={plainProse(message.content)} />
+          </MathErrorBoundary>
+          {message.content && !isPreparing && (
+            <div className="mt-2.5 flex items-center justify-end">
+              <AudioTutorPlayer text={message.content} compact={true} />
+            </div>
+          )}
+        </div>
       )}
       {extras}
     </article>

@@ -1,4 +1,5 @@
 import React, { FormEvent, useRef, useState } from "react";
+import VoiceDoubtRecorder from "@/components/voice/VoiceDoubtRecorder";
 
 function ArrowUpIcon() {
   return (
@@ -67,13 +68,21 @@ export default function ChatInput({
             }
           }}
         />
-        <button
-          type="submit"
-          disabled={sessionNotFound || isReplying || isLoadingSession || !input.trim()}
-          aria-label="Send message"
-        >
-          <ArrowUpIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <VoiceDoubtRecorder
+            onTranscribed={(transcript) => {
+              setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+            }}
+            disabled={sessionNotFound || isLoadingSession || isReplying}
+          />
+          <button
+            type="submit"
+            disabled={sessionNotFound || isReplying || isLoadingSession || !input.trim()}
+            aria-label="Send message"
+          >
+            <ArrowUpIcon />
+          </button>
+        </div>
       </div>
       {error && !sessionNotFound ? (
         <p className="chat-error" role="status">

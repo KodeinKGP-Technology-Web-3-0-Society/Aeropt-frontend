@@ -9,6 +9,8 @@ import { sendChatMessage } from "@/lib/api/agent";
 import { getSupabaseUserId, ApiError } from "@/lib/api/auth";
 import { ensureClassroomAgentSession } from "@/lib/api/classroom";
 import Link from "next/link";
+import VoiceDoubtRecorder from "@/components/voice/VoiceDoubtRecorder";
+import AudioTutorPlayer from "@/components/voice/AudioTutorPlayer";
 
 function DoubtRoom() {
   const searchParams = useSearchParams();
@@ -123,13 +125,21 @@ function DoubtRoom() {
           <form onSubmit={onSubmit} className="flex flex-col gap-6">
             <div className="rounded-2xl border border-line bg-surface p-6 sm:p-8 shadow-sm transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
               <label className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-surface">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-surface">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-muted">
+                      What are you struggling with?
+                    </span>
                   </div>
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-muted">
-                    What are you struggling with?
-                  </span>
+                  <VoiceDoubtRecorder
+                    onTranscribed={(transcript) => {
+                      setQuestion((prev) => (prev ? `${prev} ${transcript}` : transcript));
+                    }}
+                    disabled={submitting || Boolean(reply)}
+                  />
                 </div>
                 <textarea
                   value={question}
@@ -199,17 +209,23 @@ function DoubtRoom() {
         {reply && (
           <section className="mt-8 animate-in fade-in slide-in-from-bottom-4" aria-live="polite">
             <div className="rounded-2xl border-2 border-accent/20 bg-surface shadow-[var(--shadow-card)] overflow-hidden">
-              <div className="border-b border-line bg-accent/5 px-6 py-4 flex items-center justify-between">
+              <div className="border-b border-line bg-accent/5 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-bold text-ink flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-accent animate-pulse" />
                   AI Tutor Response
                 </h2>
-                <button 
-                  onClick={() => { setReply(""); setQuestion(""); setWorking(""); }} 
-                  className="text-[11px] font-bold uppercase tracking-widest text-muted hover:text-ink transition-colors"
-                >
-                  Ask Another
-                </button>
+                <div className="flex items-center gap-3">
+                  <AudioTutorPlayer text={reply} compact={true} />
+                  <button 
+                    onClick={() => { setReply(""); setQuestion(""); setWorking(""); }} 
+                    className="cursor-pointer text-[11px] font-bold uppercase tracking-widest text-muted hover:text-ink transition-colors"
+                  >
+                    Ask Another
+                  </button>
+                </div>
+              </div>
+              <div className="px-6 pt-5 sm:px-8">
+                <AudioTutorPlayer text={reply} title="Bulbul Audio Tutor" />
               </div>
               <div className="p-6 sm:p-8 prose prose-sm prose-slate max-w-none text-ink">
                 <MarkdownMath content={reply} />

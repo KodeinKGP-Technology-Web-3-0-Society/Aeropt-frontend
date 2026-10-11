@@ -7,6 +7,7 @@ import MathErrorBoundary from "@/components/MathErrorBoundary";
 import LiveActivity from "@/components/study-room/LiveActivity";
 import ChatHistory from "./ChatHistory";
 import { useTutorChat } from "./useTutorChat";
+import VoiceDoubtRecorder from "@/components/voice/VoiceDoubtRecorder";
 
 const STARTERS = [
   "Why does a body in uniform circular motion accelerate if its speed is constant?",
@@ -69,14 +70,22 @@ function Composer({ disabled, onSend }: { disabled: boolean; onSend: (text: stri
           aria-label="Message the tutor"
           className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted"
         />
-        <button
-          type="submit"
-          disabled={disabled || !value.trim()}
-          aria-label="Send"
-          className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-accent text-accent-on transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <SendIcon />
-        </button>
+        <div className="flex items-center gap-1.5 pb-0.5">
+          <VoiceDoubtRecorder
+            onTranscribed={(transcript) => {
+              setValue((prev) => (prev ? `${prev} ${transcript}` : transcript));
+            }}
+            disabled={disabled}
+          />
+          <button
+            type="submit"
+            disabled={disabled || !value.trim()}
+            aria-label="Send"
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-accent text-accent-on transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <SendIcon />
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-center text-[11px] text-muted">
         Enter to send · Shift+Enter for a new line · The tutor remembers your Study Room work
