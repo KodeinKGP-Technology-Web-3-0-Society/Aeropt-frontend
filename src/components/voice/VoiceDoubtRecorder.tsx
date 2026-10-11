@@ -125,8 +125,15 @@ export default function VoiceDoubtRecorder({
       }, 1000);
     } catch (err: unknown) {
       const errorName = err instanceof Error ? err.name : "";
-      if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
-        setError("Microphone permission denied. Please allow mic access.");
+      const errorMsg = err instanceof Error ? err.message : "";
+      if (
+        errorName === "NotAllowedError" ||
+        errorName === "PermissionDeniedError" ||
+        errorName === "SecurityError" ||
+        errorMsg.toLowerCase().includes("permission") ||
+        errorMsg.toLowerCase().includes("policy")
+      ) {
+        setError("Microphone permission denied. Please allow mic access (or open directly in browser tab).");
       } else {
         setError("Could not access microphone.");
       }
