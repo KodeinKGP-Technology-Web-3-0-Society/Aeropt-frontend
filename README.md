@@ -1,6 +1,6 @@
-# PrepWise — Frontend
+# JEEPath — Frontend
 
-Next.js 16 app for PrepWise: landing, auth, onboarding, dashboard, roadmap,
+Next.js 16 app for JEEPath: landing, auth, onboarding, dashboard, roadmap,
 progress, practice, and the Study Session (`/chat`).
 
 Port **3000**. Django (`:8000`) is auth and roadmaps. The Learning Agent

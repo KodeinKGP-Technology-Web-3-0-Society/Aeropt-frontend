@@ -20,7 +20,7 @@ export default function AudioTutorPlayer({
   const [isLoading, setIsLoading] = useState(false);
   const [speaker, setSpeaker] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("prepwise_voice_speaker") || "aditya";
+      return localStorage.getItem("jeepath_voice_speaker") || localStorage.getItem("prepwise_voice_speaker") || "aditya";
     }
     return "aditya";
   });
@@ -94,7 +94,7 @@ export default function AudioTutorPlayer({
   function handleSpeakerChange(newSpeaker: string) {
     setSpeaker(newSpeaker);
     if (typeof window !== "undefined") {
-      localStorage.setItem("prepwise_voice_speaker", newSpeaker);
+      localStorage.setItem("jeepath_voice_speaker", newSpeaker);
     }
     // Stop current audio so next play uses the newly selected speaker
     if (audioRef.current) {

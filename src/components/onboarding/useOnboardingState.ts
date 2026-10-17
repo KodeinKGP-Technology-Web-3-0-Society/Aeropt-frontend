@@ -11,7 +11,7 @@ import type {
 } from "@/lib/api/onboarding";
 
 export const TOTAL_STEPS = onboarding.TOTAL_ONBOARDING_STEPS;
-const DRAFT_KEY = "prepwise_onboarding_draft";
+const DRAFT_KEY = "jeepath_onboarding_draft";
 const DRAFT_VERSION = 3;
 
 type OnboardingDraft = {
@@ -23,7 +23,7 @@ type OnboardingDraft = {
 function loadDraft(): OnboardingDraft | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY);
+    const raw = sessionStorage.getItem(DRAFT_KEY) || sessionStorage.getItem("prepwise_onboarding_draft");
     if (!raw) return null;
     const draft = JSON.parse(raw) as OnboardingDraft;
     const fromLegacy = (draft.version ?? 0) < DRAFT_VERSION;
@@ -199,8 +199,10 @@ export function useOnboardingState() {
     }
   };
 
+  const [activeSubject, setActiveSubject] = useState<string>("Physics");
   const physicsUnits = subjects.find((s) => s.name === "Physics")?.units ?? [];
-  const showUnits = state.journey_type !== "fresh_start" && physicsUnits.length > 0;
+  const activeSubjectUnits = subjects.find((s) => s.name === activeSubject)?.units ?? [];
+  const showUnits = state.journey_type !== "fresh_start" && subjects.some((s) => (s.units?.length ?? 0) > 0);
   return {
     state,
     setState,
@@ -213,6 +215,10 @@ export function useOnboardingState() {
     goToStep,
     advanceFrom,
     finishOnboarding,
+    subjects,
+    activeSubject,
+    setActiveSubject,
+    activeSubjectUnits,
     physicsUnits,
     showUnits,
   };

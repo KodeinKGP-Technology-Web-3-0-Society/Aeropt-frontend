@@ -61,7 +61,7 @@ export class ApiError extends Error {
 }
 
 /** Fired once when a refresh attempt fails, i.e. the session is really over. */
-export const AUTH_EXPIRED_EVENT = "prepwise:auth-expired";
+export const AUTH_EXPIRED_EVENT = "jeepath:auth-expired";
 
 export function onAuthExpired(handler: () => void): () => void {
   if (typeof window === "undefined") return () => {};

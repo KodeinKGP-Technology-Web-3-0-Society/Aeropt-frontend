@@ -20,10 +20,10 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const THEME_BOOT = `(function(){try{var t=localStorage.getItem("prepwise_theme");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.classList.toggle("light",t==="light");}catch(e){}})();`;
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem("jeepath_theme")||localStorage.getItem("prepwise_theme");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.classList.toggle("light",t==="light");}catch(e){}})();`;
 
 export const metadata: Metadata = {
-  title: "JeePath — your path to JEE",
+  title: "JEEPath — your path to JEE",
   description: "Knows where you're stuck before you do.",
 };
 

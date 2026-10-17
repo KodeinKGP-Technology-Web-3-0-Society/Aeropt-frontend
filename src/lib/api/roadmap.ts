@@ -421,7 +421,7 @@ export function buildContinueChatUrl(
 
 /** localStorage key binding a roadmap node to its active study session + stage. */
 export function roadmapSessionBindKey(nodeId: string): string {
-  return `prepwise_roadmap_bind:${nodeId}`;
+  return `jeepath_roadmap_bind:${nodeId}`;
 }
 
 export type RoadmapSessionBind = {
@@ -434,13 +434,17 @@ export function readRoadmapSessionBind(nodeId: string): RoadmapSessionBind | nul
   try {
     let raw = localStorage.getItem(roadmapSessionBindKey(nodeId));
     if (!raw) {
-      // Migration from old key
-      const oldKey = `aeropt-roadmap-bind:${nodeId}`;
-      raw = localStorage.getItem(oldKey);
-      if (raw) {
-        localStorage.setItem(roadmapSessionBindKey(nodeId), raw);
-        localStorage.removeItem(oldKey);
-      } else {
+      // Migration from old keys
+      const oldKeys = [`prepwise_roadmap_bind:${nodeId}`, `aeropt-roadmap-bind:${nodeId}`];
+      for (const oldKey of oldKeys) {
+        raw = localStorage.getItem(oldKey);
+        if (raw) {
+          localStorage.setItem(roadmapSessionBindKey(nodeId), raw);
+          localStorage.removeItem(oldKey);
+          break;
+        }
+      }
+      if (!raw) {
         return null;
       }
     }

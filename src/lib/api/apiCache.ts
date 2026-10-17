@@ -10,7 +10,7 @@ type CacheEntry<T> = {
 };
 
 const memory = new Map<string, CacheEntry<unknown>>();
-const STORAGE_PREFIX = "prepwise_api_cache:";
+const STORAGE_PREFIX = "jeepath_api_cache:";
 const inFlight = new Map<string, Promise<unknown>>();
 
 function storageKey(key: string): string {

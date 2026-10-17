@@ -234,7 +234,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [refreshOnboardingStatus]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("prepwise_theme");
+    const savedTheme = localStorage.getItem("jeepath_theme") || localStorage.getItem("prepwise_theme");
     if (savedTheme === "dark" || savedTheme === "light") {
       setAppTheme(savedTheme);
     }
@@ -244,7 +244,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Apply theme to DOM after restore so a first-paint default cannot wipe a saved preference.
   useEffect(() => {
     if (!themeReady) return;
-    localStorage.setItem("prepwise_theme", appTheme);
+    localStorage.setItem("jeepath_theme", appTheme);
     document.documentElement.setAttribute("data-theme", appTheme);
     if (appTheme === "dark") {
       document.documentElement.classList.add("dark");
