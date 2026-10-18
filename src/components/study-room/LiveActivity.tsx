@@ -20,9 +20,14 @@ export default function LiveActivity({
 }) {
   // "Thinking" is the backdrop the tools run inside; show it only while nothing
   // more specific is happening, and never as a finished step.
-  const steps = activity.filter((a) => a.name !== "thinking" && a.name !== "context");
-  const running = steps.find((a) => a.state === "running");
-  const headline = running?.label ?? (steps.length ? "Writing the reply" : activity.find((a) => a.state === "running")?.label ?? fallback);
+  const list = Array.isArray(activity) ? activity : [];
+  const steps = list.filter((a) => a.name !== "thinking" && a.name !== "context");
+  const running = steps.find((a) => a.state === "running") ?? list.find((a) => a.state === "running");
+  const headline = running
+    ? running.thought
+      ? `${running.label} (${running.thought})`
+      : running.label
+    : (steps.length ? "Writing the reply" : fallback);
 
   return (
     <div className="rounded-2xl border border-line bg-surface px-4 py-3" role="status" aria-live="polite">
@@ -61,10 +66,15 @@ export default function LiveActivity({
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               )}
-              <span className={a.state === "running" ? "text-ink" : ""}>
-                {a.label}
-                {a.count > 1 ? <span className="text-muted"> ×{a.count}</span> : null}
-              </span>
+              <div className="flex flex-col">
+                <span className={a.state === "running" ? "text-ink font-medium" : ""}>
+                  {a.label}
+                  {a.count > 1 ? <span className="text-muted"> ×{a.count}</span> : null}
+                </span>
+                {a.thought && (
+                  <span className="text-[11px] italic text-muted">💭 {a.thought}</span>
+                )}
+              </div>
             </li>
           ))}
         </ol>

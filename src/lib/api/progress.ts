@@ -56,6 +56,8 @@ export interface ProgressConcept {
   accuracy: number | null;
   trend: number | null;
   status: ConceptStatus;
+  /** Taught in chat or a lesson, never practised: no score yet. */
+  discussed_only?: boolean;
   flagged_weak: boolean;
   last_practised: string | null;
   days_since: number | null;

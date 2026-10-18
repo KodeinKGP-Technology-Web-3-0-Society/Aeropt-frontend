@@ -68,6 +68,18 @@ export interface StudyStatusEvent {
   name: string;
   state: "start" | "done" | "error";
   label: string;
+  thought?: string;
+  material?: {
+    concept_id?: string;
+    title?: string;
+    sources?: string[];
+    chunks_found?: number;
+    snippets?: Array<{
+      title?: string;
+      text?: string;
+      cite?: string;
+    }>;
+  };
 }
 
 export interface StudySessionView {

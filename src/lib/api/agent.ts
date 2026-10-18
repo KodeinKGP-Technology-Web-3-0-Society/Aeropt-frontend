@@ -409,7 +409,7 @@ export async function sendChatMessage(payload: {
   studentWork?: string | null;
   assessAction?: "build" | "grade" | null;
   submissions?: Array<{ item_id: string; answer: string }> | null;
-}, onToken?: (token: string) => void, onStatus?: (event: StudyStatusEvent) => void): Promise<AgentChatResponse> {
+}, onToken?: (token: string) => void, onStatus?: (event: StudyStatusEvent) => void, onReplace?: (text: string) => void): Promise<AgentChatResponse> {
   const body: Record<string, unknown> = {
     user_id: payload.userId,
     session_id: payload.sessionId,
@@ -539,6 +539,15 @@ export async function sendChatMessage(payload: {
             onToken?.(token);
           } catch (e) {
             console.error("Failed to parse token", e);
+          }
+        } else if (eventType === "replace") {
+          // The Answer Checker revised a draft the student is already reading.
+          try {
+            const text = JSON.parse(eventData) as string;
+            streamed = text;
+            onReplace?.(text);
+          } catch {
+            /* the final `result` frame carries the same text */
           }
         } else if (eventType === "status") {
           try {

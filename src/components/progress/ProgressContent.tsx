@@ -163,14 +163,20 @@ function Concepts({ concepts }: { concepts: ProgressConcept[] }) {
                   <span className="block text-xs text-muted">{c.chapter}</span>
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS[c.status].tone}`}>{STATUS[c.status].label}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS[c.status].tone}`}>
+                    {c.discussed_only ? "Studied" : STATUS[c.status].label}
+                  </span>
                   {c.review_due && <span className="ml-1.5 text-[11px] text-ink-2">· review due</span>}
                 </td>
                 <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <ProficiencyBar value={c.proficiency} label={`${pct(c.proficiency)} proficiency`} />
-                    <span className="w-9 shrink-0 text-right text-xs tabular-nums text-ink-2">{pct(c.proficiency)}</span>
-                  </div>
+                  {c.attempts ? (
+                    <div className="flex items-center gap-2">
+                      <ProficiencyBar value={c.proficiency} label={`${pct(c.proficiency)} proficiency`} />
+                      <span className="w-9 shrink-0 text-right text-xs tabular-nums text-ink-2">{pct(c.proficiency)}</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted">Not practised yet</span>
+                  )}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-ink-2">
                   {c.correct}/{c.attempts}

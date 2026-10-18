@@ -15,6 +15,7 @@ import { authedFetch, getAgentApiBase, getAuthHeaders, getSupabaseUserId } from 
 import type { Session, Message, StructuredResponse } from "./types";
 import { asPracticeBatch, asPracticeData, extractPracticeQuestion } from "@/lib/practiceContent";
 import { StudyStage } from "@/lib/api/roadmap";
+import type { StudyStatusEvent } from "@/lib/api/study";
 import * as onboarding from "@/lib/api/onboarding";
 
 const SESSION_STORAGE_KEY = "agent_active_session_id";
@@ -202,7 +203,9 @@ export function useChatSession(
       flaggedStepId?: string | null;
       surface?: "lesson" | "doubt" | "assess" | null;
     },
-    onToken?: (token: string) => void
+    onToken?: (token: string) => void,
+    onStatus?: (event: StudyStatusEvent) => void,
+    onReplace?: (text: string) => void
   ) {
     const userId = getSupabaseUserId();
     if (!userId) {
@@ -220,7 +223,7 @@ export function useChatSession(
       placement: placementContext,
       flaggedStepId: options?.flaggedStepId,
       surface: options?.surface ?? surface ?? null,
-    }, onToken);
+    }, onToken, onStatus, onReplace);
     if (
       classroomHomeShouldRefresh({
         gradedOutcome: options?.gradedOutcome,

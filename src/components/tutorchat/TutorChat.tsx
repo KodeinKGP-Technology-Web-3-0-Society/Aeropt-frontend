@@ -2,6 +2,7 @@
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import AssistantResponse from "@/components/chat/AssistantResponse";
+import ActivityTrail from "@/components/chat/ActivityTrail";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
 import LiveActivity from "@/components/study-room/LiveActivity";
@@ -11,9 +12,9 @@ import VoiceDoubtRecorder from "@/components/voice/VoiceDoubtRecorder";
 
 const STARTERS = [
   "Why does a body in uniform circular motion accelerate if its speed is constant?",
-  "Explain the difference between work done by conservative and non-conservative forces",
-  "How do I decide the sign convention in a mirror problem?",
-  "Give me a JEE-level question on rotational motion",
+  "How do I determine whether an organic reaction follows SN1 or SN2 mechanism?",
+  "Explain how to evaluate definite integrals using the King's Property",
+  "Give me a JEE Advanced problem on chemical equilibrium and Le Chatelier's principle",
 ];
 
 function SendIcon() {
@@ -166,7 +167,7 @@ export default function TutorChat({
             <MenuIcon />
           </button>
           <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{activeLabel}</h1>
-          <span className="hidden text-xs text-muted sm:inline">Physics tutor</span>
+          <span className="hidden text-xs text-muted sm:inline">JEE Tutor (PCM)</span>
         </header>
 
         <div
@@ -198,7 +199,7 @@ export default function TutorChat({
               <div className="mt-10 sm:mt-20">
                 <h2 className="text-2xl font-semibold tracking-tight text-ink">What are you stuck on?</h2>
                 <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-                  Ask any physics doubt, paste a question you could not solve, or ask what to revise. The tutor
+                  Ask any doubt across Physics, Chemistry, or Mathematics, paste a question you could not solve, or ask what to revise. The tutor
                   knows what you have studied and practised, so you can say “the question from my last lesson”.
                 </p>
                 <div className="mt-6 grid gap-2 sm:grid-cols-2">
@@ -248,6 +249,9 @@ export default function TutorChat({
                   <div className="study-notes min-w-0" aria-live="polite">
                     {chat.streaming ? (
                       <article className="lesson-response assistant-plain">
+                        {chat.activity.length > 0 && (
+                          <ActivityTrail activity={chat.activity} waiting={false} />
+                        )}
                         <MathErrorBoundary content={chat.streaming}>
                           <MarkdownMath content={chat.streaming} />
                         </MathErrorBoundary>

@@ -151,6 +151,7 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
       const timer = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
 
       let sessionId = activeRef.current;
+      let recordedSteps: StudyActivity[] = [];
       try {
         if (!sessionId) {
           sessionId = await createChatSession(userId, "chat");
@@ -170,7 +171,13 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
             if (activeRef.current === target) setStreaming((s) => (s ?? "") + token);
           },
           (event) => {
-            if (activeRef.current === target) setActivity((list) => foldActivity(list, event));
+            if (activeRef.current === target) {
+              setActivity((list) => {
+                const next = foldActivity(list, event);
+                recordedSteps = next;
+                return next;
+              });
+            }
           },
         );
         if (activeRef.current === target) {
@@ -181,6 +188,7 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
               role: "assistant",
               content: result.response?.trim() || "I could not generate a response.",
               agent: result,
+              activity: recordedSteps.length ? recordedSteps : undefined,
             },
           ]);
         }

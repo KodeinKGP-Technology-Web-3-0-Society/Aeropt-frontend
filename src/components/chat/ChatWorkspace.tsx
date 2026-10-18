@@ -20,6 +20,9 @@ import { useChatSession } from "./useChatSession";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import type { FlashcardItem } from "@/lib/api/agent";
+import type { StudyStatusEvent } from "@/lib/api/study";
+import { foldActivity, type StudyActivity } from "@/components/study-room/useStudySession";
+import type { Message } from "./types";
 
 function HistoryIcon() {
   return (
@@ -175,6 +178,29 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
     return agentResponse;
   }
 
+  /**
+   * Handlers for the placeholder message of one in-flight reply. The steps are also
+   * kept here, so the final message can carry them after the placeholder is removed.
+   */
+  function streamHandlers(assistantId: string) {
+    let steps: StudyActivity[] = [];
+    const patch = (fn: (msg: Message) => Message) =>
+      chat.setMessages((current) => current.map((msg) => (msg.id === assistantId ? fn(msg) : msg)));
+    return {
+      args: [
+        (token: string) => patch((msg) => ({ ...msg, content: msg.content + token })),
+        (event: StudyStatusEvent) => {
+          steps = foldActivity(steps, event);
+          const snapshot = steps;
+          patch((msg) => ({ ...msg, activity: snapshot }));
+        },
+        // The Answer Checker revised the draft the student is reading.
+        (text: string) => patch((msg) => ({ ...msg, content: text })),
+      ] as const,
+      steps: () => (steps.length ? steps : undefined),
+    };
+  }
+
   async function submitMessage(
     value: string,
     gradedOutcome?: "correct" | "incorrect",
@@ -195,6 +221,7 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
     setFailedTurn(null);
     chat.setIsReplying(true);
     const assistantId = crypto.randomUUID();
+    const stream = streamHandlers(assistantId);
     chat.setMessages((current) => [
       ...current,
       userMessage,
@@ -209,18 +236,11 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
           gradedOutcome,
           studyStage,
         },
-        (token) => {
-          chat.setMessages((current) =>
-            current.map((msg) =>
-              msg.id === assistantId
-                ? { ...msg, content: msg.content + token }
-                : msg
-            )
-          );
-        }
+        ...stream.args
       );
-      
+
       chat.setMessages((current) => current.filter((m) => m.id !== assistantId));
+      const steps = stream.steps();
       
       const newResponse = await handleAgentResponse(agentResponse);
       const text = newResponse.response?.trim() || "I could not generate a response.";
@@ -229,6 +249,7 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
         role: "assistant" as const,
         content: text,
         agent: newResponse,
+        activity: steps,
       };
       
       const batch = asPracticeBatch(newResponse.practice_batch);
@@ -355,6 +376,7 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
     setFailedTurn(null);
     chat.setIsReplying(true);
     const assistantId = crypto.randomUUID();
+    const stream = streamHandlers(assistantId);
     chat.setMessages((current) => [
       ...current,
       userMessage,
@@ -366,18 +388,11 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
         "I don't get this step",
         chat.activeSessionId ?? sessionId,
         { flaggedStepId: stepId },
-        (token) => {
-          chat.setMessages((current) =>
-            current.map((msg) =>
-              msg.id === assistantId
-                ? { ...msg, content: msg.content + token }
-                : msg
-            )
-          );
-        }
+        ...stream.args
       );
-      
+
       chat.setMessages((current) => current.filter((m) => m.id !== assistantId));
+      const steps = stream.steps();
       await handleAgentResponse(agentResponse);
       const text = agentResponse.response?.trim() || "I could not generate a response.";
       const assistantMessage = {
@@ -385,6 +400,7 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
         role: "assistant" as const,
         content: text,
         agent: agentResponse,
+        activity: steps,
       };
       chat.setMessages((current) => [...current, assistantMessage]);
     } catch (caught) {

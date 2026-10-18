@@ -1,4 +1,5 @@
 import { AgentChatResponse } from "@/lib/api/agent";
+import type { StudyActivity } from "@/components/study-room/useStudySession";
 
 export type PrerequisiteNode = {
   concept: string;
@@ -21,6 +22,8 @@ export type Message = {
   content: string;
   structured_response?: StructuredResponse | null;
   agent?: AgentChatResponse | null;
+  /** What the tutor did for this reply (tool and stage steps), for the activity trail. */
+  activity?: StudyActivity[];
 };
 
 export type Session = {

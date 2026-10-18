@@ -311,7 +311,7 @@ function Welcome({ firstName, today }: { firstName: string; today: ClassroomToda
     <div className="flex flex-col gap-16">
       <section>
         <h1 className="max-w-2xl text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
-          {firstName ? `Hi ${firstName}, let's` : "Let's"} start your JEE Physics prep.
+          {firstName ? `Hi ${firstName}, let's` : "Let's"} start your JEE prep.
         </h1>
         <p className="mt-3 max-w-xl text-base leading-relaxed text-ink-2">
           Your tutor teaches each topic step by step, practises with you, and remembers how it went, so every session

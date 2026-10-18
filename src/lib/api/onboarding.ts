@@ -147,19 +147,54 @@ function isLegacyStep(step: number | undefined, snapshot?: Record<string, unknow
   return typeof step === "number" && step > TOTAL_ONBOARDING_STEPS;
 }
 
+export const DEFAULT_PCM_SUBJECTS: SyllabusSubject[] = [
+  {
+    name: "Physics",
+    units: [
+      { name: "Mechanics", chapters: ["Laws of Motion", "Work Energy & Power", "Rotational Motion", "Kinematics", "Gravitation", "Fluid Mechanics"] },
+      { name: "Thermodynamics", chapters: ["Thermal Properties", "Thermodynamics", "Kinetic Theory"] },
+      { name: "Waves & Sound", chapters: ["Waves", "Sound"] },
+      { name: "Optics", chapters: ["Wave Optics", "Ray Optics"] },
+      { name: "Electrostatics & Current", chapters: ["Electrostatics", "Current Electricity", "Capacitance"] },
+      { name: "Magnetism & EMI", chapters: ["Magnetism", "Magnetic Effects of Current", "Electromagnetic Induction", "Alternating Current"] },
+      { name: "Modern Physics", chapters: ["Dual Nature of Radiation", "Atoms", "Nuclei", "Semiconductor"] },
+    ],
+  },
+  {
+    name: "Chemistry",
+    units: [
+      { name: "Physical Chemistry", chapters: ["Mole Concept & Stoichiometry", "Atomic Structure", "Chemical Thermodynamics", "Chemical & Ionic Equilibrium", "Electrochemistry", "Chemical Kinetics", "Solutions"] },
+      { name: "Inorganic Chemistry", chapters: ["Periodic Table & Periodicity", "Chemical Bonding", "Coordination Compounds", "p-Block Elements", "d and f Block Elements"] },
+      { name: "Organic Chemistry", chapters: ["General Organic Chemistry (GOC)", "Hydrocarbons", "Alkyl & Aryl Halides", "Alcohols, Phenols & Ethers", "Aldehydes & Ketones", "Nitrogen Compounds", "Biomolecules"] },
+    ],
+  },
+  {
+    name: "Mathematics",
+    units: [
+      { name: "Algebra", chapters: ["Quadratic Equations", "Complex Numbers", "Sequences & Series", "Binomial Theorem", "Permutations & Combinations", "Matrices & Determinants", "Probability"] },
+      { name: "Trigonometry", chapters: ["Trigonometric Ratios & Identities", "Inverse Trigonometric Functions"] },
+      { name: "Coordinate Geometry", chapters: ["Straight Lines", "Circles", "Conic Sections"] },
+      { name: "Calculus", chapters: ["Limits, Continuity & Differentiability", "Application of Derivatives", "Integration", "Differential Equations"] },
+      { name: "Vectors & 3D", chapters: ["Vector Algebra", "Three Dimensional Geometry"] },
+    ],
+  },
+];
+
 export function expandUnitCoverage(
   unitCoverage: Record<string, CoverageDepth>,
   subjects: SyllabusSubject[]
 ): { covered_chapters: string[]; self_assessed_coverage: Record<string, CoverageDepth> } {
   const covered_chapters: string[] = [];
   const self_assessed_coverage: Record<string, CoverageDepth> = {};
-  const physics = subjects.find((s) => s.name === "Physics");
-  for (const unit of physics?.units ?? []) {
-    const depth = unitCoverage[unit.name];
-    if (!depth) continue;
-    for (const chapter of unit.chapters) {
-      if (!covered_chapters.includes(chapter)) covered_chapters.push(chapter);
-      self_assessed_coverage[chapter] = depth;
+  const activeSubjects = subjects && subjects.length > 0 ? subjects : DEFAULT_PCM_SUBJECTS;
+  for (const subject of activeSubjects) {
+    for (const unit of subject.units ?? []) {
+      const depth = unitCoverage[unit.name];
+      if (!depth) continue;
+      for (const chapter of unit.chapters) {
+        if (!covered_chapters.includes(chapter)) covered_chapters.push(chapter);
+        self_assessed_coverage[chapter] = depth;
+      }
     }
   }
   return { covered_chapters, self_assessed_coverage };
@@ -204,9 +239,15 @@ export async function fetchSyllabusOutline(): Promise<{
     auth.apiRequest<{ chapters: ChapterMeta[]; subjects?: SyllabusSubject[] }>(
       `${auth.getApiBaseUrl()}/onboarding/chapters/`
     )
-  ).then((data) => ({
-    chapters: data.chapters || [],
-    subjects: data.subjects || [{ name: "Physics", units: [] }, { name: "Chemistry", units: [] }, { name: "Mathematics", units: [] }],
+  ).then((data) => {
+    const hasUnits = data.subjects && data.subjects.some((s) => s.units && s.units.length > 0);
+    return {
+      chapters: data.chapters || [],
+      subjects: hasUnits ? data.subjects! : DEFAULT_PCM_SUBJECTS,
+    };
+  }).catch(() => ({
+    chapters: [],
+    subjects: DEFAULT_PCM_SUBJECTS,
   }));
 }
 

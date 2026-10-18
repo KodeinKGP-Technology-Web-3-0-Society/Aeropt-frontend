@@ -5,7 +5,6 @@ import InteractivePracticeCanvas from "@/components/practice/InteractivePractice
 import PracticeAttemptView from "@/components/practice/PracticeAttemptView";
 import PracticeBatchCanvas from "@/components/practice/PracticeBatchCanvas";
 import { FlashcardDeck, GradingButtons, CollapsibleScoreSummary, QuizAssessmentNotice } from "@/components/study/StudySessionCards";
-import ProactiveIntroCard from "@/components/slides/ProactiveIntroCard";
 import { 
   asPracticeBatch, 
   asPracticeData, 
@@ -18,6 +17,7 @@ import type { Message } from "./types";
 import type { AgentChatResponse, FlashcardItem } from "@/lib/api/agent";
 import { plainProse } from "@/lib/plainProse";
 import AudioTutorPlayer from "@/components/voice/AudioTutorPlayer";
+import ActivityTrail from "./ActivityTrail";
 
 function TypingIndicator() {
   return (
@@ -68,9 +68,6 @@ function AssistantExtras({
           </p>
           <MarkdownMath content={agent.mistake_brief} className="markdown-math text-sm" />
         </div>
-      )}
-      {agent.card && isLatest && !suppressPicker && (
-        <ProactiveIntroCard card={agent.card} />
       )}
       {agent.grading_ui && isLatest && !hideGrade && (
         <GradingButtons gradingUi={agent.grading_ui} disabled={gradingDisabled} onGrade={onGrade} />
@@ -207,6 +204,7 @@ export default function AssistantResponse({
 
   return (
     <article className="lesson-response assistant-plain">
+      <ActivityTrail activity={message.activity ?? []} waiting={!message.content && !message.agent} />
       {practiceSplit ? (
         <PracticeAttemptView
           question={practiceSplit.question}

@@ -136,7 +136,7 @@ export default function StudyWelcome({
 
       {!inSyllabus && (
         <p className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-ink-2">
-          This topic sits outside the JEE Physics syllabus your tutor covers, so the material may be thin.
+          This topic sits outside the JEE syllabus your tutor covers, so the material may be thin.
         </p>
       )}
 

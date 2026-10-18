@@ -3,6 +3,7 @@
 import AuthGuard from "@/components/AuthGuard";
 import StudySidebar from "@/components/study/StudySidebar";
 import TutorChat from "@/components/tutorchat/TutorChat";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback } from "react";
 
@@ -19,7 +20,16 @@ function GeneralChat() {
     window.history.replaceState(null, "", url);
   }, []);
 
-  return <TutorChat initialSessionId={initial} onSessionChange={onSessionChange} />;
+  return (
+    <ErrorBoundary
+      scope="GeneralChat"
+      resetKey={initial}
+      title="This chat hit a snag"
+      description="Your messages and progress are saved on the server. Reload to pick the conversation back up."
+    >
+      <TutorChat initialSessionId={initial} onSessionChange={onSessionChange} />
+    </ErrorBoundary>
+  );
 }
 
 export default function ChatPage() {

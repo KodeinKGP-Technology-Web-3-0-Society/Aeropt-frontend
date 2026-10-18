@@ -140,6 +140,10 @@ export default function OnboardingFlow() {
     goToStep,
     advanceFrom,
     finishOnboarding,
+    subjects,
+    activeSubject,
+    setActiveSubject,
+    activeSubjectUnits,
     physicsUnits,
     showUnits,
   } = useOnboardingState();
@@ -286,11 +290,34 @@ export default function OnboardingFlow() {
               ))}
             </div>
             {showUnits && (
-              <div className="pt-2">
-                <p className="text-base font-medium text-ink mb-1">Fine-tune Physics</p>
-                <p className="text-sm text-muted mb-4">Optional. Rate broad topics, not every chapter.</p>
+              <div className="pt-4 border-t border-line">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div>
+                    <p className="text-base font-medium text-ink mb-0.5">Fine-tune syllabus</p>
+                    <p className="text-sm text-muted">Optional. Rate broad topics across subjects.</p>
+                  </div>
+                  <div className="flex gap-1 bg-surface p-1 rounded-lg border border-line self-start sm:self-auto">
+                    {(subjects && subjects.length > 0
+                      ? subjects
+                      : [{ name: "Physics" }, { name: "Chemistry" }, { name: "Mathematics" }]
+                    ).map((s) => (
+                      <button
+                        key={s.name}
+                        type="button"
+                        onClick={() => setActiveSubject(s.name)}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                          activeSubject === s.name
+                            ? "bg-accent text-white shadow-sm"
+                            : "text-muted hover:text-ink"
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {physicsUnits.map((unit) => (
+                  {(activeSubjectUnits.length > 0 ? activeSubjectUnits : physicsUnits).map((unit) => (
                     <div key={unit.name} className="rounded-lg border border-line p-4">
                       <p className="text-sm font-medium text-ink mb-3">{unit.name}</p>
                       <SegmentedChoice

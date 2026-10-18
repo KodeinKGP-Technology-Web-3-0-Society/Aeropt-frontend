@@ -49,6 +49,18 @@ export type StudyActivity = {
   label: string;
   state: "running" | "done" | "error";
   count: number;
+  thought?: string;
+  material?: {
+    concept_id?: string;
+    title?: string;
+    sources?: string[];
+    chunks_found?: number;
+    snippets?: Array<{
+      title?: string;
+      text?: string;
+      cite?: string;
+    }>;
+  };
 };
 
 type StartInfo = Pick<
@@ -75,12 +87,30 @@ export function foldActivity(list: StudyActivity[], event: StudyStatusEvent): St
   const idx = next.findIndex((a) => a.name === event.name);
   if (event.state === "start") {
     if (idx >= 0) {
-      next[idx] = { ...next[idx], state: "running", count: next[idx].count + 1, label: event.label };
+      next[idx] = {
+        ...next[idx],
+        state: "running",
+        count: next[idx].count + 1,
+        label: event.label,
+        thought: event.thought ?? next[idx].thought,
+      };
     } else {
-      next.push({ name: event.name, label: event.label, state: "running", count: 1 });
+      next.push({
+        name: event.name,
+        label: event.label,
+        state: "running",
+        count: 1,
+        thought: event.thought,
+        material: event.material,
+      });
     }
   } else if (idx >= 0) {
-    next[idx] = { ...next[idx], state: event.state === "error" ? "error" : "done" };
+    next[idx] = {
+      ...next[idx],
+      state: event.state === "error" ? "error" : "done",
+      thought: event.thought ?? next[idx].thought,
+      material: event.material ?? next[idx].material,
+    };
   }
   return next;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeKatexSafe from "@/lib/math/rehypeKatexSafe";
@@ -112,7 +113,9 @@ export default function MarkdownMath({
   return (
     <div className={className} ref={rootRef}>
       <ReactMarkdown
-        remarkPlugins={[[remarkMath, { singleDollarTextMath: true }]]}
+        // GFM for the tutor's comparison tables. singleTilde off: "~5 m … ~2 s" is
+        // approximation in physics prose, not strikethrough.
+        remarkPlugins={[[remarkGfm, { singleTilde: false }], [remarkMath, { singleDollarTextMath: true }]]}
         // rehypeKatexSafe runs after KaTeX and turns any error node into plain code,
         // so a formula the pre-pass mis-split still cannot render as a red blob.
         rehypePlugins={[[rehypeKatex, KATEX_OPTIONS], rehypeKatexSafe]}
