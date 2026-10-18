@@ -18,6 +18,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 
 const { unified } = await import("unified");
 const remarkParse = (await import("remark-parse")).default;
+const remarkGfm = (await import("remark-gfm")).default;
 const remarkMath = (await import("remark-math")).default;
 const remarkRehype = (await import("remark-rehype")).default;
 const rehypeKatex = (await import("rehype-katex")).default;
@@ -48,6 +49,7 @@ const rehypeKatexSafe = (await transpile("src/lib/math/rehypeKatexSafe.ts", "reh
 // inspected directly rather than stringified, so no extra dependency is needed.
 const processor = unified()
   .use(remarkParse)
+  .use(remarkGfm, { singleTilde: false })
   .use(remarkMath, { singleDollarTextMath: true })
   .use(remarkRehype)
   .use(rehypeKatex, { throwOnError: false, strict: "ignore", trust: true, output: "htmlAndMathml" })

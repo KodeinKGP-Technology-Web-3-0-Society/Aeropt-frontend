@@ -22,13 +22,13 @@ export function Frame({ title, children, className = "" }: { title: string; chil
 
 export function LessonMock() {
   return (
-    <Frame title="Study room · LC circuit">
+    <Frame title="Study room · Chemistry · Equilibrium">
       <div className="flex gap-4">
         <ol className="hidden w-36 shrink-0 flex-col gap-2 text-[11px] sm:flex">
           {[
-            ["Energy in C and L", "done"],
-            ["The LC equation", "now"],
-            ["Natural frequency", "next"],
+            ["Dynamic equilibrium", "done"],
+            ["Le Chatelier's principle", "now"],
+            ["Equilibrium constant", "next"],
           ].map(([t, s], i) => (
             <li key={t} className="flex items-start gap-2">
               <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
@@ -40,10 +40,10 @@ export function LessonMock() {
           ))}
         </ol>
         <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink-2">
-          <p className="font-display text-sm font-semibold text-ink">The LC equation</p>
-          <p className="mt-1.5">Energy sloshes between the capacitor and the inductor — exactly like a mass on a spring.</p>
-          <img src="/landing/lc_circuit.svg" alt="LC circuit diagram" className="landing-art my-3 h-24 w-auto" />
-          <p className="rounded-lg bg-accent-soft px-3 py-2 font-medium text-ink">If you double L and halve C, what happens to ω?</p>
+          <p className="font-display text-sm font-semibold text-ink">Le Chatelier&apos;s principle</p>
+          <p className="mt-1.5">Push a reaction at equilibrium and it shifts to undo the push. Add a reactant and it makes more product.</p>
+          <p className="my-3 rounded-lg border border-line px-3 py-2 text-center font-mono text-[13px] text-ink">N₂ + 3H₂ ⇌ 2NH₃</p>
+          <p className="rounded-lg bg-accent-soft px-3 py-2 font-medium text-ink">You add more N₂. Which way does it shift?</p>
         </div>
       </div>
     </Frame>
@@ -51,15 +51,15 @@ export function LessonMock() {
 }
 
 export function PracticeMock() {
-  // E₀ = c·B₀ = 3×10⁸ × 3×10⁻⁸ = 9 V/m — option 3.
-  const options = ["3 × 10⁻⁸ V/m", "60 V/m", "9 V/m", "0 V/m"];
+  // a = F/m = 10/2 = 5 m/s². Second option.
+  const options = ["2 m/s²", "5 m/s²", "10 m/s²", "20 m/s²"];
   return (
-    <Frame title="Practice · past JEE papers">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Question 4 · JEE Main 2024</p>
-      <p className="mt-1.5 text-[13px] text-ink">A plane EM wave has peak magnetic field 3 × 10⁻⁸ T. The peak electric field is…</p>
+    <Frame title="Practice · Physics · Laws of Motion">
+      <p className="text-[12px] font-medium text-muted">Question 4 of 10</p>
+      <p className="mt-1.5 text-[13px] text-ink">A 10 N force pulls a 2 kg block across a smooth floor. What is its acceleration?</p>
       <div className="mt-3 flex flex-col gap-1.5">
         {options.map((o, i) => {
-          const correct = i === 2;
+          const correct = i === 1;
           return (
             <div key={o} className={`flex items-center gap-2.5 rounded-lg border px-3 py-1.5 text-[12px] ${correct ? "border-success bg-success/10 text-ink" : "border-line text-ink-2"}`}>
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${correct ? "bg-success text-surface" : "border border-line"}`}>
@@ -70,7 +70,7 @@ export function PracticeMock() {
           );
         })}
       </div>
-      <p className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-[12px] font-semibold text-success">✓ Correct — graded instantly</p>
+      <p className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-[12px] font-semibold text-success">Correct. Graded as soon as you answer.</p>
     </Frame>
   );
 }
@@ -144,7 +144,7 @@ export function PlanMock() {
           <div key={d} className="rounded-lg border border-line p-2">
             <p className="text-[11px] font-semibold text-ink">{d}</p>
             {items.map((it) => (
-              <p key={it} className="mt-1 truncate text-[10px] text-ink-2">{it}</p>
+              <p key={it} className="mt-1 text-[10px] leading-snug text-ink-2">{it}</p>
             ))}
           </div>
         ))}

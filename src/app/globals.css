@@ -117,6 +117,7 @@
   --color-physics: var(--physics);
   --color-chemistry: var(--chemistry);
   --color-maths: var(--maths);
+  --color-mathematics: var(--maths);
   --font-sans: var(--font-plex-sans), "Segoe UI", sans-serif;
   --font-display: var(--font-plex-sans), "Segoe UI", sans-serif;
 }
@@ -547,6 +548,19 @@ textarea:focus-visible,
   border: 1px solid color-mix(in oklch, var(--physics) 22%, transparent);
   border-radius: 999px;
   padding: 5px 10px;
+}
+
+.practice-canvas__badge--chemistry {
+  color: var(--chemistry);
+  background: color-mix(in oklch, var(--chemistry) 12%, var(--bg-surface));
+  border-color: color-mix(in oklch, var(--chemistry) 22%, transparent);
+}
+
+.practice-canvas__badge--mathematics,
+.practice-canvas__badge--maths {
+  color: var(--maths);
+  background: color-mix(in oklch, var(--maths) 12%, var(--bg-surface));
+  border-color: color-mix(in oklch, var(--maths) 22%, transparent);
 }
 
 .practice-canvas__prompt {
@@ -1452,6 +1466,30 @@ textarea:focus-visible,
   font-weight: 700;
 }
 
+/* Comparison tables (remark-gfm). Block + overflow so a wide table scrolls inside
+   the bubble instead of stretching it on a phone. */
+.markdown-math table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  font-size: 0.88rem;
+}
+
+.markdown-math th,
+.markdown-math td {
+  border: 1px solid var(--border-main);
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-math th {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
 .markdown-math img,
 .markdown-math .markdown-diagram {
   display: block;
@@ -1673,6 +1711,47 @@ textarea:focus-visible,
 }
 .landing-btn:active { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) { .landing-btn:active { transform: none; } }
+
+/* ── Floating formula pills ─────────────────────────────────── */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.landing-formula {
+  opacity: 0;
+  animation: landing-float 6s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+@keyframes landing-formula-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 0.7; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-formula { animation: none; opacity: 0.6; }
+}
+
+/* ── Text reveal animation ─────────────────────────────────── */
+@keyframes landing-text-reveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.landing-text-reveal {
+  opacity: 0;
+  animation: landing-text-reveal 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-text-reveal { opacity: 1; animation: none; }
+}
+
+/* ── Mockup wrapper hover effects ──────────────────────────── */
+.landing-mockup-wrapper {
+  transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.landing-mockup-wrapper:hover {
+  transform: translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-mockup-wrapper:hover { transform: none; }
+}
 
 /* Scroll-progress hairline — genuinely tied to scroll position (not a
    one-shot reveal), and functional: it's the only honest way to show a
