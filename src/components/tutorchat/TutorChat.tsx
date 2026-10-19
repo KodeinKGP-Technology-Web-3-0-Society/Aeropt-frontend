@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import AssistantResponse from "@/components/chat/AssistantResponse";
 import ActivityTrail from "@/components/chat/ActivityTrail";
 import MarkdownMath from "@/components/MarkdownMath";
@@ -9,13 +9,149 @@ import LiveActivity from "@/components/study-room/LiveActivity";
 import ChatHistory from "./ChatHistory";
 import { useTutorChat } from "./useTutorChat";
 import VoiceDoubtRecorder from "@/components/voice/VoiceDoubtRecorder";
+import { fetchStudyOverview, type StudyOverview } from "@/lib/api/study";
 
-const STARTERS = [
-  "Why does a body in uniform circular motion accelerate if its speed is constant?",
-  "How do I determine whether an organic reaction follows SN1 or SN2 mechanism?",
-  "Explain how to evaluate definite integrals using the King's Property",
-  "Give me a JEE Advanced problem on chemical equilibrium and Le Chatelier's principle",
+export interface RecommendedPrompt {
+  id: string;
+  prompt: string;
+  badge: string;
+  badgeVariant?: "accent" | "warning" | "default";
+  detail?: string;
+}
+
+const DEFAULT_STARTERS: RecommendedPrompt[] = [
+  {
+    id: "default-roadmap",
+    prompt: "Help me plan my study roadmap for JEE Advanced",
+    badge: "Roadmap • Planning",
+    badgeVariant: "accent",
+    detail: "Set up a personalized learning sequence across Physics, Chemistry, and Maths",
+  },
+  {
+    id: "default-diagnostic",
+    prompt: "Give me a mixed 10-minute diagnostic drill across PCM",
+    badge: "Diagnostic • PCM",
+    badgeVariant: "default",
+    detail: "Assess your baseline strengths and pinpoint areas for improvement",
+  },
+  {
+    id: "default-weightage",
+    prompt: "Which high-weightage topics in JEE should I prioritize first?",
+    badge: "Exam Strategy",
+    badgeVariant: "default",
+    detail: "Review high-yield chapters based on recent JEE Advanced papers",
+  },
+  {
+    id: "default-pyq",
+    prompt: "Give me a classic JEE Advanced problem with step-by-step guidance",
+    badge: "Practice Problem",
+    badgeVariant: "accent",
+    detail: "Tackle a multi-concept question with Socratic hints as you work",
+  },
 ];
+
+function buildProgressRecommendations(overview: StudyOverview | null): RecommendedPrompt[] {
+  if (!overview) return DEFAULT_STARTERS;
+  const items: RecommendedPrompt[] = [];
+
+  // 1. Up next / Resume items
+  for (const next of overview.up_next || []) {
+    if (items.length >= 4) break;
+    if (next.kind === "resume") {
+      items.push({
+        id: `resume-${next.concept_id}`,
+        prompt: `Pick up where I left off on ${next.name}`,
+        badge: `Resume • ${next.chapter || "Study"}`,
+        badgeVariant: "accent",
+        detail: next.reason || "Continue from your last session",
+      });
+    } else if (next.kind === "review") {
+      items.push({
+        id: `review-${next.concept_id}`,
+        prompt: `Review ${next.name} — give me a practice problem`,
+        badge: `Review Due • ${next.chapter || "Study"}`,
+        badgeVariant: "warning",
+        detail: next.reason || "Spaced review recommended for today",
+      });
+    } else if (next.kind === "next") {
+      items.push({
+        id: `next-${next.concept_id}`,
+        prompt: `Help me start the next topic: ${next.name}`,
+        badge: `Up Next • ${next.chapter || "Syllabus"}`,
+        badgeVariant: "default",
+        detail: next.reason || "Next topic in your syllabus sequence",
+      });
+    }
+  }
+
+  // 2. Concepts needing review (struggled topics)
+  if (items.length < 4 && overview.needs_review) {
+    for (const group of overview.needs_review) {
+      for (const concept of group.concepts || []) {
+        if (items.length >= 4) break;
+        if (!items.some((i) => i.prompt.includes(concept.name))) {
+          items.push({
+            id: `weak-${concept.concept_id}`,
+            prompt: `I had trouble with ${concept.name}. Can you explain where students usually get stuck?`,
+            badge: `Review • ${group.chapter}`,
+            badgeVariant: "warning",
+            detail: `From your practice in ${group.chapter}`,
+          });
+        }
+      }
+    }
+  }
+
+  // 3. In-progress concepts
+  if (items.length < 4 && overview.in_progress) {
+    for (const group of overview.in_progress) {
+      for (const concept of group.concepts || []) {
+        if (items.length >= 4) break;
+        if (!items.some((i) => i.prompt.includes(concept.name))) {
+          items.push({
+            id: `progress-${concept.concept_id}`,
+            prompt: `Give me a JEE Advanced problem on ${concept.name}`,
+            badge: `In Progress • ${group.chapter}`,
+            badgeVariant: "accent",
+            detail: `Test your mastery on ${concept.name}`,
+          });
+        }
+      }
+    }
+  }
+
+  // 4. Overarching progress check if we have studied items
+  if (items.length > 0 && items.length < 4) {
+    items.push({
+      id: "progress-overview",
+      prompt: "What should I revise today based on my study progress?",
+      badge: "Study Plan Check",
+      badgeVariant: "default",
+      detail: "Ask your tutor to evaluate your recent study history",
+    });
+  }
+
+  return items.length > 0 ? items : DEFAULT_STARTERS;
+}
+
+function SparklesIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+    </svg>
+  );
+}
+
+function EyeOffIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" x2="22" y1="2" y2="22" />
+    </svg>
+  );
+}
 
 function SendIcon() {
   return (
@@ -106,6 +242,54 @@ export default function TutorChat({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+
+  const [overview, setOverview] = useState<StudyOverview | null>(null);
+  const [hideStarters, setHideStarters] = useState<boolean>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        return localStorage.getItem("aeropt_hide_chat_recommendations") === "true";
+      }
+    } catch {
+      /* ignore storage access error */
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    let active = true;
+    fetchStudyOverview()
+      .then((data) => {
+        if (active) setOverview(data);
+      })
+      .catch(() => {
+        /* graceful fallback */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggleHideStarters = () => {
+    setHideStarters((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("aeropt_hide_chat_recommendations", String(next));
+        }
+      } catch {
+        /* ignore storage error */
+      }
+      return next;
+    });
+  };
+
+  const recommendations = useMemo(() => buildProgressRecommendations(overview), [overview]);
+  const hasStudiedTopics = Boolean(
+    overview &&
+      ((overview.up_next && overview.up_next.length > 0) ||
+        (overview.in_progress && overview.in_progress.length > 0) ||
+        (overview.needs_review && overview.needs_review.length > 0))
+  );
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -230,24 +414,79 @@ export default function TutorChat({
                 </div>
               </div>
             ) : empty ? (
-              <div className="mt-10 sm:mt-20">
-                <h2 className="text-[32px] leading-10 font-semibold tracking-tight text-ink">What are you stuck on?</h2>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-                  Ask any doubt across Physics, Chemistry, or Mathematics, paste a question you could not solve, or ask what to revise. The tutor
-                  knows what you have studied and practised, so you can say “the question from my last lesson”.
-                </p>
-                <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                  {STARTERS.map((text) => (
+              <div className="mt-10 sm:mt-16">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-[32px] leading-10 font-semibold tracking-tight text-ink">What are you stuck on?</h2>
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
+                      Ask any doubt across Physics, Chemistry, or Mathematics, paste a question you could not solve, or ask what to revise.
+                      {hasStudiedTopics ? " Your tutor remembers what you have studied and practiced." : ""}
+                    </p>
+                  </div>
+                  {recommendations.length > 0 ? (
                     <button
-                      key={text}
                       type="button"
-                      onClick={() => void chat.send({ text })}
-                      className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm text-ink transition-colors hover:bg-hover"
+                      onClick={toggleHideStarters}
+                      className="cursor-pointer inline-flex items-center gap-1.5 self-start rounded-lg px-2.5 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-ink transition-colors"
+                      title={hideStarters ? "Show recommended study prompts" : "Hide recommended prompts"}
                     >
-                      {text}
+                      {hideStarters ? (
+                        <>
+                          <SparklesIcon className="h-3.5 w-3.5 text-accent" />
+                          <span>Show suggestions</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOffIcon className="h-3.5 w-3.5" />
+                          <span>Hide suggestions</span>
+                        </>
+                      )}
                     </button>
-                  ))}
+                  ) : null}
                 </div>
+
+                {!hideStarters && recommendations.length > 0 ? (
+                  <div className="mt-6">
+                    <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                      <SparklesIcon className="h-3.5 w-3.5 text-accent" />
+                      <span>{hasStudiedTopics ? "Recommended from your study progress" : "Suggested starting points"}</span>
+                    </div>
+                    <div className="grid gap-2.5 sm:grid-cols-2">
+                      {recommendations.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => void chat.send({ text: item.prompt })}
+                          className="group flex flex-col justify-between rounded-xl border border-line bg-surface p-4 text-left transition-all hover:border-accent/40 hover:bg-hover hover:shadow-sm cursor-pointer"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                                  item.badgeVariant === "accent"
+                                    ? "bg-accent/10 text-accent"
+                                    : item.badgeVariant === "warning"
+                                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                      : "bg-ink/5 text-muted"
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            </div>
+                            <p className="mt-2.5 text-sm font-medium text-ink group-hover:text-accent transition-colors">
+                              {item.prompt}
+                            </p>
+                          </div>
+                          {item.detail ? (
+                            <p className="mt-2 text-xs text-muted line-clamp-1">
+                              {item.detail}
+                            </p>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <>

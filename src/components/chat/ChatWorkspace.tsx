@@ -48,11 +48,6 @@ function XIcon() {
   );
 }
 
-const fallbackPrompts = [
-  "Explain torque and moment of inertia",
-  "Give me a practice question on Newton's 2nd law",
-];
-
 type ChatWorkspaceProps = {
   sessionId: string;
   conceptId?: string;
@@ -135,7 +130,14 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
   const quickPrompts = useMemo(() => {
     if (chat.latestAssistant?.agent?.flashcards?.mode === "picker") return [];
     const fromBackend = chat.latestAssistant?.structured_response?.try_next?.filter(Boolean);
-    const raw = fromBackend && fromBackend.length > 0 ? fromBackend : fallbackPrompts;
+    const conceptName = roadmap.roadmapNode?.concept_name;
+    const dynamicFallback = conceptName
+      ? [
+          `Give me a practice problem on ${conceptName}`,
+          `Explain the key formulas for ${conceptName}`,
+        ]
+      : [];
+    const raw = fromBackend && fromBackend.length > 0 ? fromBackend : dynamicFallback;
     const seen = new Set<string>();
     return raw.filter((prompt) => {
       const key = prompt.trim().toLowerCase();
@@ -143,7 +145,7 @@ function ChatWorkspaceInner({ sessionId, conceptId, surface }: ChatWorkspaceProp
       seen.add(key);
       return true;
     });
-  }, [chat.latestAssistant]);
+  }, [chat.latestAssistant, roadmap.roadmapNode?.concept_name]);
 
   const completeConcept = useCallback(async (proficiencyPct?: number | null) => {
     if (!roadmap.roadmapNodeId || roadmap.conceptComplete) return;
