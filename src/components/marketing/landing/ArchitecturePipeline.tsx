@@ -24,11 +24,11 @@ const PHASES: PipelinePhase[] = [
     title: "Diagnostic Concept Isolation",
     subhead: "Maps your doubt to the syllabus graph",
     summary:
-      "Bring any homework problem, textbook doubt, or syllabus chapter. JeePath traverses the 1,016-concept prerequisite graph to isolate whether your blockage is a fundamental definition or an algebra oversight.",
+      "Bring any homework problem, textbook doubt, or syllabus chapter. JeePath matches it to a syllabus concept and its prerequisites to isolate whether your blockage is a fundamental definition or an algebra oversight.",
     telemetryType: "Prerequisite Knowledge Graph",
-    telemetryStatus: "1,016 Nodes Indexed",
+    telemetryStatus: "Syllabus concept matched",
     telemetryDetails: [
-      { label: "Retrieval Latency", val: "< 6ms local index" },
+      { label: "Sources", val: "NCERT, H.C. Verma, JEE papers" },
       { label: "Prerequisite Status", val: "Kinematics 2D verified" },
       { label: "Target Node", val: "Rotational Dynamics (Ch 7)" },
       { label: "Cognitive Load", val: "Calibrated to Medium-High" },
@@ -50,7 +50,7 @@ const PHASES: PipelinePhase[] = [
       { label: "Dimensional Check", val: "[M L² T⁻²] Energy partition" },
       { label: "Algebraic Proof", val: "k²/R² gyration verified" },
       { label: "Scaffolding Tone", val: "Warm & First-Principles" },
-      { label: "Checker Latency", val: "4.2ms validation" },
+      { label: "Review", val: "Checked before you see it" },
     ],
     technicalSpec: "Builds deep geometric and physical intuition so you can solve unseen JEE Advanced variations.",
     iconType: "dialectic",

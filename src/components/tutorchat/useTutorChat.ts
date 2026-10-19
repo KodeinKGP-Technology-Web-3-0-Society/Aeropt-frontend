@@ -44,6 +44,7 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
   const [messages, setMessages] = useState<Message[]>([]);
   const [threadLoading, setThreadLoading] = useState(Boolean(initialSessionId));
   const [threadMissing, setThreadMissing] = useState(false);
+  const [threadError, setThreadError] = useState("");
 
   const [streaming, setStreaming] = useState<string | null>(null);
   // What the tutor is doing before the reply streams: tools, thinking, review.
@@ -58,8 +59,9 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
   const activeRef = useRef<string | null>(initialSessionId);
 
   const refreshSessions = useCallback((): Promise<void> => {
-    if (!userId) return Promise.resolve();
-    return fetchChatSessions(userId, HISTORY_LIMIT, "chat")
+    const effectiveUserId = userId || (typeof window !== "undefined" ? getSupabaseUserId() : null);
+    if (!effectiveUserId) return Promise.resolve();
+    return fetchChatSessions(effectiveUserId, HISTORY_LIMIT, "chat")
       .then(
         (rows) => {
           setSessions(rows.map((s) => ({ ...s, label: labelFor(s) })));
@@ -75,46 +77,76 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
   /** Fetch a thread and show it if it is still the open chat. Callers reset the view first. */
   const fetchThread = useCallback(
     (id: string): Promise<void> => {
-      if (!userId) return Promise.resolve();
-      return fetchChatSessionDetail(userId, id).then(
+      const effectiveUserId = userId || (typeof window !== "undefined" ? getSupabaseUserId() : null);
+      if (!effectiveUserId) {
+        setThreadLoading(false);
+        return Promise.resolve();
+      }
+      setThreadLoading(true);
+      setThreadMissing(false);
+      setThreadError("");
+      return fetchChatSessionDetail(effectiveUserId, id).then(
         (detail) => {
           if (activeRef.current !== id) return;
           setMessages(turnsToMessages(detail.turns, id));
           setThreadLoading(false);
         },
-        () => {
+        (err: unknown) => {
           if (activeRef.current !== id) return;
           setMessages([]);
-          setThreadMissing(true);
           setThreadLoading(false);
+          const msg = err instanceof Error ? err.message : String(err || "");
+          if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+            setThreadMissing(true);
+          } else {
+            setThreadError(msg || "Could not load this conversation. Please check your connection and try again.");
+          }
         },
       );
     },
     [userId],
   );
 
-  // First load: the history list, and the chat named in the URL.
-  // threadLoading already starts true when there is one.
+  const retryThread = useCallback(() => {
+    if (activeRef.current) {
+      void fetchThread(activeRef.current);
+    }
+  }, [fetchThread]);
+
   useEffect(() => {
     void refreshSessions();
-    if (initialSessionId) void fetchThread(initialSessionId);
-  }, [refreshSessions, fetchThread, initialSessionId]);
+  }, [refreshSessions]);
+
+  useEffect(() => {
+    if (!initialSessionId) return;
+    // If this session is already active in memory (e.g. was just created and currently replying),
+    // do NOT re-fetch and overwrite the active conversation or trigger false missing state!
+    if (activeRef.current === initialSessionId && (messages.length > 0 || isReplying)) {
+      return;
+    }
+    activeRef.current = initialSessionId;
+    setActiveId(initialSessionId);
+    void fetchThread(initialSessionId);
+  }, [initialSessionId, fetchThread, isReplying, messages.length]);
 
   const selectChat = useCallback(
     (id: string) => {
-      if (id === activeRef.current || isReplying) return;
+      // If already active and healthy with messages, no-op; but allow retrying if it failed or is empty
+      if (id === activeRef.current && !threadMissing && !threadError && messages.length > 0) return;
+      if (isReplying) return;
       activeRef.current = id;
       setActiveId(id);
       setMessages([]);
       setStreaming(null);
       setThreadLoading(true);
       setThreadMissing(false);
+      setThreadError("");
       setError("");
       setFailed(null);
       onSessionChange(id);
       void fetchThread(id);
     },
-    [isReplying, fetchThread, onSessionChange],
+    [isReplying, threadMissing, threadError, messages.length, fetchThread, onSessionChange],
   );
 
   const newChat = useCallback(() => {
@@ -124,6 +156,7 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
     setMessages([]);
     setStreaming(null);
     setThreadMissing(false);
+    setThreadError("");
     setThreadLoading(false);
     setError("");
     setFailed(null);
@@ -246,6 +279,8 @@ export function useTutorChat(initialSessionId: string | null, onSessionChange: (
     messages,
     threadLoading,
     threadMissing,
+    threadError,
+    retryThread,
     streaming,
     activity,
     elapsed,

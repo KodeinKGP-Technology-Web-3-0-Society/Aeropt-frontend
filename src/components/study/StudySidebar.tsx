@@ -198,7 +198,7 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
               return (
                 <Link key={item.href} href={item.href} title={item.hint} aria-current={active ? "page" : undefined} className={linkClass(active)}>
                   <item.icon className="h-[18px] w-[18px] shrink-0" />
-                  <span>{item.label}</span>
+                  <span className="max-lg:sr-only">{item.label}</span>
                 </Link>
               );
             })}

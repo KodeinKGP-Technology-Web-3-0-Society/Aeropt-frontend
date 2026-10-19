@@ -57,7 +57,7 @@ function UnitProgressCard({ chapter }: { chapter: CoverageChapter }) {
         {first ? (
           <Link
             href={`/study/${encodeURIComponent(first.concept_id)}`}
-            className="inline-flex min-h-11 items-center rounded-xl bg-accent px-3 text-sm font-semibold text-accent-on transition-colors duration-150 hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Next up: {displayTitle(first.name)}
           </Link>
@@ -69,7 +69,7 @@ function UnitProgressCard({ chapter }: { chapter: CoverageChapter }) {
             type="button"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-ink-2 transition-colors duration-150 hover:border-accent hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             {open ? "Show less" : `+${moreCount} more`}
           </button>
@@ -83,7 +83,7 @@ function UnitProgressCard({ chapter }: { chapter: CoverageChapter }) {
                 <li key={item.concept_id}>
                   <Link
                     href={`/study/${encodeURIComponent(item.concept_id)}`}
-                    className="flex min-h-11 items-center text-[15px] leading-6 text-ink hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="flex min-h-11 items-center text-[15px] leading-6 text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {displayTitle(item.name)}
                   </Link>
@@ -152,7 +152,7 @@ function SyllabusBrowser({ units }: { units: SyllabusUnit[] }) {
               className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               style={
                 selected
-                  ? { background: "var(--bg-surface)", color: "var(--text-main)", boxShadow: "var(--shadow-card)" }
+                  ? { background: "var(--bg-surface)", color: "var(--text-main)" }
                   : { color: "var(--text-muted)" }
               }
             >
@@ -214,7 +214,7 @@ function SyllabusBrowser({ units }: { units: SyllabusUnit[] }) {
                             <Link
                               href={`/study/${encodeURIComponent(topic.concept_id)}`}
                               title={topic.tutor_taught ? "No textbook section, taught directly by the tutor" : undefined}
-                              className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-6 text-ink hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                              className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-6 text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                             >
                               <span className="min-w-0 flex-1">{displayTitle(topic.topic)}</span>
                               <StatusPill status={TOPIC_STATUS[topic.status]} />
@@ -243,11 +243,11 @@ export default function CoverageSummary({ overview }: { overview: StudyOverview 
     <>
       <section id="progress" className="scroll-mt-28">
         <h2 className="mb-3 text-xl leading-7 font-semibold text-ink">Progress</h2>
-      <div className="rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6">
+      <div className="rounded-2xl border border-line bg-surface p-5  sm:p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <StatRing
             percent={stats.startedPct}
-            color="var(--accent)"
+            color="var(--text-main)"
             caption="Topics started"
             label={`${stats.totalStarted} / ${stats.totalTopics}`}
           />
@@ -290,7 +290,7 @@ export default function CoverageSummary({ overview }: { overview: StudyOverview 
 
       <section id="syllabus" className="scroll-mt-28">
         <h2 className="mb-3 text-xl leading-7 font-semibold text-ink">Browse syllabus</h2>
-      <div className="rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6">
+      <div className="rounded-2xl border border-line bg-surface p-5  sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl text-[15px] leading-6 text-muted">
             {groups.length} subjects, {overview.syllabus.length} units. Open this to see what you have covered and what is still ahead.

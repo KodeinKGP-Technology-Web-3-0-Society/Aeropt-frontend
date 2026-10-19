@@ -1,10 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import katex from "katex";
-
-function TeX({ children, display = false }: { children: string; display?: boolean }) {
-  const html = katex.renderToString(children, { throwOnError: false, displayMode: display });
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
-}
+import TeX from "./TeX";
 
 /** A doubt answered in the study room: question, the tutor's visible steps, then the reply. */
 export default function ChatReplyMock() {

@@ -51,10 +51,10 @@ export function StudyStepBar({
         key={stage}
         className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
           done
-            ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-400"
+            ? "border-line text-success"
             : active
-              ? "border-accent/50 bg-accent/15 text-accent"
-              : "border-slate-500/20 text-muted"
+              ? "border-accent/50 bg-accent-soft text-accent"
+              : "border-line text-muted"
         }`}
       >
         {STAGE_LABELS[stage] ?? stage}
@@ -125,7 +125,7 @@ export function StudyStepBar({
       )}
       {conceptComplete ? (
         <div className="flex flex-col sm:flex-row gap-2">
-          <p className="text-sm font-semibold text-emerald-400 flex-1">Concept complete!</p>
+          <p className="text-sm font-semibold text-success flex-1">Concept complete!</p>
           <Link
             href="/roadmap"
             className="inline-flex items-center justify-center rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5"
@@ -164,14 +164,14 @@ export function GradingButtons({
   onGrade: (outcome: "correct" | "incorrect") => void;
 }) {
   return (
-    <div className="mt-4 flex flex-col gap-2 rounded-xl border border-accent/30 bg-accent-soft p-4">
+    <div className="mt-4 flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
       <p className="text-xs font-semibold text-ink-2">{gradingUi.prompt}</p>
       <div className="flex gap-2">
         <button
           type="button"
           disabled={disabled}
           onClick={() => onGrade("correct")}
-          className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider py-2.5 cursor-pointer"
+          className="flex-1 rounded-lg bg-success hover:opacity-90 disabled:opacity-50 text-accent-on text-xs font-bold uppercase tracking-wider py-2.5 cursor-pointer"
         >
           Correct
         </button>
@@ -179,7 +179,7 @@ export function GradingButtons({
           type="button"
           disabled={disabled}
           onClick={() => onGrade("incorrect")}
-          className="flex-1 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider py-2.5 cursor-pointer"
+          className="flex-1 rounded-lg bg-danger hover:opacity-90 disabled:opacity-50 text-accent-on text-xs font-bold uppercase tracking-wider py-2.5 cursor-pointer"
         >
           Incorrect
         </button>

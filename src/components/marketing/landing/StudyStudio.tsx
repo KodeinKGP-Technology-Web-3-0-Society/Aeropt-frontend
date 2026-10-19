@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import TeX from "./TeX";
 
 interface StudioStep {
   id: string;
@@ -66,10 +67,10 @@ const STEPS: StudioStep[] = [
     headline: "A memory radar tracking your conceptual forgetting curve",
     subhead:
       "Every doubt, mistake, and delay is recorded in episodic learner memory. It calculates decay curves so fragile concepts resurface right before you lose them.",
-    cognitiveGoal: "Consolidate Calculus integration by parts and differential equation forms.",
+    cognitiveGoal: "Consolidate Rotational Dynamics and Thermodynamics before the next mock test.",
     agentAction: "Updates concept node proficiency matrix in Postgres public schema.",
     highlights: [
-      "Decay-weighted mastery scores across all 1,016 syllabus topics",
+      "Mastery scores that fade with time, so fragile topics come back before you lose them",
       "Streak protection with daily focused 25-minute sprints",
       "Targeted warm-ups generated from yesterday's errors",
     ],
@@ -86,7 +87,7 @@ const STEPS: StudioStep[] = [
     subhead:
       "Tell JeePath your exam year (JEE 2026 / 2027). It calculates prerequisite dependencies and schedules daily chapters, automatically rebalancing when school exams intervene.",
     cognitiveGoal: "Rebalance Rotational Dynamics -> Thermodynamics trajectory for JEE Advanced.",
-    agentAction: "Traverses 1,016 syllabus graph nodes to resolve dependency prerequisites.",
+    agentAction: "Walks the syllabus to resolve which topics must come first.",
     highlights: [
       "Strict dependency ordering (Vectors before Mechanics, Equilibrium before Electrochemistry)",
       "High-yield weightage prioritization for score optimization",
@@ -150,7 +151,7 @@ export default function StudyStudio() {
               Everything you need for an evening of study
             </h2>
             <p data-reveal className="mt-3 text-base leading-relaxed text-ink-2 sm:text-lg">
-              Experience the full 25-minute learning loop. Click through the steps one by one to see how Socratic tutoring, SymPy verification, and memory retention work in tandem.
+              You talk a doubt through until it makes sense. The answer is checked the moment you give it. What is about to slip comes back before the exam, and the last few minutes choose the next chapter.
             </p>
           </div>
 
@@ -190,44 +191,6 @@ export default function StudyStudio() {
               <span>→</span>
             </button>
           </div>
-        </div>
-
-        {/* Interactive Step Navigator Bar (Click one by one!) */}
-        <div data-reveal className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-          {STEPS.map((s, index) => {
-            const isActive = index === activeStepIndex;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setActiveStepIndex(index)}
-                className={`landing-btn relative flex flex-col items-start rounded-2xl border p-4 text-left transition-all ${
-                  isActive
-                    ? "border-accent bg-surface shadow-md ring-1 ring-accent/30"
-                    : "border-line bg-surface/60 hover:border-line-strong hover:bg-surface text-ink-2"
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold ${
-                      isActive ? "bg-accent text-accent-on" : "bg-canvas border border-line text-muted"
-                    }`}
-                  >
-                    {s.stepNumber}
-                  </span>
-                  <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">
-                    {s.timeSlot}
-                  </span>
-                </div>
-                <h3 className={`mt-3 text-xs sm:text-sm font-bold ${isActive ? "text-ink" : "text-ink-2"}`}>
-                  {s.navTitle.replace(/^\d+\s*\/\s*/, "")}
-                </h3>
-                {isActive && (
-                  <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-accent" />
-                )}
-              </button>
-            );
-          })}
         </div>
 
         {/* Balanced Two-Column Interactive Studio Workstation */}
@@ -345,11 +308,11 @@ export default function StudyStudio() {
                         <p>
                           Let us analyze energy partition. As an object rolls down an incline without slipping, total kinetic energy divides into translational and rotational parts:
                         </p>
-                        <div className="rounded-xl border border-line bg-surface p-3 font-mono text-center text-xs text-ink shadow-xs">
-                          {"E_k = \\frac{1}{2} M v^2 + \\frac{1}{2} I \\omega^2 = \\frac{1}{2} M v^2 \\left(1 + \\frac{k^2}{R^2}\\right)"}
+                        <div className="overflow-x-auto rounded-xl border border-line bg-surface p-3 text-center text-ink shadow-xs">
+                          <TeX className="landing-katex">{"E_k = \\frac{1}{2} M v^2 + \\frac{1}{2} I \\omega^2 = \\frac{1}{2} M v^2 \\left(1 + \\frac{k^2}{R^2}\\right)"}</TeX>
                         </div>
                         <p className="text-xs text-accent font-semibold">
-                          ✦ Cognitive Nudge: Which cylinder has a smaller radius of gyration <span className="font-mono font-bold">$k$</span> relative to radius <span className="font-mono font-bold">$R$</span>?
+                          Which cylinder has a smaller radius of gyration <TeX className="landing-katex">{"k"}</TeX> relative to its radius <TeX className="landing-katex">{"R"}</TeX>?
                         </p>
                       </div>
                     </div>
@@ -409,8 +372,8 @@ export default function StudyStudio() {
                   <div className="rounded-2xl border border-line bg-canvas p-4 space-y-2">
                     <p className="text-sm sm:text-base font-semibold text-ink leading-relaxed">
                       For the exothermic Haber synthesis: <br />
-                      <span className="font-mono text-xs sm:text-sm text-ink inline-block my-1.5 bg-surface px-3 py-1 rounded-lg border border-line">
-                        {"N_2(g) + 3H_2(g) \\rightleftharpoons 2NH_3(g), \\quad \\Delta H < 0"}
+                      <span className="my-1.5 inline-block rounded-lg border border-line bg-surface px-3 py-1 text-ink">
+                        <TeX className="landing-katex">{"\\mathrm{N_2}(g) + 3\\mathrm{H_2}(g) \\rightleftharpoons 2\\mathrm{NH_3}(g), \\quad \\Delta H < 0"}</TeX>
                       </span>
                       <br />
                       Which parameter shift maximizes the equilibrium yield of ammonia according to Le Chatelier&apos;s principle?
@@ -488,7 +451,7 @@ export default function StudyStudio() {
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between">
                     <span className="rounded-md bg-warning/10 px-2.5 py-1 text-xs font-bold text-warning border border-warning/20">
-                      Learner Retention Radar · Mathematics
+                      Learner Retention Radar · Physics
                     </span>
                     <span className="text-xs font-bold text-success">🔥 14-Day Consistent Streak</span>
                   </div>
@@ -509,12 +472,12 @@ export default function StudyStudio() {
                   </div>
 
                   <div className="rounded-2xl border border-line bg-canvas p-4 space-y-3">
-                    <p className="text-xs font-bold text-ink">Calculus Mastery Breakdown</p>
+                    <p className="text-xs font-bold text-ink">Rotational Dynamics Breakdown</p>
                     {[
-                      { topic: "Limits & L'Hôpital Rule", score: 94, state: "Retained" },
-                      { topic: "Integration by Substitution", score: 86, state: "Stable" },
-                      { topic: "Definite Integral as Limit of a Sum", score: 62, state: "Review Due" },
-                      { topic: "Differential Equations (Linear Form)", score: 48, state: "Needs Practice" },
+                      { topic: "Torque and angular acceleration", score: 94, state: "Retained" },
+                      { topic: "Moment of inertia of common bodies", score: 86, state: "Stable" },
+                      { topic: "Rolling without slipping", score: 62, state: "Review Due" },
+                      { topic: "Angular momentum conservation", score: 48, state: "Needs Practice" },
                     ].map((row) => (
                       <div key={row.topic} className="space-y-1">
                         <div className="flex justify-between text-xs">
@@ -586,7 +549,7 @@ export default function StudyStudio() {
 
               {/* Window Footer Status */}
               <div className="mt-4 pt-3 border-t border-line/60 flex items-center justify-between text-xs text-muted">
-                <span>Interactive Live Preview · Click through steps above</span>
+                <span>This part of the session, as the student sees it</span>
                 <span className="font-medium text-ink">JeePath Engine v2.4</span>
               </div>
             </div>
@@ -597,18 +560,16 @@ export default function StudyStudio() {
         <div data-reveal className="mt-14 overflow-hidden rounded-2xl border border-line bg-surface/70 py-4 shadow-xs">
           <div className="flex items-center gap-3 px-4 pb-2 border-b border-line/50 text-[11px] font-semibold text-muted">
             <span className="flex h-2 w-2 rounded-full bg-accent animate-ping" />
-            <span className="uppercase tracking-wider">Live Verified Physics, Chemistry & Mathematics Formula Rail</span>
+            <span className="uppercase tracking-wider">Physics, Chemistry and Maths formula rail</span>
           </div>
-          <div className="relative mt-3 flex overflow-hidden">
+          <div className="pointer-events-none relative mt-3 flex overflow-hidden">
             <div className="animate-marquee flex items-center gap-6 whitespace-nowrap">
               {[...FORMULAS_MARQUEE, ...FORMULAS_MARQUEE].map((f, i) => (
                 <div
                   key={`${f.tex}-${i}`}
-                  className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-2 shadow-xs transition-colors hover:border-line-strong"
+                  className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-2 text-ink shadow-xs"
                 >
-                  <span className="font-mono text-xs font-bold text-ink">
-                    ${f.tex}$
-                  </span>
+                  <TeX className="landing-katex">{f.tex}</TeX>
                   <span className="h-3 w-px bg-line" />
                   <span className="text-[11px] font-medium text-ink-2">
                     {f.label}

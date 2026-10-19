@@ -10,6 +10,7 @@ export interface PlanItem {
   concept_id: string;
   topic: string;
   unit?: string;
+  subject?: string;
   kind: PlanItemKind;
   minutes: number;
   tutor_taught?: boolean;
@@ -26,6 +27,7 @@ export interface PlanDay {
 }
 
 export interface PlanUnit {
+  subject?: string;
   unit: string;
   total: number;
   mastered: number;
@@ -59,7 +61,29 @@ export interface StudyPlan {
   verdict: "on_track" | "tight" | "behind" | "done";
   minutes_needed: number | null;
   week: PlanDay[];
-  milestones: { month: string; by: string; units: string[] }[];
+  milestones: {
+    month: string;
+    by: string;
+    units: string[];
+    subjects?: { subject: string; unit: string; by: string }[];
+  }[];
+  /** Lowest subject coverage. The plan moves all three subjects in one step. */
+  together?: {
+    percent: number;
+    behind: string | null;
+    level: boolean;
+    subjects: {
+      subject: string;
+      topics_total: number;
+      topics_mastered: number;
+      topics_started: number;
+      units_total: number;
+      units_done: number;
+      next_unit: string | null;
+      finish_by: string | null;
+      percent: number;
+    }[];
+  };
   roadmap: PlanUnit[];
 }
 

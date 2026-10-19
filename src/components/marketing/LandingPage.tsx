@@ -3,14 +3,18 @@
 import { useEffect, useRef } from "react";
 import ArchitecturePipeline from "./landing/ArchitecturePipeline";
 import Close from "./landing/Close";
+import Faq from "./landing/Faq";
+import FeatureBento from "./landing/FeatureBento";
 import Hero from "./landing/Hero";
 import Nav from "./landing/Nav";
+import ProblemBand from "./landing/ProblemBand";
 import SocialProof from "./landing/SocialProof";
 import StudyStudio from "./landing/StudyStudio";
 import SyllabusMatrix from "./landing/SyllabusMatrix";
 
 /**
- * Landing. Light paper, navy ink, teal only on the primary action (.impeccable.md).
+ * Landing. Light and dark. Teal carries actions; physics blue, chemistry green and the status
+ * colours add variety through illustrations and tinted tiles (.impeccable.md).
  * The app's <body> does not scroll, so this container does. Motion is two things:
  * the hero reply plays in the order the tutor works (question, steps, answer), and
  * sections fade up once as they enter. Reduced motion shows everything at rest.
@@ -19,7 +23,7 @@ import SyllabusMatrix from "./landing/SyllabusMatrix";
  * - Lenis smooth scrolling for high-end inertia feel
  * - Staggered GSAP reveals & interactive mockups
  * - StudyStudio with continuous 3D formula tickers & live interactive practice
- * - SyllabusMatrix with interactive filter across 1,016 topics across Physics, Chemistry, and Mathematics
+ * - SyllabusMatrix with an interactive unit and chapter filter for Physics, Chemistry and Mathematics
  * - ArchitecturePipeline with clean engineering vector schematics
  */
 export default function LandingPage() {
@@ -85,6 +89,8 @@ export default function LandingPage() {
             y: 28,
             duration: 0.8,
             ease,
+            // Leave no inline transform behind: it would override the CSS hover lift on tiles.
+            clearProps: "transform",
             scrollTrigger: {
               trigger: el,
               scroller,
@@ -94,8 +100,11 @@ export default function LandingPage() {
           });
         });
 
-        /* Mockup float-up with scale */
+        /* Mockup float-up with scale.
+           Skip nodes that already have data-reveal: a second from()
+           leaves them stuck at opacity 0, which blanks the studio preview. */
         gsap.utils.toArray<HTMLElement>(".landing-mockup-wrapper").forEach((el) => {
+          if (el.hasAttribute("data-reveal")) return;
           gsap.from(el, {
             opacity: 0,
             y: 40,
@@ -129,9 +138,12 @@ export default function LandingPage() {
       <main>
         <Hero />
         <SocialProof />
+        <ProblemBand />
+        <FeatureBento />
         <StudyStudio />
         <SyllabusMatrix />
         <ArchitecturePipeline />
+        <Faq />
       </main>
       <Close />
     </div>

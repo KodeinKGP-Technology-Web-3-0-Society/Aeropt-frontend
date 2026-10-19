@@ -33,8 +33,8 @@ export default function LiveActivity({
     <div className="rounded-2xl border border-line bg-surface px-4 py-3" role="status" aria-live="polite">
       <div className="flex items-center gap-2.5 text-sm font-medium text-ink">
         <span className="relative flex h-2.5 w-2.5" aria-hidden>
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60 motion-reduce:animate-none" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ink opacity-30 motion-reduce:animate-none" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ink" />
         </span>
         <span>{stopping ? "Stopping" : headline}…</span>
         <span className="ml-auto flex items-center gap-3">
@@ -56,13 +56,13 @@ export default function LiveActivity({
           {steps.map((a) => (
             <li key={a.name} className="flex items-center gap-2 text-xs text-ink-2">
               {a.state === "running" ? (
-                <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-line border-t-accent motion-reduce:animate-none" aria-hidden />
+                <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-line border-t-ink motion-reduce:animate-none" aria-hidden />
               ) : a.state === "error" ? (
                 <span className="flex h-3 w-3 items-center justify-center text-[10px] font-bold text-warning" aria-hidden>
                   !
                 </span>
               ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-success" aria-hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-ink-2" aria-hidden>
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               )}

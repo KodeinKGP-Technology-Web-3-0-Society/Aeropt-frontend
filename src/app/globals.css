@@ -7,7 +7,7 @@
 :root {
   color-scheme: light;
 
-  --bg-main: oklch(97.8% 0.003 250);
+  --bg-main: oklch(97.6% 0.012 195);
   --bg-surface: oklch(100% 0 0);
   --bg-hover: oklch(95% 0.01 250);
   --bg-active: oklch(93.5% 0.022 195);
@@ -94,85 +94,6 @@
   --shadow-card: 0 12px 32px oklch(0% 0 0 / 0.28);
   --shadow-composer: 0 10px 28px oklch(0% 0 0 / 0.32);
   --scrim: oklch(8% 0.02 250 / 0.62);
-}
-
-/* Study desk palette. Scoped so the rest of the app keeps its tokens. */
-.study-desk {
-  --bg-main: #f6f7fb;
-  --bg-surface: #ffffff;
-  --bg-hover: #eef0f6;
-  --bg-input: #ffffff;
-  --border-main: #e6e8f0;
-  --border-button: #d5d8e4;
-  --text-main: #0f172a;
-  --text-secondary: #3e4a63;
-  --text-muted: #5b6478;
-  --text-on-accent: #ffffff;
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-soft: #eef2ff;
-  --success: #047857;
-  --warning: #b45309;
-  --danger: #be123c;
-  --physics: #3b82f6;
-  --chemistry: #f97316;
-  --maths: #8b5cf6;
-  --physics-ink: #1d4ed8;
-  --chemistry-ink: #c2410c;
-  --maths-ink: #6d28d9;
-  --status-new: #cbd5e1;
-  --status-progress: #f59e0b;
-  --status-review: #e11d48;
-  --status-mastered: #10b981;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 10px 28px rgb(15 23 42 / 0.06);
-  font-family: var(--font-inter), var(--font-plex-sans), "Segoe UI", sans-serif;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .study-desk,
-  .study-desk * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-:root[data-theme="dark"] .study-desk {
-  --bg-main: #0e1117;
-  --bg-surface: #161b22;
-  --bg-hover: #1c2330;
-  --bg-input: #161b22;
-  --border-main: #2a3140;
-  --border-button: #3a4254;
-  --text-main: #f1f5f9;
-  --text-secondary: #c5cdd8;
-  --text-muted: #94a3b8;
-  --text-on-accent: #ffffff;
-  --accent: #c7d2fe;
-  --accent-hover: #e0e7ff;
-  --accent-soft: #1e1b4b;
-  --success: #6ee7b7;
-  --warning: #fcd34d;
-  --danger: #fda4af;
-  --physics: #60a5fa;
-  --chemistry: #fb923c;
-  --maths: #a78bfa;
-  --physics-ink: #93c5fd;
-  --chemistry-ink: #fdba74;
-  --maths-ink: #c4b5fd;
-  --status-new: #475569;
-  --status-progress: #fbbf24;
-  --status-review: #fb7185;
-  --status-mastered: #34d399;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.28);
-}
-
-/* Filled indigo stays dark enough for white labels. Text and rings use the lighter --accent. */
-:root[data-theme="dark"] .study-desk .bg-accent {
-  background-color: #4f46e5;
-}
-:root[data-theme="dark"] .study-desk .hover\:bg-accent-hover:hover {
-  background-color: #4338ca;
 }
 
 @theme inline {
@@ -707,12 +628,12 @@ textarea:focus-visible,
 
 .practice-canvas__option.is-right {
   border-color: var(--success);
-  background: color-mix(in oklch, var(--success) 12%, var(--bg-surface));
+  background: color-mix(in oklch, var(--success) 8%, var(--bg-surface));
 }
 
 .practice-canvas__option.is-wrong {
   border-color: var(--danger);
-  background: color-mix(in oklch, var(--danger) 10%, var(--bg-surface));
+  background: color-mix(in oklch, var(--danger) 6%, var(--bg-surface));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -813,13 +734,13 @@ textarea:focus-visible,
 }
 
 .practice-canvas__result.is-correct {
-  border-color: color-mix(in oklch, var(--success) 40%, var(--border-main));
-  background: color-mix(in oklch, var(--success) 8%, var(--bg-surface));
+  border-color: color-mix(in oklch, var(--success) 28%, var(--border-main));
+  background: color-mix(in oklch, var(--success) 6%, var(--bg-surface));
 }
 
 .practice-canvas__result.is-incorrect {
-  border-color: color-mix(in oklch, var(--danger) 36%, var(--border-main));
-  background: color-mix(in oklch, var(--danger) 7%, var(--bg-surface));
+  border-color: color-mix(in oklch, var(--danger) 24%, var(--border-main));
+  background: color-mix(in oklch, var(--danger) 5%, var(--bg-surface));
 }
 
 .practice-canvas__result-label {
@@ -1806,13 +1727,15 @@ textarea:focus-visible,
 }
 .landing-formula {
   opacity: 0;
+  pointer-events: none;
   animation: landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-  transition: transform 350ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 300ms ease, border-color 300ms ease, background-color 300ms ease;
 }
-.landing-formula:hover {
-  transform: scale(1.14) translateY(-3px) !important;
-  box-shadow: 0 10px 25px -5px oklch(22% 0.028 250 / 0.15);
-  z-index: 30;
+.landing-katex .katex {
+  font-size: 0.95em;
+  line-height: 1.2;
+}
+.landing-katex .katex-html {
+  white-space: nowrap;
 }
 .landing-formula-anim-1 { animation: landing-float-1 7s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 .landing-formula-anim-2 { animation: landing-float-2 9s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
@@ -2596,10 +2519,6 @@ textarea:focus-visible,
   will-change: transform;
 }
 
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee {
     animation: none !important;
@@ -2607,3 +2526,53 @@ textarea:focus-visible,
   }
 }
 
+
+/* ── Landing: colour mesh, tinted tiles, spotlight ─────────────────────────
+   Every colour is a theme variable, so dark mode needs no separate rules beyond
+   a lower opacity. Subject colours (physics, chemistry) carry the variety. */
+.landing-mesh { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.landing-mesh i {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.42;
+  animation: landing-drift 20s ease-in-out infinite alternate;
+}
+:root[data-theme="dark"] .landing-mesh i { opacity: 0.26; }
+@keyframes landing-drift { to { transform: translate3d(36px, -28px, 0) scale(1.1); } }
+
+.landing-tile {
+  --tile: var(--accent);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--tile) 22%, var(--border-main));
+  background: color-mix(in oklab, var(--tile) 7%, var(--bg-surface));
+  transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1), border-color 260ms ease, box-shadow 260ms ease;
+}
+.landing-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms ease;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), color-mix(in oklab, var(--tile) 18%, transparent), transparent 70%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .landing-tile:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--tile) 50%, var(--border-main)); box-shadow: var(--shadow-card); }
+  .landing-tile:hover::after { opacity: 1; }
+}
+.landing-tile > * { position: relative; z-index: 1; }
+
+.landing-float { animation: landing-float-1 7s ease-in-out infinite; }
+.landing-float-slow { animation: landing-float-2 10s ease-in-out infinite; }
+.landing-dash { stroke-dasharray: 6 7; animation: landing-dash 2.4s linear infinite; }
+@keyframes landing-dash { to { stroke-dashoffset: -26; } }
+@media (prefers-reduced-motion: reduce) {
+  .landing-mesh i, .landing-float, .landing-float-slow, .landing-dash { animation: none; }
+  .landing-tile, .landing-tile::after { transition: none; }
+}
+
+.landing-faq summary { list-style: none; cursor: pointer; }
+.landing-faq summary::-webkit-details-marker { display: none; }
+.landing-faq details[open] summary svg { transform: rotate(45deg); }

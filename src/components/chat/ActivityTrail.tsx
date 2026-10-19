@@ -62,7 +62,7 @@ export default function ActivityTrail({
         >
           {busy || steps.length === 0 ? (
             <span
-              className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-[1.5px] border-line border-t-accent motion-reduce:animate-none"
+              className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-[1.5px] border-line border-t-ink motion-reduce:animate-none"
               aria-hidden
             />
           ) : (
@@ -75,7 +75,7 @@ export default function ActivityTrail({
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="shrink-0 text-success"
+              className="shrink-0 text-ink-2"
               aria-hidden
             >
               <path d="M20 6 9 17l-5-5" />
@@ -118,7 +118,7 @@ export default function ActivityTrail({
               setOpen(true);
               setShowMaterial(true);
             }}
-            className="flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent/20 transition-colors"
+            className="flex items-center gap-1 rounded-md border border-line bg-hover px-2 py-0.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
           >
             <span>📚 Course Material</span>
           </button>
@@ -133,7 +133,7 @@ export default function ActivityTrail({
                 <div className="flex items-center gap-2 font-medium text-xs">
                   {a.state === "running" ? (
                     <span
-                      className="h-3 w-3 shrink-0 animate-spin rounded-full border-[1.5px] border-line border-t-accent motion-reduce:animate-none"
+                      className="h-3 w-3 shrink-0 animate-spin rounded-full border-[1.5px] border-line border-t-ink motion-reduce:animate-none"
                       aria-hidden
                     />
                   ) : a.state === "error" ? (
@@ -153,7 +153,7 @@ export default function ActivityTrail({
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="shrink-0 text-success"
+                      className="shrink-0 text-ink-2"
                       aria-hidden
                     >
                       <path d="M20 6 9 17l-5-5" />
@@ -173,18 +173,18 @@ export default function ActivityTrail({
 
                 {/* Retrieved material card for retrieve_content step */}
                 {a.material && Array.isArray(a.material.snippets) && a.material.snippets.length > 0 && (
-                  <div className="ml-5 mt-1.5 rounded-lg border border-accent/30 bg-accent-soft/20 p-2.5 text-ink-2">
-                    <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1.5 border-b border-accent/20">
+                  <div className="ml-5 mt-1.5 rounded-lg border border-line bg-canvas p-2.5 text-ink-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1.5 border-b border-line">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm">📖</span>
-                        <span className="font-semibold text-xs text-accent">
+                        <span className="font-semibold text-xs text-ink">
                           {a.material.title || "Retrieved Course Material"}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setShowMaterial((v) => !v)}
-                        className="text-[10px] text-accent font-medium hover:underline cursor-pointer"
+                        className="text-[10px] text-ink-2 font-medium hover:underline cursor-pointer"
                       >
                         {showMaterial ? "Hide excerpts" : `View ${a.material.snippets.length} excerpt(s)`}
                       </button>
@@ -208,10 +208,10 @@ export default function ActivityTrail({
                         {a.material.snippets.map((snip, sIdx) => (
                           <div
                             key={sIdx}
-                            className="rounded border-l-2 border-accent bg-surface/60 p-2 text-[11px] text-ink leading-relaxed"
+                            className="rounded border-l-2 border-line-strong bg-surface/60 p-2 text-[11px] text-ink leading-relaxed"
                           >
                             {snip.title && (
-                              <p className="font-semibold text-[10px] uppercase text-accent mb-1 tracking-wider">
+                              <p className="font-semibold text-[10px] uppercase text-ink-2 mb-1 tracking-wider">
                                 {snip.title}
                               </p>
                             )}

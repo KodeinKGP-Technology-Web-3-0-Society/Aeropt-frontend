@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import StudySidebar from "@/components/study/StudySidebar";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
-import type { QuestionSource, StudyMode, StudyPhase, StudyState } from "@/lib/api/study";
+import { fetchConceptPyqs, type ConceptPyq, type QuestionSource, type StudyMode, type StudyPhase, type StudyState } from "@/lib/api/study";
 import LessonOutline from "./LessonOutline";
 import LiveActivity from "./LiveActivity";
 import PhaseIndicator from "./PhaseIndicator";
@@ -262,11 +262,33 @@ export default function StudyRoom({
     reload,
   } = useStudySession(conceptId, sessionId, requestedMode, requestedSource);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [pastPapers, setPastPapers] = useState<{
+    status: "empty" | "unavailable" | "ready";
+    items: ConceptPyq[];
+  } | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, busy, study?.current_phase, activity.length, streamingText]);
+
+  useEffect(() => {
+    const id = study?.concept_id;
+    if (!id) return;
+    let live = true;
+    setPastPapers(null);
+    fetchConceptPyqs(id)
+      .then((items) => {
+        if (!live) return;
+        setPastPapers(items.length ? { status: "ready", items } : { status: "empty", items: [] });
+      })
+      .catch(() => {
+        if (live) setPastPapers({ status: "unavailable", items: [] });
+      });
+    return () => {
+      live = false;
+    };
+  }, [study?.concept_id]);
 
   const phase: StudyPhase = study?.current_phase ?? "learn";
   const finished = phase === "evaluation" || phase === "completed";
@@ -452,6 +474,7 @@ export default function StudyRoom({
                 if (m !== "practice") return base;
                 return `${base}?mode=practice${src === "pyq" ? "&source=pyq" : ""}`;
               }}
+              pastPapers={pastPapers}
               onStart={() =>
                 void send(
                   (study.mode ?? requestedMode) === "practice"

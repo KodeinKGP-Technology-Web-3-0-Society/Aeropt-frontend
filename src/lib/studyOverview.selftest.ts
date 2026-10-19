@@ -11,6 +11,8 @@ import {
   displayTitle,
   conceptAction,
   conceptHref,
+  pickTodaySet,
+  unfixedPracticeTarget,
   type TabCounts,
 } from "./studyOverview.ts";
 import type { OverviewConcept, OverviewGroup, SyllabusUnit } from "./api/study.ts";
@@ -259,6 +261,58 @@ check("title-case-small-words", displayTitle("law of inertia") === "Law of Inert
 check(
   "title-case-keeps-capitals",
   displayTitle("LC oscillations") === "LC Oscillations" && displayTitle("d- and f-Block Elements") === "d- and f-Block Elements",
+);
+
+const todayPlan = {
+  today: "2026-10-19",
+  week: [
+    {
+      date: "2026-10-19",
+      items: [
+        { concept_id: "done_phy", topic: "Done topic", subject: "Physics", kind: "done", done: true },
+        { concept_id: "math_sets", topic: "Sets", subject: "Mathematics", kind: "learn" },
+        { concept_id: "chem_mole", topic: "Mole concept", subject: "Chemistry", kind: "learn" },
+        { concept_id: "phy_torque", topic: "Torque", subject: "Physics", kind: "continue" },
+      ],
+    },
+  ],
+};
+const todayPick = pickTodaySet(todayPlan, [
+  { concept_id: "chem_mole", study_session_id: "sess_mole" },
+]);
+check(
+  "today-skips-done-and-maths",
+  todayPick?.conceptId === "chem_mole" && todayPick.href === "/study/chem_mole?session=sess_mole",
+);
+check(
+  "today-falls-back-to-maths-when-nothing-else-is-open",
+  pickTodaySet({
+    today: "2026-10-19",
+    week: [{ date: "2026-10-19", items: [{ concept_id: "math_sets", topic: "Sets", subject: "Maths", kind: "learn" }] }],
+  })?.conceptId === "math_sets",
+);
+check(
+  "today-hides-when-the-day-is-finished",
+  pickTodaySet({
+    today: "2026-10-19",
+    week: [{ date: "2026-10-19", items: [{ concept_id: "done_phy", topic: "Done", subject: "Physics", kind: "done", done: true }] }],
+  }) === null,
+);
+check("today-hides-without-a-plan", pickTodaySet(null) === null);
+
+const redo = unfixedPracticeTarget([
+  { concept_id: "torque", concept_name: "torque", content_id: "q1", fixed: false },
+  { concept_id: "torque", concept_name: "torque", content_id: "q1", fixed: false },
+  { concept_id: "mole", concept_name: "mole concept", content_id: "q2", fixed: false },
+  { concept_id: "fixed_one", concept_name: "Friction", content_id: "q3", fixed: true },
+]);
+check(
+  "redo-names-the-first-unfixed-concept",
+  redo?.href === "/study/torque?mode=practice" && redo.label === "Practise Torque again",
+);
+check(
+  "redo-hides-when-every-mistake-is-fixed",
+  unfixedPracticeTarget([{ concept_id: "torque", concept_name: "torque", content_id: "q1", fixed: true }]) === null,
 );
 
 // ── Output results ───────────────────────────────────────────────────────────

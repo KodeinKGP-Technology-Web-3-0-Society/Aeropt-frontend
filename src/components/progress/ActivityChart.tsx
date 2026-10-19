@@ -104,7 +104,7 @@ export default function ActivityChart({ days }: { days: ProgressDay[] }) {
                 >
                   <span
                     className={`block w-full max-w-6 rounded-t-[4px] transition-opacity ${
-                      v > 0 ? "bg-accent" : ""
+                      v > 0 ? "bg-ink" : ""
                     } ${active != null && active !== i ? "opacity-55" : ""} group-focus-visible:ring-2 group-focus-visible:ring-accent group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-surface`}
                     style={{ height: v > 0 ? `max(${pct}%, 3px)` : 0 }}
                   />

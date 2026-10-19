@@ -5,8 +5,6 @@ import { useMemo, useState } from "react";
 
 interface SyllabusUnit {
   name: string;
-  weightage: string;
-  topicCount: number;
   highlight: string;
   chapters: string[];
 }
@@ -16,7 +14,6 @@ interface SubjectData {
   color: string;
   badgeClass: string;
   borderClass: string;
-  totalTopics: number;
   description: string;
   units: SyllabusUnit[];
 }
@@ -27,13 +24,10 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
     color: "text-physics",
     badgeClass: "bg-physics/10 text-physics border-physics/20",
     borderClass: "border-physics/30",
-    totalTopics: 368,
     description: "From classical Newtonian mechanics and field theory to quantum transitions and semiconductor physics.",
     units: [
       {
         name: "Mechanics",
-        weightage: "~32% JEE Weightage",
-        topicCount: 118,
         highlight: "Core foundation for JEE Advanced multi-concept problems",
         chapters: [
           "Units & Dimensions",
@@ -49,8 +43,6 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
       },
       {
         name: "Electrodynamics & Optics",
-        weightage: "~36% JEE Weightage",
-        topicCount: 134,
         highlight: "High-yield analytical derivations and vector integrals",
         chapters: [
           "Electrostatics & Gauss's Law",
@@ -65,8 +57,6 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
       },
       {
         name: "Thermodynamics & Modern Physics",
-        weightage: "~32% JEE Weightage",
-        topicCount: 116,
         highlight: "Scoring, formula-dense concepts with high predictability",
         chapters: [
           "Thermal Properties of Matter",
@@ -85,13 +75,10 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
     color: "text-chemistry",
     badgeClass: "bg-chemistry/10 text-chemistry border-chemistry/20",
     borderClass: "border-chemistry/30",
-    totalTopics: 342,
     description: "Thorough balance between thermodynamic calculations, periodic trends, and reaction mechanisms.",
     units: [
       {
         name: "Physical Chemistry",
-        weightage: "~34% JEE Weightage",
-        topicCount: 122,
         highlight: "Quantitative problem-solving and equilibrium graphs",
         chapters: [
           "Mole Concept & Stoichiometry",
@@ -106,8 +93,6 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
       },
       {
         name: "Organic Chemistry",
-        weightage: "~38% JEE Weightage",
-        topicCount: 138,
         highlight: "Reaction mechanisms, stereochemistry, and multi-step synthesis",
         chapters: [
           "General Organic Chemistry (GOC)",
@@ -121,8 +106,6 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
       },
       {
         name: "Inorganic Chemistry",
-        weightage: "~28% JEE Weightage",
-        topicCount: 82,
         highlight: "Coordination compounds, orbital hybridization, and NCERT facts",
         chapters: [
           "Periodic Classification & Periodicity",
@@ -139,56 +122,58 @@ const SYLLABUS_DATA: Record<string, SubjectData> = {
     color: "text-maths",
     badgeClass: "bg-maths/10 text-maths border-maths/20",
     borderClass: "border-maths/30",
-    totalTopics: 306,
-    description: "Rigorous proofs, algebraic manipulation, and coordinate transformation calibrated for speed and accuracy.",
+    description: "Algebra, calculus, coordinate geometry and vectors, taught from NCERT Mathematics.",
     units: [
       {
-        name: "Calculus",
-        weightage: "~38% JEE Weightage",
-        topicCount: 114,
-        highlight: "Highest weighted math section in both Main & Advanced",
+        name: "Algebra",
+        highlight: "Foundations that every later chapter leans on",
         chapters: [
-          "Functions, Domain & Range",
-          "Limits, Continuity & Differentiability",
-          "Applications of Derivatives (Max/Min)",
-          "Indefinite Integration & Substitution",
-          "Definite Integrals & Properties",
-          "Area Under Curves",
+          "Sets",
+          "Relations and Functions",
+          "Complex Numbers and Quadratic Equations",
+          "Linear Inequalities",
+          "Permutations and Combinations",
+          "Binomial Theorem",
+          "Sequences and Series",
+          "Matrices",
+          "Determinants",
+        ],
+      },
+      {
+        name: "Calculus",
+        highlight: "Limits to integrals, with the standard JEE techniques",
+        chapters: [
+          "Limits and Derivatives",
+          "Continuity and Differentiability",
+          "Application of Derivatives",
+          "Integrals",
+          "Application of Integrals",
           "Differential Equations",
         ],
       },
       {
-        name: "Algebra",
-        weightage: "~32% JEE Weightage",
-        topicCount: 106,
-        highlight: "Algebraic foundations, roots, combinatorics, and matrices",
+        name: "Coordinate Geometry, Vectors and Trigonometry",
+        highlight: "Equations of curves, space geometry and vector methods",
         chapters: [
-          "Quadratic Equations & Expressions",
-          "Complex Numbers & De Moivre's",
-          "Sequences & Series (AP, GP, HP, AGP)",
-          "Binomial Theorem & Expansions",
-          "Permutations & Combinations",
-          "Matrices & Determinants",
-          "Probability & Statistics",
+          "Straight Lines",
+          "Conic Sections",
+          "Trigonometric Functions",
+          "Inverse Trigonometric Functions",
+          "Vector Algebra",
+          "Introduction to Three Dimensional Geometry",
+          "Three Dimensional Geometry",
         ],
       },
       {
-        name: "Coordinate Geometry & Vectors",
-        weightage: "~30% JEE Weightage",
-        topicCount: 86,
-        highlight: "Standard equations, tangents, normals, and 3D space vectors",
-        chapters: [
-          "Straight Lines & Pairs of Lines",
-          "Circles & Family of Circles",
-          "Parabola, Ellipse & Hyperbola",
-          "Vectors (Dot, Cross, Box Products)",
-          "Three Dimensional Geometry (Lines & Planes)",
-          "Trigonometric Ratios, Equations & Inverse",
-        ],
+        name: "Probability and Statistics",
+        highlight: "Counting, distributions and data",
+        chapters: ["Statistics", "Probability"],
       },
     ],
   },
 };
+
+const chapterCount = (s: SubjectData) => s.units.reduce((n, u) => n + u.chapters.length, 0);
 
 export default function SyllabusMatrix() {
   const [selectedSubject, setSelectedSubject] = useState<string>("Physics");
@@ -224,7 +209,7 @@ export default function SyllabusMatrix() {
               className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent shadow-xs"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              1,016 CONCEPTS · FULL JEE MAINS & ADVANCED DIRECTORY
+              PHYSICS, CHEMISTRY &amp; MATHEMATICS · ORGANISED BY UNIT
             </span>
             <h2
               data-reveal
@@ -233,7 +218,7 @@ export default function SyllabusMatrix() {
               The Full JEE Syllabus Directory
             </h2>
             <p data-reveal className="mt-3 text-base leading-relaxed text-ink-2 sm:text-lg">
-              Structured exactly how top rankers study. Explore exam weightage, filter through all 1,016 topics, and select any chapter for instant Socratic problem solving.
+              Browse every unit and chapter, search for the one you are stuck on, and open it for a guided, step-by-step lesson.
             </p>
           </div>
 
@@ -255,7 +240,7 @@ export default function SyllabusMatrix() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${subject.name} chapters (e.g. ${
-                  subject.name === "Physics" ? "Rotational, Doppler, Gauss" : subject.name === "Chemistry" ? "Equilibrium, Aldol, Kinetics" : "Calculus, Parabola, Limits"
+                  subject.name === "Physics" ? "Rotational, Doppler, Gauss" : subject.name === "Chemistry" ? "Equilibrium, Aldol, Kinetics" : "Integrals, Matrices, Probability"
                 })...`}
                 className="w-full rounded-2xl border border-line bg-canvas pl-11 pr-24 py-3 text-xs sm:text-sm text-ink placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-hidden transition-all shadow-xs"
               />
@@ -300,7 +285,7 @@ export default function SyllabusMatrix() {
                   <span className={`h-2 w-2 rounded-full ${subjKey === "Physics" ? "bg-physics" : subjKey === "Chemistry" ? "bg-chemistry" : "bg-maths"}`} />
                   {data.name}
                   <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-mono ${isSelected ? "bg-surface/20 text-surface" : "bg-line/60 text-muted"}`}>
-                    {data.totalTopics}
+                    {chapterCount(data)}
                   </span>
                 </button>
               );
@@ -308,7 +293,7 @@ export default function SyllabusMatrix() {
           </div>
 
           <div className="text-xs text-ink-2 font-medium">
-            <span className="font-bold text-ink">{subject.totalTopics} Concepts</span> · Full NCERT & JEE Advanced Coverage
+            <span className="font-bold text-ink">{chapterCount(subject)} chapters</span> · NCERT and JEE Advanced aligned
           </div>
         </div>
 
@@ -324,10 +309,7 @@ export default function SyllabusMatrix() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="rounded-md bg-surface px-2.5 py-1 text-[11px] font-bold text-ink border border-line shadow-2xs">
-                      {unit.weightage}
-                    </span>
-                    <span className="text-xs font-mono font-semibold text-muted">
-                      {unit.topicCount} topics
+                      {unit.chapters.length} chapters
                     </span>
                   </div>
 

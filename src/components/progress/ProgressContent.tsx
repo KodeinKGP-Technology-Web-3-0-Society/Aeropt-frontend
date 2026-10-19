@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppPage } from "@/components/AppPage";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
 import {
@@ -11,13 +12,14 @@ import {
   type ProgressConcept,
   type ProgressReport,
 } from "@/lib/api/progress";
+import { unfixedPracticeTarget } from "@/lib/studyOverview";
 import ActivityChart from "./ActivityChart";
 
 // Status always carries its word: teal accent and "mastered" green are too close
 // to tell apart by colour alone (ΔE 7.8, measured), so colour is never the cue.
 const STATUS: Record<ConceptStatus, { label: string; tone: string }> = {
   mastered: { label: "Mastered", tone: "bg-success/12 text-success" },
-  strong: { label: "Strong", tone: "bg-accent-soft text-accent" },
+  strong: { label: "Strong", tone: "bg-hover text-ink" },
   building: { label: "Building", tone: "bg-warning/15 text-ink-2" },
   weak: { label: "Weak", tone: "bg-danger/10 text-danger" },
   new: { label: "New", tone: "bg-hover text-muted" },
@@ -66,7 +68,7 @@ function StatTile({ label, value, sub, delta }: { label: string; value: string; 
 function ProficiencyBar({ value, label }: { value: number; label: string }) {
   return (
     <div className="relative h-2 w-full rounded-full bg-hover" role="img" aria-label={label}>
-      <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(2, Math.round(value * 100))}%` }} />
+      <div className="h-2 rounded-full bg-ink" style={{ width: `${Math.max(2, Math.round(value * 100))}%` }} />
       {/* mastery line at 80%: position, not colour, says "mastered" */}
       <div className="absolute -top-0.5 h-3 w-px bg-ink-2/50" style={{ left: "80%" }} aria-hidden />
     </div>
@@ -192,7 +194,7 @@ function Concepts({ concepts }: { concepts: ProgressConcept[] }) {
                 </td>
                 <td className="px-3 py-2.5 text-xs text-muted">{ago(c.last_practised)}</td>
                 <td className="px-5 py-2.5 text-right">
-                  <Link href={studyHref(c.concept_id)} className="text-xs font-semibold text-accent hover:underline">
+                  <Link href={studyHref(c.concept_id)} className="text-xs font-semibold text-ink underline-offset-2 hover:underline">
                     {c.status === "mastered" ? "Revisit" : "Practise"}
                   </Link>
                 </td>
@@ -212,6 +214,7 @@ function Mistakes({ report }: { report: ProgressReport }) {
   const types = Object.entries(by_type).sort((a, b) => b[1] - a[1]);
   const max = Math.max(...types.map(([, n]) => n));
   const entries = showFixed ? notebook : notebook.filter((m) => !m.fixed);
+  const redo = unfixedPracticeTarget(notebook);
   return (
     <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="mistakes-title">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -227,19 +230,29 @@ function Mistakes({ report }: { report: ProgressReport }) {
         {types.map(([type, n]) => (
           <li key={type} className="grid grid-cols-[6.5rem_1fr_2rem] items-center gap-3 text-xs">
             <span className="text-ink-2">{ERROR_LABEL[type] ?? type}</span>
-            <span className="h-2 rounded-r-[4px] bg-accent/70" style={{ width: `${Math.max(4, (n / max) * 100)}%` }} aria-hidden />
+            <span className="h-2 rounded-r-[4px] bg-ink" style={{ width: `${Math.max(4, (n / max) * 100)}%` }} aria-hidden />
             <span className="text-right tabular-nums text-ink">{n}</span>
           </li>
         ))}
       </ul>
 
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <p className="text-xs font-semibold text-ink-2">{showFixed ? "All recent mistakes" : "Still to fix"}</p>
-        {notebook.some((m) => m.fixed) && (
-          <button type="button" onClick={() => setShowFixed((v) => !v)} className="cursor-pointer text-xs text-muted hover:text-ink">
-            {showFixed ? "Hide fixed" : "Show fixed too"}
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {redo && (
+            <Link
+              href={redo.href}
+              className="inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-[15px] font-semibold text-accent-on transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {redo.label}
+            </Link>
+          )}
+          {notebook.some((m) => m.fixed) && (
+            <button type="button" onClick={() => setShowFixed((v) => !v)} className="cursor-pointer text-xs text-muted hover:text-ink">
+              {showFixed ? "Hide fixed" : "Show fixed too"}
+            </button>
+          )}
+        </div>
       </div>
       {entries.length === 0 ? (
         <p className="mt-3 text-sm text-muted">Every recent mistake has since been answered correctly. Nice.</p>
@@ -269,7 +282,7 @@ function Mistakes({ report }: { report: ProgressReport }) {
                 </p>
               )}
               {m.concept_id && !m.fixed && (
-                <Link href={studyHref(m.concept_id)} className="mt-2 inline-block text-xs font-semibold text-accent hover:underline">
+                <Link href={studyHref(m.concept_id)} className="mt-2 inline-block text-xs font-semibold text-ink underline-offset-2 hover:underline">
                   Practise this concept
                 </Link>
               )}
@@ -347,39 +360,41 @@ export default function ProgressContent() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-danger/20 bg-danger/5 p-8 text-center">
-        <p className="text-sm font-medium text-danger">{error}</p>
-        <button type="button" onClick={retry} className="mt-4 cursor-pointer rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-ink-on">
-          Try again
-        </button>
-      </div>
+      <AppPage title="How you're doing">
+        <div className="max-w-md rounded-2xl border border-danger/20 bg-danger/5 p-8 text-center">
+          <p className="text-sm font-medium text-danger">{error}</p>
+          <button type="button" onClick={retry} className="mt-4 cursor-pointer rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-ink-on">
+            Try again
+          </button>
+        </div>
+      </AppPage>
     );
   }
   if (!report || !o) {
     return (
-      <div className="flex flex-col items-center gap-3 py-24" role="status">
-        <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-line border-t-accent motion-reduce:animate-none" />
-        <p className="text-sm text-muted">Loading your progress…</p>
-      </div>
+      <AppPage title="How you're doing" busy>
+        <div className="flex flex-col items-center gap-3 py-16" role="status">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-line border-t-ink motion-reduce:animate-none" />
+          <p className="text-sm text-muted">Loading your progress…</p>
+        </div>
+      </AppPage>
     );
   }
 
   const empty = o.questions_attempted === 0 && report.timeline.length === 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold text-muted">Progress</p>
-          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">How you&apos;re doing</h1>
-        </div>
-        <p className="text-xs text-muted">
+    <AppPage
+      title="How you're doing"
+      actions={
+        <p className="text-sm text-muted">
           {o.last_active ? `Last active ${ago(o.last_active)}` : "No activity yet"} ·{" "}
           <button type="button" onClick={retry} className="cursor-pointer underline-offset-2 hover:text-ink hover:underline">
             Refresh
           </button>
         </p>
-      </header>
+      }
+    >
 
       {empty ? (
         <div className="rounded-2xl border border-line bg-surface p-10 text-center">
@@ -399,13 +414,11 @@ export default function ProgressContent() {
               {report.insights.map((ins, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col justify-between gap-2 rounded-2xl border px-4 py-3 text-sm ${
-                    ins.tone === "action" ? "border-accent/30 bg-accent-soft/50" : "border-line bg-surface"
-                  }`}
+                  className="flex flex-col justify-between gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-sm"
                 >
                   <p className="text-ink-2">{ins.text}</p>
                   {ins.concept_id && ins.action && (
-                    <Link href={studyHref(ins.concept_id)} className="text-xs font-semibold text-accent hover:underline">
+                    <Link href={studyHref(ins.concept_id)} className="text-xs font-semibold text-ink underline-offset-2 hover:underline">
                       {ins.action === "review" ? "Start review" : "Study it"}
                     </Link>
                   )}
@@ -469,7 +482,7 @@ export default function ProgressContent() {
                   <ul className="mt-3 flex flex-col gap-2 text-sm text-ink-2">
                     {report.memories.map((m, i) => (
                       <li key={i} className="flex gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-ink" aria-hidden />
                         <span>{m.fact}</span>
                       </li>
                     ))}
@@ -488,6 +501,6 @@ export default function ProgressContent() {
           <Timeline report={report} />
         </>
       )}
-    </div>
+    </AppPage>
   );
 }

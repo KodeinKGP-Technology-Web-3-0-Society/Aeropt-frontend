@@ -43,7 +43,7 @@ export default function TopicSearch({ initialMode }: { initialMode: "learn" | "p
   }, []);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6">
+    <div className="rounded-2xl border border-line bg-surface p-5  sm:p-6">
       <div className="flex flex-col gap-4">
         <div className="inline-flex w-fit rounded-xl bg-hover p-1" role="radiogroup" aria-label="How do you want to study?">
           {MODES.map((item) => (
@@ -54,7 +54,7 @@ export default function TopicSearch({ initialMode }: { initialMode: "learn" | "p
               aria-checked={mode === item.key}
               onClick={() => setMode(item.key)}
               className={`min-h-11 cursor-pointer rounded-lg px-4 text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                mode === item.key ? "bg-surface text-ink shadow-[var(--shadow-card)]" : "text-muted hover:text-ink"
+                mode === item.key ? "bg-surface text-ink " : "text-muted hover:text-ink"
               }`}
             >
               {item.label}
@@ -103,7 +103,7 @@ export default function TopicSearch({ initialMode }: { initialMode: "learn" | "p
               key={suggestion}
               type="button"
               onClick={() => go(suggestion)}
-              className="min-h-11 cursor-pointer rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-ink-2 transition-colors duration-150 hover:border-accent hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="min-h-11 cursor-pointer rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-ink-2 transition-colors duration-150 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {suggestion}
             </button>

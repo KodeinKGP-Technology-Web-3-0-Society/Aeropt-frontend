@@ -1,6 +1,7 @@
 "use client";
 
 import AuthGuard from "@/components/AuthGuard";
+import { AppShell } from "@/components/AppPage";
 import StudySidebar from "@/components/study/StudySidebar";
 import TutorChat from "@/components/tutorchat/TutorChat";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -35,7 +36,7 @@ function GeneralChat() {
 export default function ChatPage() {
   return (
     <AuthGuard>
-      <div className="flex h-dvh bg-canvas">
+      <AppShell>
         <StudySidebar />
         <Suspense
           fallback={
@@ -46,7 +47,7 @@ export default function ChatPage() {
         >
           <GeneralChat />
         </Suspense>
-      </div>
+      </AppShell>
     </AuthGuard>
   );
 }

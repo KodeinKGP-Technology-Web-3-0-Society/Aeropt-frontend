@@ -34,7 +34,7 @@ export default function TopicRow({
           label={tab === "explored" ? "Explored" : undefined}
         />
         {relativeTime && <span className="hidden w-24 shrink-0 text-right text-[13px] leading-5 text-muted md:inline">{relativeTime}</span>}
-        <span className="inline-flex min-h-11 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink-2 transition-colors duration-150 group-hover:border-accent group-hover:text-accent">
+        <span className="inline-flex min-h-11 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink-2 transition-colors duration-150 group-hover:bg-hover group-hover:text-ink">
           {action.label}
         </span>
       </Link>

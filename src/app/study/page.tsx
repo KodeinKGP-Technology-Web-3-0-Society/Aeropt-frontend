@@ -3,10 +3,12 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
+import { AppPage, AppShell } from "@/components/AppPage";
 import StudySidebar from "@/components/study/StudySidebar";
 import StudyHistory from "@/components/study-room/StudyHistory";
+import { fetchPlan, type StudyPlan } from "@/lib/api/plan";
 import { fetchStudyOverview, type StudyOverview } from "@/lib/api/study";
-import { splitInProgressAndExplored, type TabCounts } from "@/lib/studyOverview";
+import { pickTodaySet, splitInProgressAndExplored, type TabCounts } from "@/lib/studyOverview";
 import ContinueCard from "@/components/study/overview/ContinueCard";
 import TopicSearch from "@/components/study/overview/TopicSearch";
 import TopicsPanel from "@/components/study/overview/TopicsPanel";
@@ -18,6 +20,8 @@ function StudyHome() {
   const initialMode = params.get("mode") === "practice" ? "practice" : "learn";
   const [overview, setOverview] = useState<StudyOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<StudyPlan | null>(null);
+  const [planReady, setPlanReady] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
 
@@ -28,6 +32,23 @@ function StudyHome() {
       .catch((e: unknown) =>
         live && setError(e instanceof Error ? e.message : "Could not load your study plan.")
       );
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    fetchPlan()
+      .then((next) => {
+        if (live) setPlan(next);
+      })
+      .catch(() => {
+        if (live) setPlan(null);
+      })
+      .finally(() => {
+        if (live) setPlanReady(true);
+      });
     return () => {
       live = false;
     };
@@ -53,11 +74,16 @@ function StudyHome() {
     return { split: s, counts: c };
   }, [overview]);
 
+  const today = useMemo(
+    () => (planReady ? pickTodaySet(plan, overview?.up_next ?? []) : null),
+    [planReady, plan, overview],
+  );
+
   return (
-    <main className="flex-1 overflow-y-auto px-4 pb-20 pt-20 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8">
-        <header id="study-top" className="flex items-center justify-between gap-4 scroll-mt-28">
-          <h1 className="text-[32px] leading-10 font-semibold tracking-tight text-ink">Study</h1>
+    <AppPage
+      headerId="study-top"
+      title="Study"
+      actions={
           <button
             type="button"
             onClick={() => setHistoryOpen(true)}
@@ -79,7 +105,8 @@ function StudyHome() {
             </svg>
             Past sessions
           </button>
-        </header>
+      }
+    >
 
         <nav aria-label="On this page" className="sticky top-14 z-30 -mx-4 border-b border-line bg-canvas/90 px-4 py-1 backdrop-blur sm:-mx-6 sm:px-6">
           <ul className="flex gap-1 overflow-x-auto">
@@ -114,7 +141,12 @@ function StudyHome() {
               <h2 id="continue-heading" className="mb-3 text-xl leading-7 font-semibold text-ink">
                 Continue
               </h2>
-              <ContinueCard items={overview.up_next} syllabus={overview.syllabus} />
+              <ContinueCard
+                items={overview.up_next}
+                syllabus={overview.syllabus}
+                today={today}
+                todayPending={!planReady}
+              />
             </section>
 
             <section id="start" className="scroll-mt-28" aria-labelledby="start-heading">
@@ -142,28 +174,27 @@ function StudyHome() {
 
             <a
               href="#study-top"
-              className="inline-flex min-h-11 items-center self-start text-[15px] font-medium text-accent hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex min-h-11 items-center self-start text-[15px] font-medium text-ink-2 underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Back to top
             </a>
           </>
         )}
-      </div>
 
       <StudyHistory open={historyOpen} onClose={closeHistory} />
-    </main>
+    </AppPage>
   );
 }
 
 export default function StudyIndexPage() {
   return (
     <AuthGuard requireOnboarding={false}>
-      <div className="study-desk flex h-dvh bg-canvas">
+      <AppShell>
         <StudySidebar />
         <Suspense fallback={<div className="flex-1 bg-canvas" />}>
           <StudyHome />
         </Suspense>
-      </div>
+      </AppShell>
     </AuthGuard>
   );
 }

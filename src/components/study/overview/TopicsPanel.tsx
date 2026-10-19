@@ -125,7 +125,7 @@ export default function TopicsPanel({
     counts.mastered === 0;
 
   return (
-    <div className="rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
+    <div className="rounded-2xl border border-line bg-surface ">
       <div className="border-b border-line px-4 pt-2 sm:px-5">
 
         {/* Tab Bar / Segmented Control */}
@@ -162,7 +162,7 @@ export default function TopicsPanel({
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs sm:text-xs tabular-nums font-medium ${
                     isSelected
-                      ? "bg-accent-soft text-accent font-semibold"
+                      ? "bg-hover text-ink font-semibold"
                       : isZero
                         ? "bg-hover/80 text-muted"
                         : "bg-hover text-ink-2"
@@ -230,7 +230,7 @@ export default function TopicsPanel({
                 <button
                   type="button"
                   onClick={handleToggleShowAll}
-                  className="cursor-pointer text-xs sm:text-sm font-semibold text-accent transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="cursor-pointer text-sm font-medium text-ink-2 underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {showAll ? "Show less" : `View all ${totalInTab}`}
                 </button>

@@ -17,7 +17,7 @@ function status(s: StudySession): { text: string; tone: string } {
   if (s.outcome === "mastered") return { text: "Mastered", tone: "text-success" };
   if (s.outcome === "needs_review") return { text: "Needs review", tone: "text-ink-2" };
   const phase = { learn: "Learn", examples: "Examples", practice: "Practice" }[s.current_phase as string] ?? "Done";
-  return { text: `In progress · ${phase}`, tone: "text-accent" };
+  return { text: `In progress · ${phase}`, tone: "text-ink-2" };
 }
 
 /**
@@ -68,7 +68,7 @@ export default function StudyHistory({
   return (
     <div className="fixed inset-0 z-[60] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="study-history-title">
       <button type="button" aria-label="Close history" className="absolute inset-0 cursor-default bg-ink/20" onClick={onClose} />
-      <aside className="relative flex h-full w-full max-w-sm flex-col border-l border-line bg-canvas shadow-[var(--shadow-card)]">
+      <aside className="relative flex h-full w-full max-w-sm flex-col border-l border-line bg-canvas">
         <header className="flex items-center justify-between border-b border-line px-5 py-4">
           <h2 id="study-history-title" className="font-display text-lg font-semibold text-ink">
             Study history

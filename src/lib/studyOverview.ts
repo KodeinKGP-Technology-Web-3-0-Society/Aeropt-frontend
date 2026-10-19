@@ -150,6 +150,83 @@ export function conceptHref(c: { concept_id: string; study_session_id?: string |
   return c.study_session_id ? `${base}?session=${c.study_session_id}` : base;
 }
 
+const MATHS_SUBJECTS = new Set(["mathematics", "maths", "math"]);
+
+export function isMathematicsSubject(subject?: string | null): boolean {
+  return MATHS_SUBJECTS.has((subject || "").trim().toLowerCase());
+}
+
+export interface TodaySetPick {
+  conceptId: string;
+  topic: string;
+  subject?: string;
+  unit?: string;
+  href: string;
+}
+
+type TodayPlanItem = {
+  concept_id: string;
+  topic: string;
+  subject?: string;
+  unit?: string;
+  kind: string;
+  done?: boolean;
+};
+
+/** First unfinished Physics or Chemistry item for plan.today. Mathematics only if nothing else is left. */
+export function pickTodaySet(
+  plan: { today: string; week: { date: string; items: TodayPlanItem[] }[] } | null | undefined,
+  queued: { concept_id: string; study_session_id?: string | null }[] = [],
+): TodaySetPick | null {
+  if (!plan?.today || !plan.week?.length) return null;
+  const today = plan.today.slice(0, 10);
+  const day = plan.week.find((entry) => (entry.date || "").slice(0, 10) === today);
+  if (!day) return null;
+  const open = day.items.filter((item) => item.concept_id && item.kind !== "done" && !item.done);
+  const taught = open.filter((item) => !isMathematicsSubject(item.subject));
+  const item = (taught.length ? taught : open)[0];
+  if (!item) return null;
+  const match = queued.find((row) => row.concept_id === item.concept_id);
+  return {
+    conceptId: item.concept_id,
+    topic: item.topic,
+    subject: item.subject,
+    unit: item.unit,
+    href: match ? conceptHref(match) : `/study/${encodeURIComponent(item.concept_id)}`,
+  };
+}
+
+type MistakeRow = {
+  concept_id: string | null;
+  concept_name: string | null;
+  content_id?: string | null;
+  fixed: boolean;
+};
+
+/**
+ * Where "practise the mistakes" goes. A study session is one concept and picks
+ * its own questions, so a set made only of these misses is not available: the
+ * label names the first unfixed concept.
+ */
+export function unfixedPracticeTarget(notebook: MistakeRow[]): { href: string; label: string } | null {
+  const seen = new Set<string>();
+  const open: MistakeRow[] = [];
+  for (const row of notebook) {
+    if (row.fixed || !row.concept_id) continue;
+    const key = row.content_id ? `q:${row.content_id}` : `c:${row.concept_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    open.push(row);
+  }
+  const first = open[0];
+  if (!first?.concept_id) return null;
+  const name = displayTitle(first.concept_name || "this concept");
+  return {
+    href: `/study/${encodeURIComponent(first.concept_id)}?mode=practice`,
+    label: `Practise ${name} again`,
+  };
+}
+
 export function conceptAction(
   c: OverviewConcept,
   tab: TabKind,

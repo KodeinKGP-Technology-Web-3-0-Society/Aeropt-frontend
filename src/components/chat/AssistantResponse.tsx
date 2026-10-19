@@ -62,8 +62,8 @@ function AssistantExtras({
   return (
     <>
       {agent.mistake_brief && (
-        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-2">
+        <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-warning mb-2">
             Where you went wrong
           </p>
           <MarkdownMath content={agent.mistake_brief} className="markdown-math text-sm" />
@@ -220,7 +220,7 @@ export default function AssistantResponse({
                 <button
                   type="button"
                   onClick={() => onFlagStep?.(step.step_id)}
-                  className="text-xs font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+                  className="text-xs font-medium text-ink-2 bg-hover hover:bg-hover px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
                 >
                   <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current">
                     <path d="M5 3v18H3V3h2zm2.5 1h12.1c1.3 0 2.2 1.3 1.7 2.5l-1.9 4 1.9 4c.5 1.2-.4 2.5-1.7 2.5H7.5V4z"/>

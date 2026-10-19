@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AppPage } from "@/components/AppPage";
 import {
   fetchPlan,
   fetchPlanProfile,
@@ -32,7 +33,7 @@ const VERDICT: Record<StudyPlan["verdict"], { label: string; tone: string }> = {
 
 const KIND: Record<PlanItem["kind"], { label: string; tone: string }> = {
   review: { label: "Review", tone: "text-danger" },
-  continue: { label: "Continue", tone: "text-accent" },
+  continue: { label: "Continue", tone: "text-ink-2" },
   learn: { label: "Learn", tone: "text-ink-2" },
   done: { label: "Done", tone: "text-success" },
 };
@@ -165,9 +166,10 @@ function DayCard({ day, isToday }: { day: PlanDay; isToday: boolean }) {
                 <span className={`text-[10px] font-bold uppercase tracking-wide ${KIND[it.kind].tone}`}>
                   {it.kind === "done" ? "✓ " : ""}
                   {KIND[it.kind].label}
+                  {it.subject ? <span className="font-normal normal-case tracking-normal text-muted"> · {it.subject}</span> : null}
                   {it.minutes ? <span className="font-normal normal-case tracking-normal text-muted"> · {it.minutes} min</span> : null}
                 </span>
-                <span className={`block truncate text-xs ${it.kind === "done" ? "text-muted line-through decoration-muted/50" : "text-ink group-hover:text-accent"}`}>
+                <span className={`block truncate text-xs ${it.kind === "done" ? "text-muted line-through decoration-muted/50" : "text-ink group-hover:underline"}`}>
                   {it.topic}
                 </span>
               </Link>
@@ -182,21 +184,51 @@ function DayCard({ day, isToday }: { day: PlanDay; isToday: boolean }) {
 /* ── milestones + roadmap ──────────────────────────────────────────────────── */
 
 function Milestones({ plan }: { plan: StudyPlan }) {
+  const [showAll, setShowAll] = useState(false);
   if (!plan.milestones.length) return null;
+  const preview = 6;
+  const visible = showAll ? plan.milestones : plan.milestones.slice(0, preview);
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5" aria-labelledby="milestones-title">
-      <h2 id="milestones-title" className="text-sm font-semibold text-ink">Milestones</h2>
+    <details className="rounded-2xl border border-line bg-surface">
+      <summary id="milestones-title" className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        Milestones
+      </summary>
+      <div className="px-5 pb-5">
+      <p className="text-xs text-muted">Each step is the next unfinished unit in every subject, from what you have already covered.</p>
       <ol className="mt-4 flex flex-col">
-        {plan.milestones.map((m, i) => (
-          <li key={m.month} className="relative flex gap-4 pb-5 last:pb-0">
-            {i < plan.milestones.length && <span className="absolute left-[5px] top-3 h-full w-px bg-line" aria-hidden />}
-            <span className="relative mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-accent bg-surface" aria-hidden />
+        {visible.map((m, i) => (
+          <li key={`${m.by}-${i}`} className="relative flex gap-4 pb-5 last:pb-0">
+            {i < visible.length - 1 && <span className="absolute left-[5px] top-3 h-full w-px bg-line" aria-hidden />}
+            <span className="relative mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-ink bg-surface" aria-hidden />
             <div className="min-w-0">
               <p className="text-xs font-semibold text-ink">By {fmt(m.by, { day: "numeric", month: "short", year: "numeric" })}</p>
-              <p className="mt-0.5 text-sm text-ink-2">{m.units.join(" · ")}</p>
+              {m.subjects && m.subjects.length > 0 ? (
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {m.subjects.map((part) => (
+                    <li key={part.subject + part.unit} className="text-sm text-ink-2">
+                      <span className="font-medium text-ink">{part.subject}</span>
+                      <span className="text-muted"> · </span>
+                      {part.unit}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-0.5 text-sm text-ink-2">{m.units.join(" · ")}</p>
+              )}
             </div>
           </li>
         ))}
+        {plan.milestones.length > preview && (
+          <li className="pb-5 pl-8">
+            <button
+              type="button"
+              onClick={() => setShowAll((open) => !open)}
+              className="cursor-pointer text-xs font-semibold text-ink-2 hover:text-ink"
+            >
+              {showAll ? "Show the next steps only" : `Show ${plan.milestones.length - preview} later steps`}
+            </button>
+          </li>
+        )}
         {plan.settings.revision_weeks > 0 && (
           <li className="relative flex gap-4 pb-5">
             <span className="absolute left-[5px] top-3 h-full w-px bg-line" aria-hidden />
@@ -215,59 +247,123 @@ function Milestones({ plan }: { plan: StudyPlan }) {
           </div>
         </li>
       </ol>
-    </section>
+      </div>
+    </details>
   );
 }
 
-function Roadmap({ plan }: { plan: StudyPlan }) {
+function Together({ plan }: { plan: StudyPlan }) {
+  const board = plan.together;
+  const subjects = board?.subjects ?? [];
+  const groups = new Map<string, StudyPlan["roadmap"]>();
+  for (const unit of plan.roadmap) {
+    const subject = unit.subject || "Syllabus";
+    const list = groups.get(subject);
+    if (list) list.push(unit);
+    else groups.set(subject, [unit]);
+  }
+  const behind = board?.behind;
+  let metric = "The plan takes the next topic from each subject in turn.";
+  if (board?.level) metric = `All subjects are level at ${board.percent}% covered.`;
+  else if (behind) metric = `${behind} is the furthest behind, at ${board?.percent}% covered. The other subjects stay in step with it.`;
   return (
-    <section className="rounded-2xl border border-line bg-surface" aria-labelledby="roadmap-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
-        <h2 id="roadmap-title" className="text-sm font-semibold text-ink">Roadmap: JEE Main syllabus</h2>
-        <span className="text-[11px] text-muted">dates are when you&apos;ll finish each unit at your current pace</span>
+    <details className="rounded-2xl border border-line bg-surface">
+      <summary id="together-title" className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        All three subjects
+      </summary>
+      <div className="px-5">
+        <p className="mt-2 text-3xl font-semibold tabular-nums text-ink">
+          {board ? board.percent : 0}
+          <span className="ml-1.5 text-base font-normal text-muted">% in step</span>
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{metric}</p>
       </div>
-      <ol className="mt-3 divide-y divide-line">
-        {plan.roadmap.map((u, i) => (
-          <li key={u.unit}>
+      {subjects.length > 0 && (
+        <ul className="mt-4 grid gap-3 px-5 sm:grid-cols-3">
+          {subjects.map((subject) => (
+            <li key={subject.subject} className="rounded-xl border border-line px-3 py-3">
+              <p className="text-sm font-semibold text-ink">{subject.subject}</p>
+              <p className="mt-1 text-xs tabular-nums text-muted">
+                {subject.topics_started}/{subject.topics_total} covered · {subject.topics_mastered} mastered
+              </p>
+              <div
+                className="mt-2 h-1.5 overflow-hidden rounded-full bg-hover"
+                role="img"
+                aria-label={`${subject.subject}: ${subject.percent}% covered`}
+              >
+                <div className="h-full rounded-full bg-ink" style={{ width: `${Math.max(subject.percent ? 2 : 0, subject.percent)}%` }} />
+              </div>
+              <p className="mt-2 text-xs text-ink-2">
+                {subject.next_unit ? `Next unit: ${subject.next_unit}` : "Nothing left in this subject"}
+              </p>
+              {subject.finish_by && (
+                <p className="mt-0.5 text-xs text-muted">
+                  Subject finishes {fmt(subject.finish_by, { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <ol className="mt-4 divide-y divide-line border-t border-line">
+        {(subjects.length ? subjects.map((row) => row.subject) : [...groups.keys()]).map((subject) => (
+          <li key={subject}>
             <details className="group">
-              <summary className="flex cursor-pointer items-center gap-3 px-5 py-3 hover:bg-hover">
-                <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted">{i + 1}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-sm font-medium text-ink">{u.unit}</span>
-                    <span className="shrink-0 text-xs text-muted">
-                      {u.complete ? <span className="font-semibold text-success">Mastered</span> : u.finish_by ? `by ${fmt(u.finish_by, { day: "numeric", month: "short" })}` : ""}
-                    </span>
-                  </span>
-                  <span className="mt-1.5 flex items-center gap-2">
-                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-hover" aria-hidden>
-                      <span className="block h-full rounded-full bg-accent" style={{ width: `${u.total ? (u.mastered / u.total) * 100 : 0}%` }} />
-                    </span>
-                    <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-muted">
-                      {u.mastered}/{u.total}
-                    </span>
-                  </span>
-                </span>
+              <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-3 text-sm font-medium text-ink hover:bg-hover">
+                {subject} units
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted transition-transform group-open:rotate-90" aria-hidden>
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </summary>
-              <ul className="flex flex-wrap gap-1.5 px-5 pb-4 pl-[3.25rem]">
-                {u.topics.map((t) => (
-                  <li key={t.concept_id + t.topic}>
-                    <Link href={studyHref(t.concept_id)} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 transition-colors hover:border-accent hover:text-ink">
-                      <span className="sr-only">{STATUS_LABEL[t.status]}: </span>
-                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[t.status]}`} aria-hidden />
-                      {t.topic}
-                    </Link>
-                  </li>
+              <ul className="divide-y divide-line/60">
+                {(groups.get(subject) ?? []).map((u) => (
+                  <UnitRow key={subject + u.unit} unit={u} />
                 ))}
               </ul>
             </details>
           </li>
         ))}
       </ol>
-    </section>
+    </details>
+  );
+}
+
+function UnitRow({ unit }: { unit: StudyPlan["roadmap"][number] }) {
+  const u = unit;
+  return (
+    <li>
+      <details className="group/unit">
+        <summary className="flex cursor-pointer items-center gap-3 px-5 py-2.5 hover:bg-hover">
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline justify-between gap-3">
+              <span className="text-sm text-ink">{u.unit}</span>
+              <span className="shrink-0 text-xs text-muted">
+                {u.complete ? <span className="font-semibold text-success">Mastered</span> : u.finish_by ? `by ${fmt(u.finish_by, { day: "numeric", month: "short" })}` : ""}
+              </span>
+            </span>
+            <span className="mt-1.5 flex items-center gap-2">
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-hover" aria-hidden>
+                <span className="block h-full rounded-full bg-accent" style={{ width: `${u.total ? (u.mastered / u.total) * 100 : 0}%` }} />
+              </span>
+              <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-muted">
+                {u.mastered}/{u.total}
+              </span>
+            </span>
+          </span>
+        </summary>
+        <ul className="flex flex-wrap gap-1.5 px-5 pb-3">
+          {u.topics.map((t) => (
+            <li key={t.concept_id + t.topic}>
+              <Link href={studyHref(t.concept_id)} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 transition-colors hover:border-accent hover:text-ink">
+                <span className="sr-only">{STATUS_LABEL[t.status]}: </span>
+                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[t.status]}`} aria-hidden />
+                {t.topic}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </li>
   );
 }
 
@@ -420,56 +516,47 @@ export default function PlanContent() {
 
   if (error && !plan) {
     return (
-      <main className="flex items-center justify-center px-4 pb-16 pt-24">
+      <AppPage title="Plan">
         <div className="max-w-md rounded-2xl border border-danger/20 bg-danger/5 p-8 text-center">
           <p className="text-sm font-medium text-danger">{error}</p>
           <button type="button" onClick={() => { setError(null); setReloadKey((k) => k + 1); }} className="mt-4 cursor-pointer rounded-lg bg-ink px-5 py-2 text-sm font-semibold text-ink-on">
             Try again
           </button>
         </div>
-      </main>
+      </AppPage>
     );
   }
   if (!plan || !profile) {
     return (
-      <main className="px-4 pb-16 pt-24 sm:px-6" aria-busy="true">
-        <div className="mx-auto grid max-w-6xl animate-pulse gap-5 motion-reduce:animate-none">
-          <div className="h-9 w-56 rounded-lg bg-hover" />
-          <div className="grid gap-3 lg:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="h-40 rounded-2xl bg-hover" />)}</div>
+      <AppPage title="Plan" busy>
+        <div className="grid animate-pulse gap-5 motion-reduce:animate-none">
           <div className="h-56 rounded-2xl bg-hover" />
+          <div className="grid gap-3 lg:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="h-40 rounded-2xl bg-hover" />)}</div>
         </div>
-      </main>
+      </AppPage>
     );
   }
 
-  return (
-    <main className="px-4 pb-16 pt-24 sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Plan</p>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">Your road to {plan.settings.exam_label.replace(" (session 1)", "")}</h1>
-            <p className="mt-1 text-sm text-muted">Rebuilt from your progress every time you open it. Study a topic and the plan moves on by itself.</p>
-          </div>
-          <button type="button" onClick={() => setAdjusting((a) => !a)} aria-expanded={adjusting}
-            className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hover">
-            Adjust plan
-          </button>
-        </header>
+  const examName = plan.settings.exam_label.replace(" (session 1)", "");
 
+  return (
+    <AppPage
+      title={`Your road to ${examName}`}
+      lede="Rebuilt from your progress every time you open it. Study a topic and the plan moves on by itself."
+      actions={
+        <button type="button" onClick={() => setAdjusting((a) => !a)} aria-expanded={adjusting}
+          className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hover">
+          Adjust plan
+        </button>
+      }
+    >
         {error && <p className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-2.5 text-sm text-danger">{error}</p>}
         {adjusting && <AdjustPlan plan={plan} profile={profile} saving={saving} onSave={(v) => void save(v)} onClose={() => setAdjusting(false)} />}
 
-        <div className="grid gap-3 lg:grid-cols-3">
-          <Countdown plan={plan} />
-          <Pace plan={plan} onUseMinutes={useMinutes} saving={saving} />
-          <Coverage plan={plan} />
-        </div>
-
         <section aria-labelledby="week-title">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="week-title" className="text-sm font-semibold text-ink">This week</h2>
-            <span className="text-[11px] text-muted">reviews first · then topics you started · then new topics in syllabus order</span>
+            <h2 id="week-title" className="text-xl font-semibold text-ink">This week</h2>
+            <span className="text-sm text-muted">reviews first · then topics you started · then one new topic from each subject</span>
           </div>
           <ol className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
             {plan.week.map((d) => (
@@ -478,11 +565,16 @@ export default function PlanContent() {
           </ol>
         </section>
 
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <Milestones plan={plan} />
-          <Roadmap plan={plan} />
+        <div className="grid gap-3 lg:grid-cols-3">
+          <Countdown plan={plan} />
+          <Pace plan={plan} onUseMinutes={useMinutes} saving={saving} />
+          <Coverage plan={plan} />
         </div>
-      </div>
-    </main>
+
+        <div className="flex flex-col gap-4">
+          <Milestones plan={plan} />
+          <Together plan={plan} />
+        </div>
+    </AppPage>
   );
 }

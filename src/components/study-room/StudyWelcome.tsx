@@ -1,5 +1,7 @@
 import Link from "next/link";
-import type { QuestionSource, StudyLearnerSnapshot, StudyMode, StudyPrerequisite, StudyStartResponse } from "@/lib/api/study";
+import MarkdownMath from "@/components/MarkdownMath";
+import MathErrorBoundary from "@/components/MathErrorBoundary";
+import type { ConceptPyq, QuestionSource, StudyLearnerSnapshot, StudyMode, StudyPrerequisite, StudyStartResponse } from "@/lib/api/study";
 
 type Alt = StudyStartResponse["alternatives"][number];
 
@@ -89,6 +91,59 @@ function KnownAboutYou({ learner }: { learner: StudyLearnerSnapshot }) {
   );
 }
 
+function PastPapers({
+  papers,
+  mode,
+  questionSource,
+  modeHref,
+}: {
+  papers: { status: "empty" | "unavailable" | "ready"; items: ConceptPyq[] };
+  mode: StudyMode;
+  questionSource: QuestionSource;
+  modeHref: (mode: StudyMode, source?: QuestionSource) => string;
+}) {
+  const items = papers.status === "ready" ? papers.items : [];
+  const alreadyPractisingPyqs = mode === "practice" && questionSource === "pyq";
+  return (
+    <section className="rounded-2xl border border-line bg-surface px-5 py-4" aria-labelledby="pyq-heading">
+      <h2 id="pyq-heading" className="text-[11px] font-bold uppercase tracking-widest text-muted">
+        Past JEE Advanced questions
+      </h2>
+      {papers.status === "unavailable" ? (
+        <p className="mt-3 text-sm text-muted">Past papers could not be loaded.</p>
+      ) : items.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">No past JEE Advanced question is linked to this concept.</p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-3">
+          {items.map((item) => (
+            <li key={item.content_id} className="border-t border-line pt-3 first:border-0 first:pt-0">
+              <p className="text-[13px] font-medium text-ink">
+                {item.year ? `JEE Advanced ${item.year}` : "JEE Advanced"}
+                {item.paper ? ` · Paper ${item.paper}` : ""}
+              </p>
+              {item.stem && (
+                <div className="study-notes mt-1 text-sm text-ink-2">
+                  <MathErrorBoundary content={item.stem}>
+                    <MarkdownMath content={item.stem} />
+                  </MathErrorBoundary>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {items.length > 0 && !alreadyPractisingPyqs && (
+        <Link
+          href={modeHref("practice", "pyq")}
+          className="mt-3 inline-flex min-h-11 items-center text-[15px] font-semibold text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          Start these questions
+        </Link>
+      )}
+    </section>
+  );
+}
+
 export default function StudyWelcome({
   conceptName,
   chapter,
@@ -102,6 +157,7 @@ export default function StudyWelcome({
   mode = "learn",
   questionSource = "any",
   modeHref,
+  pastPapers = null,
 }: {
   conceptName: string;
   chapter?: string | null;
@@ -116,6 +172,8 @@ export default function StudyWelcome({
   questionSource?: QuestionSource;
   /** URL for this topic in another mode / question source. */
   modeHref: (mode: StudyMode, source?: QuestionSource) => string;
+  /** Null while the list is still loading. */
+  pastPapers?: { status: "empty" | "unavailable" | "ready"; items: ConceptPyq[] } | null;
 }) {
   const practice = mode === "practice";
   const typedSomethingElse =
@@ -161,6 +219,10 @@ export default function StudyWelcome({
       )}
 
       {learner && <KnownAboutYou learner={learner} />}
+
+      {pastPapers && (
+        <PastPapers papers={pastPapers} mode={mode} questionSource={questionSource} modeHref={modeHref} />
+      )}
 
       {practice && (
         <fieldset className="rounded-2xl border border-line bg-surface px-5 py-4">

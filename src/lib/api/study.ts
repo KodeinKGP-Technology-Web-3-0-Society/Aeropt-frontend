@@ -469,6 +469,21 @@ export interface StudyOverview {
   syllabus: SyllabusUnit[];
 }
 
+export interface ConceptPyq {
+  content_id: string;
+  year: number | null;
+  paper: string | null;
+  stem: string;
+}
+
+/** JEE Advanced questions linked to this concept. Throws if retrieval is down. */
+export async function fetchConceptPyqs(conceptId: string): Promise<ConceptPyq[]> {
+  const data = await auth.apiRequest<{ items: ConceptPyq[] }>(
+    `${auth.requireAgentApiBase()}/api/v1/concepts/${encodeURIComponent(conceptId)}/pyqs`,
+  );
+  return data.items ?? [];
+}
+
 export async function fetchStudyOverview(): Promise<StudyOverview> {
   const userId = auth.getSupabaseUserId();
   if (!userId) throw new Error("User not authenticated.");

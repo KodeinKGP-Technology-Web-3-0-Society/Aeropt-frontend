@@ -114,7 +114,12 @@ export default function TutorChat({
 
   const activeLabel =
     chat.sessions.find((s) => s.session_id === chat.activeId)?.label ?? (chat.activeId ? "Chat" : "New chat");
-  const empty = !chat.threadLoading && !chat.threadMissing && chat.messages.length === 0 && chat.streaming === null;
+  const empty =
+    !chat.threadLoading &&
+    !chat.threadMissing &&
+    !chat.threadError &&
+    chat.messages.length === 0 &&
+    chat.streaming === null;
   const latestAssistantId = [...chat.messages].reverse().find((m) => m.role === "assistant")?.id;
 
   const history = (
@@ -187,17 +192,46 @@ export default function TutorChat({
             ) : chat.threadMissing ? (
               <div className="mt-16 text-center">
                 <p className="text-sm text-ink">This chat could not be found. It may have been deleted.</p>
-                <button
-                  type="button"
-                  onClick={chat.newChat}
-                  className="mt-3 cursor-pointer text-sm font-semibold text-accent hover:text-accent-hover"
-                >
-                  Start a new chat
-                </button>
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={chat.retryThread}
+                    className="cursor-pointer text-sm font-semibold text-accent hover:text-accent-hover"
+                  >
+                    Retry loading
+                  </button>
+                  <button
+                    type="button"
+                    onClick={chat.newChat}
+                    className="cursor-pointer text-sm font-medium text-muted hover:text-ink"
+                  >
+                    Start a new chat
+                  </button>
+                </div>
+              </div>
+            ) : chat.threadError ? (
+              <div className="mt-16 text-center">
+                <p className="text-sm text-ink">{chat.threadError}</p>
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={chat.retryThread}
+                    className="cursor-pointer text-sm font-semibold text-accent hover:text-accent-hover"
+                  >
+                    Retry loading
+                  </button>
+                  <button
+                    type="button"
+                    onClick={chat.newChat}
+                    className="cursor-pointer text-sm font-medium text-muted hover:text-ink"
+                  >
+                    Start a new chat
+                  </button>
+                </div>
               </div>
             ) : empty ? (
               <div className="mt-10 sm:mt-20">
-                <h2 className="text-2xl font-semibold tracking-tight text-ink">What are you stuck on?</h2>
+                <h2 className="text-[32px] leading-10 font-semibold tracking-tight text-ink">What are you stuck on?</h2>
                 <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
                   Ask any doubt across Physics, Chemistry, or Mathematics, paste a question you could not solve, or ask what to revise. The tutor
                   knows what you have studied and practised, so you can say “the question from my last lesson”.
@@ -208,7 +242,7 @@ export default function TutorChat({
                       key={text}
                       type="button"
                       onClick={() => void chat.send({ text })}
-                      className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm text-ink transition-colors hover:border-accent hover:bg-accent-soft"
+                      className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm text-ink transition-colors hover:bg-hover"
                     >
                       {text}
                     </button>

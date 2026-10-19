@@ -1,43 +1,17 @@
-import type { CSSProperties } from "react";
-
 export type StudyStatus = "new" | "progress" | "review" | "mastered";
 
-const PILL: Record<StudyStatus, { label: string; style: CSSProperties }> = {
-  new: {
-    label: "Not started",
-    style: {
-      background: "color-mix(in srgb, var(--status-new) 55%, var(--bg-surface))",
-      color: "var(--text-secondary)",
-    },
-  },
-  progress: {
-    label: "In progress",
-    style: {
-      background: "color-mix(in srgb, var(--status-progress) 22%, var(--bg-surface))",
-      color: "var(--warning)",
-    },
-  },
-  review: {
-    label: "Needs review",
-    style: {
-      background: "color-mix(in srgb, var(--status-review) 14%, var(--bg-surface))",
-      color: "var(--danger)",
-    },
-  },
-  mastered: {
-    label: "Mastered",
-    style: {
-      background: "color-mix(in srgb, var(--status-mastered) 16%, var(--bg-surface))",
-      color: "var(--success)",
-    },
-  },
+const PILL: Record<StudyStatus, { label: string }> = {
+  new: { label: "Not started" },
+  progress: { label: "In progress" },
+  review: { label: "Needs review" },
+  mastered: { label: "Mastered" },
 };
 
 const DOT: Record<StudyStatus, string> = {
-  new: "var(--status-new)",
-  progress: "var(--status-progress)",
-  review: "var(--status-review)",
-  mastered: "var(--status-mastered)",
+  new: "var(--border-button)",
+  progress: "var(--warning)",
+  review: "var(--danger)",
+  mastered: "var(--success)",
 };
 
 export function statusFromTone(tone: "danger" | "warning" | "success" | "muted"): StudyStatus {
@@ -55,10 +29,7 @@ export function subjectVar(subject: string | null | undefined): string {
 }
 
 export function subjectInk(subject: string | null | undefined): string {
-  if (subject === "Physics") return "var(--physics-ink)";
-  if (subject === "Chemistry") return "var(--chemistry-ink)";
-  if (subject === "Mathematics" || subject === "Maths") return "var(--maths-ink)";
-  return "var(--text-main)";
+  return subjectVar(subject === "Syllabus" ? null : subject);
 }
 
 export function StatusPill({
@@ -70,10 +41,7 @@ export function StatusPill({
 }) {
   const meta = PILL[status];
   return (
-    <span
-      className="inline-flex min-h-6 items-center gap-1.5 rounded-full px-2.5 text-[13px] leading-5 font-medium"
-      style={meta.style}
-    >
+    <span className="inline-flex min-h-6 items-center gap-1.5 text-[13px] leading-5 font-medium text-ink-2">
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: DOT[status] }} aria-hidden />
       {label || meta.label}
     </span>
@@ -124,12 +92,12 @@ export function ThickBar({
   return (
     <div
       className="relative h-2.5 w-full overflow-hidden rounded-full"
-      style={{ background: "var(--status-new)" }}
+      style={{ background: "var(--border-button)" }}
       role="img"
       aria-label={label}
     >
-      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${startedPct}%`, background: "var(--status-progress)" }} />
-      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${masteredPct}%`, background: "var(--status-mastered)" }} />
+      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${startedPct}%`, background: "var(--warning)" }} />
+      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${masteredPct}%`, background: "var(--success)" }} />
     </div>
   );
 }
@@ -143,15 +111,15 @@ export function SegmentBar({
 }) {
   const total = counts.mastered + counts.progress + counts.review + counts.fresh;
   const parts = [
-    ["mastered", counts.mastered, "var(--status-mastered)"],
-    ["progress", counts.progress, "var(--status-progress)"],
-    ["review", counts.review, "var(--status-review)"],
-    ["fresh", counts.fresh, "var(--status-new)"],
+    ["mastered", counts.mastered, "var(--success)"],
+    ["progress", counts.progress, "var(--warning)"],
+    ["review", counts.review, "var(--danger)"],
+    ["fresh", counts.fresh, "var(--border-button)"],
   ] as const;
   return (
     <div className="flex h-2.5 w-full overflow-hidden rounded-full" role="img" aria-label={label}>
       {total === 0 ? (
-        <span className="h-full flex-1" style={{ background: "var(--status-new)" }} />
+        <span className="h-full flex-1" style={{ background: "var(--border-button)" }} />
       ) : (
         parts.map(([key, count, color]) =>
           count > 0 ? (
@@ -181,7 +149,7 @@ export function StatRing({
         className="grid h-14 w-14 place-items-center rounded-full"
         role="img"
         aria-label={label}
-        style={{ background: `conic-gradient(${color} ${pct * 3.6}deg, var(--status-new) 0)` }}
+        style={{ background: `conic-gradient(${color} ${pct * 3.6}deg, var(--border-button) 0)` }}
       >
         <span className="grid h-10 w-10 place-items-center rounded-full bg-surface text-[13px] font-semibold tabular-nums text-ink">
           {Math.round(pct)}%
