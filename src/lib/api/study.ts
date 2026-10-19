@@ -442,9 +442,11 @@ export interface CoverageChapter {
   next: { concept_id: string; name: string }[];
 }
 
-/** One JEE Main syllabus unit (NTA 2026-27, as published by ALLEN) and its topics, exam order. */
+/** One JEE Main syllabus unit (NTA 2026-27) and its topics, exam order within a subject. */
 export interface SyllabusUnit {
   unit: string;
+  /** Physics, Chemistry, or Mathematics. Absent on older overview payloads. */
+  subject?: string;
   total: number;
   mastered: number;
   started: number;

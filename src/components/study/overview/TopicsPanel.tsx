@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import type { OverviewGroup } from "@/lib/api/study";
+import type { OverviewGroup, SyllabusUnit } from "@/lib/api/study";
 import {
+  displayTitle,
   flattenAndSortConcepts,
   getDefaultActiveTab,
   type TabCounts,
@@ -16,6 +17,7 @@ interface TopicsPanelProps {
   exploredGroups: OverviewGroup[];
   masteredGroups: OverviewGroup[];
   counts: TabCounts;
+  syllabus: SyllabusUnit[];
 }
 
 const TABS: Array<{ key: TabKind; label: string; countKey: keyof TabCounts }> = [
@@ -25,7 +27,7 @@ const TABS: Array<{ key: TabKind; label: string; countKey: keyof TabCounts }> = 
   { key: "mastered", label: "Mastered", countKey: "mastered" },
 ];
 
-const PREVIEW_LIMIT = 6;
+const PREVIEW_LIMIT = 5;
 const TAB_STORAGE_KEY = "jeepath_study_active_tab";
 const EXPANDED_STORAGE_KEY = "jeepath_study_topics_expanded";
 
@@ -35,6 +37,7 @@ export default function TopicsPanel({
   exploredGroups,
   masteredGroups,
   counts,
+  syllabus,
 }: TopicsPanelProps) {
   // Compute initial tab from localStorage if non-zero, otherwise pick default actionable tab
   const [activeTab, setActiveTab] = useState<TabKind>(() => {
@@ -122,11 +125,8 @@ export default function TopicsPanel({
     counts.mastered === 0;
 
   return (
-    <section aria-labelledby="topics-panel-heading" className="rounded-2xl border border-line bg-surface shadow-xs">
-      <div className="border-b border-line px-4 pt-4 sm:px-6 sm:pt-6">
-        <h2 id="topics-panel-heading" className="sr-only">
-          Your Topics
-        </h2>
+    <div className="rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
+      <div className="border-b border-line px-4 pt-2 sm:px-5">
 
         {/* Tab Bar / Segmented Control */}
         <div
@@ -150,11 +150,11 @@ export default function TopicsPanel({
                 tabIndex={isSelected ? 0 : -1}
                 onClick={() => handleTabChange(tab.key)}
                 onKeyDown={(e) => handleKeyDown(e, idx)}
-                className={`relative flex min-h-[48px] cursor-pointer items-center gap-2 border-b-2 px-3 sm:px-4 py-2.5 text-sm sm:text-base font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`relative flex min-h-11 cursor-pointer items-center gap-2 border-b-2 px-3 py-2 text-[15px] font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   isSelected
-                    ? "border-accent text-ink font-semibold"
+                    ? "border-accent font-semibold text-ink"
                     : isZero
-                      ? "border-transparent text-muted/65 hover:text-ink"
+                      ? "border-transparent text-muted hover:text-ink"
                       : "border-transparent text-ink-2 hover:text-ink"
                 }`}
               >
@@ -181,15 +181,15 @@ export default function TopicsPanel({
         id={`panel-${activeTab}`}
         role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
-        className="flex min-h-[340px] flex-col justify-between"
+        className="flex flex-col justify-between"
       >
         {totalInTab === 0 ? (
-          <div className="flex flex-1 items-center justify-center p-8 sm:p-12 text-center">
-            <p className="max-w-md text-sm sm:text-base leading-relaxed text-muted">
+          <div className="flex items-center justify-center px-6 py-10 text-center">
+            <p className="max-w-md text-[15px] leading-6 text-muted">
               {isBrandNew
                 ? "Your topics will appear here as you begin studying."
                 : activeTab === "review"
-                  ? "Nothing to review. Topics appear here when a review is due or a score slips."
+                  ? "Nothing due for review."
                   : activeTab === "in_progress"
                     ? "No topics in progress. Start any topic above to begin."
                     : activeTab === "explored"
@@ -204,12 +204,12 @@ export default function TopicsPanel({
               <div className="divide-y divide-line/40">
                 {activeGroups.map((group) => (
                   <div key={group.chapter} className="py-3">
-                    <div className="bg-canvas/60 px-4 sm:px-6 py-1.5 text-xs sm:text-sm font-semibold text-muted">
-                      {group.chapter}
+                    <div className="bg-canvas/60 px-4 py-1.5 text-[13px] leading-5 font-medium text-muted sm:px-5">
+                      {displayTitle(group.chapter)}
                     </div>
                     <ul className="mt-1">
                       {group.concepts.map((concept) => (
-                        <TopicRow key={concept.concept_id} concept={concept} tab={activeTab} />
+                        <TopicRow key={concept.concept_id} concept={concept} tab={activeTab} syllabus={syllabus} />
                       ))}
                     </ul>
                   </div>
@@ -219,7 +219,7 @@ export default function TopicsPanel({
               // Compact flat list of top PREVIEW_LIMIT concepts
               <ul className="divide-y divide-line/40">
                 {allConcepts.slice(0, PREVIEW_LIMIT).map((concept) => (
-                  <TopicRow key={concept.concept_id} concept={concept} tab={activeTab} />
+                  <TopicRow key={concept.concept_id} concept={concept} tab={activeTab} syllabus={syllabus} />
                 ))}
               </ul>
             )}
@@ -232,15 +232,13 @@ export default function TopicsPanel({
                   onClick={handleToggleShowAll}
                   className="cursor-pointer text-xs sm:text-sm font-semibold text-accent transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  {showAll
-                    ? "Show fewer (top 6)"
-                    : `Show all ${totalInTab} topics in ${activeGroups.length} chapters`}
+                  {showAll ? "Show less" : `View all ${totalInTab}`}
                 </button>
               </div>
             )}
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

@@ -2,72 +2,97 @@
 
 import { useState } from "react";
 
-interface StudioTab {
+interface StudioStep {
   id: string;
+  stepNumber: string;
+  timeSlot: string;
   badge: string;
   badgeColor: string;
-  tabLabel: string;
-  title: string;
-  description: string;
+  navTitle: string;
+  headline: string;
+  subhead: string;
+  cognitiveGoal: string;
+  agentAction: string;
   highlights: string[];
+  nextLabel: string;
 }
 
-const TABS: StudioTab[] = [
+const STEPS: StudioStep[] = [
   {
-    id: "lessons",
+    id: "socratic",
+    stepNumber: "01",
+    timeSlot: "Minute 00 – 12",
     badge: "SOCRATIC DIALECTIC",
     badgeColor: "text-accent bg-accent/10 border-accent/20",
-    tabLabel: "01 / Socratic Lessons",
-    title: "Step-by-step guidance that never spoils the solution",
-    description:
-      "One physical idea at a time. The tutor diagnoses where your mental model diverges, asks calibrating questions, and lets you experience the eureka moment yourself.",
+    navTitle: "01 / Socratic Dialectic",
+    headline: "First-principles guidance that never spoils the solution",
+    subhead:
+      "The tutor diagnoses exactly where your intuition diverges. It asks calibrating questions rather than dumping textbook solutions, guiding you to derive the concept yourself.",
+    cognitiveGoal: "Bridge kinematic translational momentum into rotational inertia partition.",
+    agentAction: "SymPy verifies dimensional consistency; tutor scaffolds next inquiry step.",
     highlights: [
-      "Breaks multi-step problems into intuitive first-principles",
-      "Validates algebraic rearrangements in real-time via SymPy",
-      "Adapts pedagogical tone dynamically based on your confidence",
+      "Breaks multi-step JEE Advanced problems into intuitive sub-questions",
+      "Dynamic tone calibration based on hesitation and response length",
+      "Real-time symbolic algebraic verification on every intermediate step",
     ],
+    nextLabel: "Step 02: Instant Verification",
   },
   {
     id: "practice",
+    stepNumber: "02",
+    timeSlot: "Minute 12 – 18",
     badge: "INSTANT STEP VERIFICATION",
     badgeColor: "text-success bg-success/10 border-success/20",
-    tabLabel: "02 / Instant Practice",
-    title: "Immediate verification the millisecond you submit",
-    description:
-      "No waiting for answer keys. You get granular feedback on your exact step, with dimensional checks and mathematical justification explaining why an answer is right or wrong.",
+    navTitle: "02 / Instant Practice",
+    headline: "Immediate verification the millisecond you submit",
+    subhead:
+      "No waiting for pdf answer keys. You get granular feedback on your exact step, with dimensional analysis and physical justification explaining why an answer is right or wrong.",
+    cognitiveGoal: "Apply Le Chatelier's thermodynamic equilibrium shift to exothermic gaseous reactions.",
+    agentAction: "Evaluates mole differential (Δn_g) and enthalpy sign in 4.2ms.",
     highlights: [
-      "Real JEE Main & Advanced calibrated question formats",
-      "Automated dimensional consistency and arithmetic checks",
-      "Step-level hints available if you pause or hesitate",
+      "Authentic JEE Main & Advanced multi-choice and numerical question formats",
+      "Automated dimensional consistency and arithmetic checks via SymPy",
+      "Step-level progressive hints available if you hesitate or pause",
     ],
+    nextLabel: "Step 03: Retention Radar",
   },
   {
-    id: "mastery",
+    id: "retention",
+    stepNumber: "03",
+    timeSlot: "Minute 18 – 22",
     badge: "EPISODIC LEARNING MEMORY",
     badgeColor: "text-warning bg-warning/10 border-warning/20",
-    tabLabel: "03 / Retention & Streaks",
-    title: "Retention radar that tracks your conceptual gaps",
-    description:
-      "Every doubt, hesitation, and mistake is captured in episodic learner memory. It calculates forgetting curves so weak topics resurface right before you lose them.",
+    navTitle: "03 / Retention & Memory",
+    headline: "A memory radar tracking your conceptual forgetting curve",
+    subhead:
+      "Every doubt, mistake, and delay is recorded in episodic learner memory. It calculates decay curves so fragile concepts resurface right before you lose them.",
+    cognitiveGoal: "Consolidate Calculus integration by parts and differential equation forms.",
+    agentAction: "Updates concept node proficiency matrix in Postgres public schema.",
     highlights: [
       "Decay-weighted mastery scores across all 1,016 syllabus topics",
       "Streak protection with daily focused 25-minute sprints",
       "Targeted warm-ups generated from yesterday's errors",
     ],
+    nextLabel: "Step 04: Exam Roadmap",
   },
   {
     id: "roadmap",
+    stepNumber: "04",
+    timeSlot: "Minute 22 – 25",
     badge: "ADAPTIVE ROADMAP",
     badgeColor: "text-physics bg-physics/10 border-physics/20",
-    tabLabel: "04 / Exam Roadmap",
-    title: "A calibrated trajectory up to your exam date",
-    description:
-      "Tell JeePath your exam year (JEE 2026 / 2027). It calculates prerequisite dependencies and schedules daily chapters, automatically rebalancing if coaching school tests intervene.",
+    navTitle: "04 / Dynamic Roadmap",
+    headline: "A calibrated trajectory up to your exam date",
+    subhead:
+      "Tell JeePath your exam year (JEE 2026 / 2027). It calculates prerequisite dependencies and schedules daily chapters, automatically rebalancing when school exams intervene.",
+    cognitiveGoal: "Rebalance Rotational Dynamics -> Thermodynamics trajectory for JEE Advanced.",
+    agentAction: "Traverses 1,016 syllabus graph nodes to resolve dependency prerequisites.",
     highlights: [
-      "Strict dependency ordering (e.g. Vectors before Mechanics)",
+      "Strict dependency ordering (Vectors before Mechanics, Equilibrium before Electrochemistry)",
       "High-yield weightage prioritization for score optimization",
       "Dynamic catch-up buffering when life or school interferes",
     ],
+    nextLabel: "Step 01: Socratic Dialectic",
   },
 ];
 
@@ -85,86 +110,167 @@ const FORMULAS_MARQUEE = [
 ];
 
 export default function StudyStudio() {
-  const [activeTab, setActiveTab] = useState<string>("lessons");
-  const [selectedPracticeOption, setSelectedPracticeOption] = useState<number | null>(1); // default option 2 is correct
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
+  const [selectedPracticeOption, setSelectedPracticeOption] = useState<number | null>(1); // option B is correct
+  const [practiceAnswerChecked, setPracticeAnswerChecked] = useState<boolean>(true);
+  const [socraticDemoPrompt, setSocraticDemoPrompt] = useState<string>(
+    "Why does a solid cylinder roll faster than a hollow cylinder of the same mass?"
+  );
 
-  const tab = TABS.find((t) => t.id === activeTab) || TABS[0];
+  const step = STEPS[activeStepIndex];
+
+  const handleNextStep = () => {
+    setActiveStepIndex((prev) => (prev + 1) % STEPS.length);
+  };
+
+  const handlePrevStep = () => {
+    setActiveStepIndex((prev) => (prev - 1 + STEPS.length) % STEPS.length);
+  };
 
   return (
-    <section id="study-studio" className="relative scroll-mt-16 border-t border-line bg-canvas px-5 py-24 sm:px-8 lg:py-32 overflow-hidden">
+    <section id="study-studio" className="relative scroll-mt-16 border-t border-line bg-canvas px-5 py-20 sm:px-8 lg:py-28 overflow-hidden">
       {/* Background ambient lighting */}
-      <div className="pointer-events-none absolute left-1/2 top-1/4 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[800px] rounded-full bg-accent/[0.04] blur-[120px]" />
+      <div className="pointer-events-none absolute left-1/3 top-1/4 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-accent/[0.035] blur-[140px]" />
 
-      <div className="relative mx-auto max-w-6xl">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto">
-          <span
-            data-reveal
-            className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent shadow-xs"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            STUDY STUDIO SHOWCASE
-          </span>
-          <h2
-            data-reveal
-            className="mt-4 font-display text-3xl font-semibold leading-tight tracking-[-0.02em] text-ink sm:text-4xl lg:text-5xl"
-          >
-            Everything you need for an evening of study
-          </h2>
-          <p data-reveal className="mt-4 text-base leading-relaxed text-ink-2 sm:text-lg">
-            No cluttered split layouts or compressed cards. Experience the full depth of real Socratic lessons, instant verified practice, and long-term memory in one seamless workspace.
-          </p>
-        </div>
+      <div className="relative mx-auto max-w-7xl">
+        {/* Asymmetric Section Header — NOT centered! */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-10 border-b border-line/70">
+          <div className="max-w-2xl">
+            <span
+              data-reveal
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent shadow-xs"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+              STUDY STUDIO · STEP-BY-STEP WORKSPACE
+            </span>
+            <h2
+              data-reveal
+              className="mt-4 font-display text-3xl font-semibold leading-tight tracking-[-0.02em] text-ink sm:text-4xl lg:text-5xl"
+            >
+              Everything you need for an evening of study
+            </h2>
+            <p data-reveal className="mt-3 text-base leading-relaxed text-ink-2 sm:text-lg">
+              Experience the full 25-minute learning loop. Click through the steps one by one to see how Socratic tutoring, SymPy verification, and memory retention work in tandem.
+            </p>
+          </div>
 
-        {/* Studio Tab Navigation Switcher */}
-        <div data-reveal className="mt-12 flex justify-center">
-          <div className="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-line bg-surface/90 p-1.5 shadow-sm backdrop-blur-md">
-            {TABS.map((t) => {
-              const active = t.id === activeTab;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  type="button"
-                  className={`landing-btn relative rounded-xl px-4 py-2.5 text-xs font-semibold transition-all sm:text-sm ${
-                    active
-                      ? "bg-ink text-surface shadow-md"
-                      : "text-ink-2 hover:bg-hover hover:text-ink"
-                  }`}
-                >
-                  {t.tabLabel}
-                  {active && (
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-accent" />
-                  )}
-                </button>
-              );
-            })}
+          {/* Step Controller & Prev/Next Actions */}
+          <div data-reveal className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface p-1.5 shadow-xs">
+              <button
+                type="button"
+                onClick={handlePrevStep}
+                aria-label="Previous study step"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-line/60 bg-canvas text-ink-2 hover:bg-hover hover:text-ink transition-colors"
+              >
+                ←
+              </button>
+              <div className="px-3 text-center">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted">Study Step</p>
+                <p className="text-xs font-bold text-ink tabular-nums">
+                  {step.stepNumber} <span className="text-muted">/ 04</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleNextStep}
+                aria-label="Next study step"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-line/60 bg-canvas text-ink-2 hover:bg-hover hover:text-ink transition-colors"
+              >
+                →
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextStep}
+              className="landing-btn inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-semibold text-surface shadow-xs hover:opacity-90"
+            >
+              <span>{step.nextLabel}</span>
+              <span>→</span>
+            </button>
           </div>
         </div>
 
-        {/* 3D Interactive Feature Stage */}
-        <div className="mt-12 grid items-stretch gap-8 lg:grid-cols-12 lg:gap-12">
-          {/* Left Column: Feature Narrative & Highlights */}
-          <div data-reveal className="flex flex-col justify-between rounded-3xl border border-line bg-surface p-7 sm:p-9 lg:col-span-5 shadow-sm">
+        {/* Interactive Step Navigator Bar (Click one by one!) */}
+        <div data-reveal className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+          {STEPS.map((s, index) => {
+            const isActive = index === activeStepIndex;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setActiveStepIndex(index)}
+                className={`landing-btn relative flex flex-col items-start rounded-2xl border p-4 text-left transition-all ${
+                  isActive
+                    ? "border-accent bg-surface shadow-md ring-1 ring-accent/30"
+                    : "border-line bg-surface/60 hover:border-line-strong hover:bg-surface text-ink-2"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold ${
+                      isActive ? "bg-accent text-accent-on" : "bg-canvas border border-line text-muted"
+                    }`}
+                  >
+                    {s.stepNumber}
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">
+                    {s.timeSlot}
+                  </span>
+                </div>
+                <h3 className={`mt-3 text-xs sm:text-sm font-bold ${isActive ? "text-ink" : "text-ink-2"}`}>
+                  {s.navTitle.replace(/^\d+\s*\/\s*/, "")}
+                </h3>
+                {isActive && (
+                  <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-accent" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Balanced Two-Column Interactive Studio Workstation */}
+        <div className="mt-8 grid items-stretch gap-8 lg:grid-cols-12">
+          {/* Left Column: Pedagogical Guide & Interactive Controls */}
+          <div data-reveal className="flex flex-col justify-between rounded-3xl border border-line bg-surface p-7 sm:p-9 lg:col-span-5 shadow-xs">
             <div>
-              <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold tracking-wide ${tab.badgeColor}`}>
-                {tab.badge}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold tracking-wide ${step.badgeColor}`}>
+                  {step.badge}
+                </span>
+                <span className="text-xs text-muted font-mono">{step.timeSlot}</span>
+              </div>
+
               <h3 className="mt-4 font-display text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl leading-snug">
-                {tab.title}
+                {step.headline}
               </h3>
-              <p className="mt-4 text-sm leading-relaxed text-ink-2 sm:text-base">
-                {tab.description}
+              
+              <p className="mt-4 text-sm leading-relaxed text-ink-2">
+                {step.subhead}
               </p>
 
-              {/* Highlights Checkmarks */}
-              <div className="mt-6 space-y-3 pt-6 border-t border-line/60">
-                {tab.highlights.map((h) => (
-                  <div key={h} className="flex items-start gap-3">
+              {/* Cognitive Blueprint Box */}
+              <div className="mt-6 rounded-2xl border border-line/80 bg-canvas p-4 space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-accent">Cognitive Objective</p>
+                  <p className="text-xs font-medium text-ink mt-0.5">{step.cognitiveGoal}</p>
+                </div>
+                <div className="h-px bg-line/60" />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-muted">Agent Telemetry Action</p>
+                  <p className="text-xs font-mono text-ink-2 mt-0.5">{step.agentAction}</p>
+                </div>
+              </div>
+
+              {/* Step Checklist */}
+              <div className="mt-6 space-y-2.5">
+                {step.highlights.map((h) => (
+                  <div key={h} className="flex items-start gap-2.5">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent text-xs font-bold mt-0.5">
                       ✓
                     </span>
-                    <span className="text-xs sm:text-sm font-medium text-ink-2 leading-relaxed">
+                    <span className="text-xs sm:text-sm text-ink-2 leading-relaxed">
                       {h}
                     </span>
                   </div>
@@ -172,48 +278,47 @@ export default function StudyStudio() {
               </div>
             </div>
 
-            {/* Quick Micro-Badge Strip */}
-            <div className="mt-8 rounded-2xl bg-canvas p-4 border border-line/80 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted">Execution speed</p>
-                <p className="text-sm font-bold text-ink tabular-nums">&lt; 15ms local cache</p>
-              </div>
-              <div className="h-7 w-px bg-line" />
-              <div>
-                <p className="text-[11px] font-medium text-muted">Syllabus precision</p>
-                <p className="text-sm font-bold text-accent">100% NCERT / PYQ</p>
-              </div>
-              <div className="h-7 w-px bg-line" />
-              <div>
-                <p className="text-[11px] font-medium text-muted">Hallucination check</p>
-                <p className="text-sm font-bold text-success">SymPy Verified</p>
-              </div>
+            {/* Bottom Actions for Step */}
+            <div className="mt-8 pt-6 border-t border-line/70 flex items-center justify-between">
+              <span className="text-xs text-muted">
+                Step {activeStepIndex + 1} of {STEPS.length}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="landing-btn inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-accent-on shadow-xs hover:bg-accent-hover"
+              >
+                <span>{step.nextLabel}</span>
+                <span>→</span>
+              </button>
             </div>
           </div>
 
-          {/* Right Column: Full-Height High-Fidelity 3D Interactive Mockup */}
-          <div data-reveal className="landing-mockup-wrapper relative flex flex-col rounded-3xl border border-line bg-surface shadow-[0_24px_70px_-20px_oklch(22%_0.03_250/0.25)] lg:col-span-7 overflow-hidden min-h-[460px]">
-            {/* Window Top Bar */}
-            <div className="flex items-center justify-between border-b border-line bg-canvas/70 px-5 py-3.5 backdrop-blur-md">
+          {/* Right Column: Full-Height Interactive Workspace Screen */}
+          <div data-reveal className="landing-mockup-wrapper relative flex flex-col rounded-3xl border border-line bg-surface shadow-[0_20px_60px_-15px_oklch(22%_0.03_250/0.18)] lg:col-span-7 overflow-hidden min-h-[500px]">
+            {/* Top Workspace Terminal Bar */}
+            <div className="flex items-center justify-between border-b border-line bg-canvas/80 px-5 py-3.5 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full bg-[#ff5f56]/80 border border-[#e0443e]/40" />
                 <span className="h-3 w-3 rounded-full bg-[#ffbd2e]/80 border border-[#dea123]/40" />
                 <span className="h-3 w-3 rounded-full bg-[#27c93f]/80 border border-[#1aab29]/40" />
                 <span className="ml-3 truncate text-xs font-semibold text-ink-2">
-                  JeePath Workspace · {tab.tabLabel.replace(/^\d+\s*\/\s*/, "")}
+                  JeePath Studio · {step.navTitle.replace(/^\d+\s*\/\s*/, "")}
                 </span>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success border border-success/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-ping" />
-                Active Room
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success border border-success/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-ping" />
+                  Live Agent
+                </span>
+              </div>
             </div>
 
-            {/* Dynamic Interactive Stage Body based on activeTab */}
-            <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
-              {activeTab === "lessons" && (
-                <div className="space-y-5 animate-in fade-in duration-300">
-                  {/* Subject Tag & Concept */}
+            {/* Stage Body */}
+            <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between bg-surface">
+              {/* STEP 1: Socratic Dialectic */}
+              {activeStepIndex === 0 && (
+                <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between">
                     <span className="rounded-md bg-physics/10 px-2.5 py-1 text-xs font-bold text-physics border border-physics/20">
                       Physics · Rotational Dynamics
@@ -221,36 +326,61 @@ export default function StudyStudio() {
                     <span className="text-xs text-muted">Session duration: 18m</span>
                   </div>
 
-                  {/* Socratic Dialectic Steps */}
-                  <div className="rounded-2xl border border-line bg-canvas p-5 space-y-4">
+                  {/* Socratic Chat Box */}
+                  <div className="rounded-2xl border border-line bg-canvas p-5 space-y-4 shadow-xs">
                     <div className="flex items-start gap-3">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-ink text-surface text-xs font-bold">
                         Q
                       </div>
-                      <div className="text-sm font-medium text-ink leading-relaxed">
-                        Why does a solid cylinder roll down an inclined plane faster than a hollow cylinder of the same mass and radius?
+                      <div className="text-sm font-semibold text-ink leading-relaxed">
+                        {socraticDemoPrompt}
                       </div>
                     </div>
 
-                    <div className="border-t border-line/60 pt-3 flex items-start gap-3">
+                    <div className="border-t border-line/60 pt-4 flex items-start gap-3">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-on text-xs font-bold">
                         T
                       </div>
-                      <div className="space-y-2 text-sm text-ink-2 leading-relaxed">
+                      <div className="space-y-2.5 text-sm text-ink-2 leading-relaxed">
                         <p>
-                          Let us think in terms of energy partition. The total kinetic energy splits into translational and rotational components:
+                          Let us analyze energy partition. As an object rolls down an incline without slipping, total kinetic energy divides into translational and rotational parts:
                         </p>
                         <div className="rounded-xl border border-line bg-surface p-3 font-mono text-center text-xs text-ink shadow-xs">
                           {"E_k = \\frac{1}{2} M v^2 + \\frac{1}{2} I \\omega^2 = \\frac{1}{2} M v^2 \\left(1 + \\frac{k^2}{R^2}\\right)"}
                         </div>
-                        <p className="text-xs text-accent font-medium">
-                          ✦ Question for you: Which object has a smaller radius of gyration <span className="font-mono font-bold">$k$</span> relative to <span className="font-mono font-bold">$R$</span>?
+                        <p className="text-xs text-accent font-semibold">
+                          ✦ Cognitive Nudge: Which cylinder has a smaller radius of gyration <span className="font-mono font-bold">$k$</span> relative to radius <span className="font-mono font-bold">$R$</span>?
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Interactive Input Mock */}
+                  {/* Interactive Quick Prompts to Click */}
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Try clicking another question prompt:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "Why does a solid cylinder roll faster than a hollow cylinder?",
+                        "What happens if friction is completely zero?",
+                        "Does total mass affect the rolling acceleration?",
+                      ].map((promptText) => (
+                        <button
+                          key={promptText}
+                          type="button"
+                          onClick={() => setSocraticDemoPrompt(promptText)}
+                          className={`rounded-lg border px-2.5 py-1 text-xs text-left transition-colors ${
+                            socraticDemoPrompt === promptText
+                              ? "border-accent bg-accent/10 text-accent font-semibold"
+                              : "border-line bg-canvas hover:bg-hover text-ink-2"
+                          }`}
+                        >
+                          {promptText}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Input Response Mock */}
                   <div className="flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/[0.03] p-2.5 shadow-xs">
                     <input
                       type="text"
@@ -266,8 +396,9 @@ export default function StudyStudio() {
                 </div>
               )}
 
-              {activeTab === "practice" && (
-                <div className="space-y-5 animate-in fade-in duration-300">
+              {/* STEP 2: Instant Practice */}
+              {activeStepIndex === 1 && (
+                <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between">
                     <span className="rounded-md bg-chemistry/10 px-2.5 py-1 text-xs font-bold text-chemistry border border-chemistry/20">
                       Chemistry · Chemical Equilibrium
@@ -275,22 +406,24 @@ export default function StudyStudio() {
                     <span className="text-xs font-semibold text-muted">Question 3 of 8 · Multi-choice</span>
                   </div>
 
-                  <p className="text-sm sm:text-base font-semibold text-ink leading-relaxed">
-                    For the exothermic Haber synthesis: <br />
-                    <span className="font-mono text-xs sm:text-sm text-ink-2 inline-block my-1.5 bg-canvas px-3 py-1 rounded-lg border border-line">
-                      {"N_2(g) + 3H_2(g) \\rightleftharpoons 2NH_3(g), \\quad \\Delta H < 0"}
-                    </span>
-                    <br />
-                    Which adjustment will maximize the equilibrium yield of ammonia according to Le Chatelier&apos;s principle?
-                  </p>
+                  <div className="rounded-2xl border border-line bg-canvas p-4 space-y-2">
+                    <p className="text-sm sm:text-base font-semibold text-ink leading-relaxed">
+                      For the exothermic Haber synthesis: <br />
+                      <span className="font-mono text-xs sm:text-sm text-ink inline-block my-1.5 bg-surface px-3 py-1 rounded-lg border border-line">
+                        {"N_2(g) + 3H_2(g) \\rightleftharpoons 2NH_3(g), \\quad \\Delta H < 0"}
+                      </span>
+                      <br />
+                      Which parameter shift maximizes the equilibrium yield of ammonia according to Le Chatelier&apos;s principle?
+                    </p>
+                  </div>
 
                   {/* Interactive Options */}
-                  <div className="grid gap-2.5">
+                  <div className="grid gap-2">
                     {[
-                      { id: 0, text: "Increasing temperature while keeping pressure constant" },
-                      { id: 1, text: "Increasing total pressure and lowering the temperature", correct: true },
-                      { id: 2, text: "Adding an inert gas (Argon) at constant pressure" },
-                      { id: 3, text: "Removing N₂(g) continuously from the reactor" },
+                      { id: 0, text: "Increasing temperature while keeping pressure constant", correct: false, note: "Endothermic direction favored; yield decreases." },
+                      { id: 1, text: "Increasing total pressure and lowering the temperature", correct: true, note: "Correct! Δn_g = 2 - 4 = -2 (fewer moles) + exothermic." },
+                      { id: 2, text: "Adding an inert gas (Argon) at constant pressure", correct: false, note: "Increases volume; shifts equilibrium to side with more gas moles." },
+                      { id: 3, text: "Removing N₂(g) continuously from the reactor", correct: false, note: "Reactant removal shifts system backwards." },
                     ].map((opt) => {
                       const isSelected = selectedPracticeOption === opt.id;
                       const isCorrect = opt.correct;
@@ -298,28 +431,33 @@ export default function StudyStudio() {
                         <button
                           key={opt.id}
                           type="button"
-                          onClick={() => setSelectedPracticeOption(opt.id)}
+                          onClick={() => {
+                            setSelectedPracticeOption(opt.id);
+                            setPracticeAnswerChecked(true);
+                          }}
                           className={`flex items-center justify-between rounded-xl border p-3 text-left text-xs sm:text-sm transition-all ${
-                            isSelected && isCorrect
+                            isSelected && isCorrect && practiceAnswerChecked
                               ? "border-success bg-success/10 text-ink font-semibold shadow-xs"
-                              : isSelected
-                              ? "border-warning bg-warning/10 text-ink"
+                              : isSelected && !isCorrect && practiceAnswerChecked
+                              ? "border-danger bg-danger/10 text-ink"
                               : "border-line bg-canvas/60 text-ink-2 hover:border-line-strong hover:bg-canvas"
                           }`}
                         >
                           <div className="flex items-center gap-3">
                             <span
                               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                                isSelected && isCorrect
+                                isSelected && isCorrect && practiceAnswerChecked
                                   ? "bg-success text-surface"
+                                  : isSelected && !isCorrect && practiceAnswerChecked
+                                  ? "bg-danger text-surface"
                                   : "border border-line bg-surface text-ink-2"
                               }`}
                             >
-                              {isSelected && isCorrect ? "✓" : String.fromCharCode(65 + opt.id)}
+                              {isSelected && isCorrect && practiceAnswerChecked ? "✓" : isSelected && !isCorrect && practiceAnswerChecked ? "✗" : String.fromCharCode(65 + opt.id)}
                             </span>
                             <span>{opt.text}</span>
                           </div>
-                          {isSelected && isCorrect && (
+                          {isSelected && isCorrect && practiceAnswerChecked && (
                             <span className="text-[11px] font-bold text-success uppercase tracking-wider">
                               Verified
                             </span>
@@ -330,15 +468,24 @@ export default function StudyStudio() {
                   </div>
 
                   {/* Instant Verification Toast */}
-                  <div className="rounded-xl border border-success/30 bg-success/10 p-3 flex items-center justify-between text-xs text-success font-medium">
-                    <span>✓ High pressure shifts equilibrium to fewer gas moles (4 → 2). Lower T favors exothermic reaction.</span>
-                    <span className="font-bold tabular-nums">4.2ms</span>
-                  </div>
+                  {selectedPracticeOption !== null && (
+                    <div className={`rounded-xl border p-3 flex items-center justify-between text-xs font-medium ${
+                      selectedPracticeOption === 1 ? "border-success/30 bg-success/10 text-success" : "border-danger/30 bg-danger/10 text-danger"
+                    }`}>
+                      <span>
+                        {selectedPracticeOption === 1
+                          ? "✓ Verified: High pressure shifts equilibrium to fewer gas moles (4 → 2). Lower T favors exothermic forward direction."
+                          : "✗ Incorrect: That adjustment shifts equilibrium away from NH₃ formation according to Le Chatelier."}
+                      </span>
+                      <span className="font-bold tabular-nums shrink-0 ml-3">4.2ms SymPy</span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {activeTab === "mastery" && (
-                <div className="space-y-5 animate-in fade-in duration-300">
+              {/* STEP 3: Retention & Streaks */}
+              {activeStepIndex === 2 && (
+                <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between">
                     <span className="rounded-md bg-warning/10 px-2.5 py-1 text-xs font-bold text-warning border border-warning/20">
                       Learner Retention Radar · Mathematics
@@ -346,25 +493,23 @@ export default function StudyStudio() {
                     <span className="text-xs font-bold text-success">🔥 14-Day Consistent Streak</span>
                   </div>
 
-                  {/* Stat Cards Row */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="rounded-xl border border-line bg-canvas p-3">
-                      <p className="text-[11px] text-muted">Weekly Accuracy</p>
+                      <p className="text-[11px] text-muted font-medium">Weekly Accuracy</p>
                       <p className="text-xl font-bold text-ink tabular-nums mt-0.5">91.4%</p>
                     </div>
                     <div className="rounded-xl border border-line bg-canvas p-3">
-                      <p className="text-[11px] text-muted">Mastered Concepts</p>
+                      <p className="text-[11px] text-muted font-medium">Mastered Concepts</p>
                       <p className="text-xl font-bold text-ink tabular-nums mt-0.5">84 / 106</p>
                     </div>
                     <div className="rounded-xl border border-line bg-canvas p-3">
-                      <p className="text-[11px] text-muted">Next Scheduled Review</p>
+                      <p className="text-[11px] text-muted font-medium">Scheduled Review</p>
                       <p className="text-xl font-bold text-accent mt-0.5">Tonight</p>
                     </div>
                   </div>
 
-                  {/* Retention Bars */}
                   <div className="rounded-2xl border border-line bg-canvas p-4 space-y-3">
-                    <p className="text-xs font-semibold text-ink">Calculus Mastery Breakdown</p>
+                    <p className="text-xs font-bold text-ink">Calculus Mastery Breakdown</p>
                     {[
                       { topic: "Limits & L'Hôpital Rule", score: 94, state: "Retained" },
                       { topic: "Integration by Substitution", score: 86, state: "Stable" },
@@ -392,20 +537,20 @@ export default function StudyStudio() {
                 </div>
               )}
 
-              {activeTab === "roadmap" && (
-                <div className="space-y-5 animate-in fade-in duration-300">
+              {/* STEP 4: Dynamic Exam Roadmap */}
+              {activeStepIndex === 3 && (
+                <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between">
                     <span className="rounded-md bg-physics/10 px-2.5 py-1 text-xs font-bold text-physics border border-physics/20">
                       Adaptive Roadmap · Target: JEE Advanced
                     </span>
                     <span className="text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full border border-success/20">
-                      Trajectory: Top 1,000 AIR
+                      AIR Target: Top 1,000
                     </span>
                   </div>
 
-                  {/* Timeline Schedule */}
                   <div className="rounded-2xl border border-line bg-canvas p-4 space-y-3">
-                    <p className="text-xs font-semibold text-ink">Upcoming Daily Schedule</p>
+                    <p className="text-xs font-bold text-ink">Upcoming Daily Schedule</p>
                     {[
                       { day: "Today (Mon)", title: "Rotational Dynamics: Rolling without Slipping", status: "In Progress", duration: "25 min" },
                       { day: "Tue", title: "Thermodynamics: Second Law & Carnot Efficiency", status: "Upcoming", duration: "30 min" },
@@ -439,54 +584,37 @@ export default function StudyStudio() {
                 </div>
               )}
 
-              {/* Floating Bottom Badge */}
+              {/* Window Footer Status */}
               <div className="mt-4 pt-3 border-t border-line/60 flex items-center justify-between text-xs text-muted">
-                <span>Interactive Live Preview · Switch tabs above</span>
+                <span>Interactive Live Preview · Click through steps above</span>
                 <span className="font-medium text-ink">JeePath Engine v2.4</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Continuous 3D Scrolling Formula Rail */}
-        <div data-reveal className="mt-20">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Live JEE Syllabus Knowledge Stream
-            </span>
-            <span className="text-xs font-medium text-accent">
-              Continuously calibrated across 1,016 topics →
-            </span>
+        {/* Continuous Formula Rail Marquee Ticker */}
+        <div data-reveal className="mt-14 overflow-hidden rounded-2xl border border-line bg-surface/70 py-4 shadow-xs">
+          <div className="flex items-center gap-3 px-4 pb-2 border-b border-line/50 text-[11px] font-semibold text-muted">
+            <span className="flex h-2 w-2 rounded-full bg-accent animate-ping" />
+            <span className="uppercase tracking-wider">Live Verified Physics, Chemistry & Mathematics Formula Rail</span>
           </div>
-
-          <div className="relative w-full overflow-hidden rounded-2xl border border-line bg-surface/50 py-4 shadow-inner backdrop-blur-xs">
-            {/* Edge fade gradients */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-canvas to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-canvas to-transparent" />
-
-            {/* Continuous marquee */}
-            <div className="flex gap-4 animate-marquee whitespace-nowrap">
+          <div className="relative mt-3 flex overflow-hidden">
+            <div className="animate-marquee flex items-center gap-6 whitespace-nowrap">
               {[...FORMULAS_MARQUEE, ...FORMULAS_MARQUEE].map((f, i) => (
                 <div
                   key={`${f.tex}-${i}`}
-                  className="inline-flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5 shadow-xs transition-transform hover:scale-105"
+                  className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-2 shadow-xs transition-colors hover:border-line-strong"
                 >
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                      f.sub === "Physics"
-                        ? "bg-physics/10 text-physics border border-physics/20"
-                        : f.sub === "Chemistry"
-                        ? "bg-chemistry/10 text-chemistry border border-chemistry/20"
-                        : "bg-maths/10 text-maths border border-maths/20"
-                    }`}
-                  >
-                    {f.sub}
-                  </span>
-                  <span className="font-mono text-xs font-semibold text-ink">
+                  <span className="font-mono text-xs font-bold text-ink">
                     ${f.tex}$
                   </span>
-                  <span className="text-[11px] text-muted">
-                    ({f.label})
+                  <span className="h-3 w-px bg-line" />
+                  <span className="text-[11px] font-medium text-ink-2">
+                    {f.label}
+                  </span>
+                  <span className="rounded-md bg-hover px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                    {f.sub}
                   </span>
                 </div>
               ))}

@@ -7,6 +7,8 @@ import {
   flattenAndSortConcepts,
   getDefaultActiveTab,
   calculateSyllabusStats,
+  groupSyllabusBySubject,
+  displayTitle,
   conceptAction,
   conceptHref,
   type TabCounts,
@@ -230,6 +232,34 @@ const sampleSyllabus: SyllabusUnit[] = [
 const stats = calculateSyllabusStats(sampleSyllabus);
 check("syllabus-total-calc", stats.totalTopics === 30 && stats.totalStarted === 20 && stats.totalMastered === 14);
 check("syllabus-pct-calc", stats.startedPct === 67 && stats.masteredPct === 47);
+
+const grouped = groupSyllabusBySubject([
+  { unit: "Atomic Structure", subject: "Chemistry", total: 4, started: 0, mastered: 0, topics: [] },
+  { unit: "Algebra", subject: "Mathematics", total: 3, started: 0, mastered: 0, topics: [] },
+  { unit: "Kinematics", subject: "Physics", total: 5, started: 1, mastered: 0, topics: [] },
+  { unit: "Laws of Motion", subject: "Physics", total: 4, started: 0, mastered: 0, topics: [] },
+  { unit: "Some Basic Concepts of Chemistry", subject: "Chemistry", total: 6, started: 0, mastered: 0, topics: [] },
+]);
+check(
+  "syllabus-groups-by-subject",
+  grouped.map((g) => g.subject).join(",") === "Physics,Chemistry,Mathematics",
+);
+check(
+  "syllabus-keeps-chapter-order",
+  grouped[0].units.map((u) => u.unit).join("|") === "Kinematics|Laws of Motion" &&
+    grouped[1].units[0].unit === "Atomic Structure",
+);
+const unlabelled = groupSyllabusBySubject([
+  { unit: "Optics", total: 2, started: 0, mastered: 0, topics: [] },
+]);
+check("syllabus-missing-subject", unlabelled.length === 1 && unlabelled[0].subject === "Syllabus");
+
+check("title-case-plain", displayTitle("phase shift") === "Phase Shift");
+check("title-case-small-words", displayTitle("law of inertia") === "Law of Inertia");
+check(
+  "title-case-keeps-capitals",
+  displayTitle("LC oscillations") === "LC Oscillations" && displayTitle("d- and f-Block Elements") === "d- and f-Block Elements",
+);
 
 // ── Output results ───────────────────────────────────────────────────────────
 for (const c of cases) {

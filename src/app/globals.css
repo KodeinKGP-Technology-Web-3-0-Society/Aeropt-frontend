@@ -96,6 +96,85 @@
   --scrim: oklch(8% 0.02 250 / 0.62);
 }
 
+/* Study desk palette. Scoped so the rest of the app keeps its tokens. */
+.study-desk {
+  --bg-main: #f6f7fb;
+  --bg-surface: #ffffff;
+  --bg-hover: #eef0f6;
+  --bg-input: #ffffff;
+  --border-main: #e6e8f0;
+  --border-button: #d5d8e4;
+  --text-main: #0f172a;
+  --text-secondary: #3e4a63;
+  --text-muted: #5b6478;
+  --text-on-accent: #ffffff;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eef2ff;
+  --success: #047857;
+  --warning: #b45309;
+  --danger: #be123c;
+  --physics: #3b82f6;
+  --chemistry: #f97316;
+  --maths: #8b5cf6;
+  --physics-ink: #1d4ed8;
+  --chemistry-ink: #c2410c;
+  --maths-ink: #6d28d9;
+  --status-new: #cbd5e1;
+  --status-progress: #f59e0b;
+  --status-review: #e11d48;
+  --status-mastered: #10b981;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 10px 28px rgb(15 23 42 / 0.06);
+  font-family: var(--font-inter), var(--font-plex-sans), "Segoe UI", sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-desk,
+  .study-desk * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-theme="dark"] .study-desk {
+  --bg-main: #0e1117;
+  --bg-surface: #161b22;
+  --bg-hover: #1c2330;
+  --bg-input: #161b22;
+  --border-main: #2a3140;
+  --border-button: #3a4254;
+  --text-main: #f1f5f9;
+  --text-secondary: #c5cdd8;
+  --text-muted: #94a3b8;
+  --text-on-accent: #ffffff;
+  --accent: #c7d2fe;
+  --accent-hover: #e0e7ff;
+  --accent-soft: #1e1b4b;
+  --success: #6ee7b7;
+  --warning: #fcd34d;
+  --danger: #fda4af;
+  --physics: #60a5fa;
+  --chemistry: #fb923c;
+  --maths: #a78bfa;
+  --physics-ink: #93c5fd;
+  --chemistry-ink: #fdba74;
+  --maths-ink: #c4b5fd;
+  --status-new: #475569;
+  --status-progress: #fbbf24;
+  --status-review: #fb7185;
+  --status-mastered: #34d399;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.28);
+}
+
+/* Filled indigo stays dark enough for white labels. Text and rings use the lighter --accent. */
+:root[data-theme="dark"] .study-desk .bg-accent {
+  background-color: #4f46e5;
+}
+:root[data-theme="dark"] .study-desk .hover\:bg-accent-hover:hover {
+  background-color: #4338ca;
+}
+
 @theme inline {
   --color-canvas: var(--bg-main);
   --color-surface: var(--bg-surface);
@@ -1712,21 +1791,46 @@ textarea:focus-visible,
 .landing-btn:active { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) { .landing-btn:active { transform: none; } }
 
-/* ── Floating formula pills ─────────────────────────────────── */
-@keyframes landing-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+/* ── Floating formula pills & interactive math atmosphere ─────────── */
+@keyframes landing-float-1 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1.5deg); }
+}
+@keyframes landing-float-2 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(8px) rotate(-1.5deg); }
+}
+@keyframes landing-float-3 {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(1deg); }
 }
 .landing-formula {
   opacity: 0;
-  animation: landing-float 6s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  transition: transform 350ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 300ms ease, border-color 300ms ease, background-color 300ms ease;
 }
+.landing-formula:hover {
+  transform: scale(1.14) translateY(-3px) !important;
+  box-shadow: 0 10px 25px -5px oklch(22% 0.028 250 / 0.15);
+  z-index: 30;
+}
+.landing-formula-anim-1 { animation: landing-float-1 7s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+.landing-formula-anim-2 { animation: landing-float-2 9s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+.landing-formula-anim-3 { animation: landing-float-3 11s ease-in-out infinite, landing-formula-enter 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+
 @keyframes landing-formula-enter {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
-  to { opacity: 0.7; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(14px) scale(0.92); }
+  to { opacity: 0.85; transform: translateY(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .landing-formula { animation: none; opacity: 0.6; }
+  .landing-formula,
+  .landing-formula-anim-1,
+  .landing-formula-anim-2,
+  .landing-formula-anim-3 {
+    animation: none;
+    opacity: 0.7;
+    transform: none !important;
+  }
 }
 
 /* ── Text reveal animation ─────────────────────────────────── */

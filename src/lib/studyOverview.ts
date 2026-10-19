@@ -197,6 +197,27 @@ export function conceptAction(
   };
 }
 
+const SMALL_WORDS = new Set(["a", "an", "and", "of", "the", "in", "on", "for", "to", "by", "with", "or"]);
+
+/** Title Case for display. Keeps existing capitals (LC, pH) and short prefixes like "d-". */
+export function displayTitle(name: string): string {
+  const parts = name.split(/(\s+)/);
+  let wordIndex = 0;
+  return parts
+    .map((part) => {
+      if (!part.trim()) return part;
+      const index = wordIndex;
+      wordIndex += 1;
+      if (/[A-Z]/.test(part) || /^[a-z]-/.test(part)) return part;
+      const lower = part.toLowerCase();
+      if (!/[a-z]/i.test(part)) return part;
+      if (index > 0 && SMALL_WORDS.has(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join("");
+}
+
+/** Relative within a week ("3 days ago"), otherwise "Oct 11". */
 export function formatRelativeTime(iso?: string | null): string {
   if (!iso) return "";
   try {
@@ -207,14 +228,50 @@ export function formatRelativeTime(iso?: string | null): string {
     if (days <= 0) {
       const hours = Math.floor(diffMs / 3_600_000);
       if (hours <= 0) return "Today";
-      return `${hours}h ago`;
+      return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
     }
     if (days === 1) return "Yesterday";
-    if (days < 7) return `${days}d ago`;
-    return then.toLocaleDateString([], { day: "numeric", month: "short" });
+    if (days < 7) return `${days} days ago`;
+    return then.toLocaleDateString("en-US", { day: "numeric", month: "short" });
   } catch {
     return "";
   }
+}
+
+/** Match a chapter or topic label to Physics, Chemistry, or Mathematics when the syllabus knows it. */
+export function subjectForLabel(label: string | null | undefined, syllabus: SyllabusUnit[]): string | null {
+  const needle = label?.trim().toLowerCase();
+  if (!needle) return null;
+  for (const unit of syllabus) {
+    if (unit.unit.toLowerCase() === needle) return unit.subject ?? null;
+    if (unit.topics.some((topic) => topic.topic.toLowerCase() === needle)) return unit.subject ?? null;
+  }
+  return null;
+}
+
+const SUBJECT_ORDER = ["Physics", "Chemistry", "Mathematics"];
+
+export interface SyllabusSubjectGroup {
+  subject: string;
+  units: SyllabusUnit[];
+}
+
+/** Units stay in exam order. Subjects follow Physics, Chemistry, Mathematics, then any other name. */
+export function groupSyllabusBySubject(syllabus: SyllabusUnit[]): SyllabusSubjectGroup[] {
+  const groups = new Map<string, SyllabusUnit[]>();
+  for (const unit of syllabus) {
+    const subject = unit.subject?.trim() || "Syllabus";
+    const list = groups.get(subject);
+    if (list) list.push(unit);
+    else groups.set(subject, [unit]);
+  }
+  const rank = (subject: string) => {
+    const index = SUBJECT_ORDER.indexOf(subject);
+    return index === -1 ? SUBJECT_ORDER.length : index;
+  };
+  return [...groups.entries()]
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+    .map(([subject, units]) => ({ subject, units }));
 }
 
 export function calculateSyllabusStats(syllabus: SyllabusUnit[]) {

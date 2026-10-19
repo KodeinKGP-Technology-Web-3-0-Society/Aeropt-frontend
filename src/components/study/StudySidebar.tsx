@@ -125,12 +125,12 @@ function StreakChip() {
       href="/progress"
       title={label}
       aria-label={label}
-      className={`flex h-9 items-center gap-1 rounded-full px-2.5 text-xs font-semibold tabular-nums transition-colors hover:bg-hover ${
+      className={`flex h-11 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium tabular-nums transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         streak.days && streak.today ? "text-ink" : "text-muted"
       }`}
     >
-      <FlameIcon className={`h-4 w-4 ${streak.days && streak.today ? "text-warning" : ""}`} />
-      {streak.days}
+      <FlameIcon className={`h-4 w-4 ${streak.days ? "text-[#F59E0B]" : ""}`} />
+      <span>{streak.days === 0 ? "No streak" : streak.days === 1 ? "1-day streak" : `${streak.days}-day streak`}</span>
     </Link>
   );
 }
@@ -182,7 +182,7 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
   }, [menuOpen]);
 
   const linkClass = (active: boolean) =>
-    `flex h-9 items-center gap-2 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+    `flex h-11 items-center gap-2 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
       active ? "bg-accent-soft text-accent" : "text-ink-2 hover:bg-hover hover:text-ink"
     }`;
 
@@ -198,7 +198,7 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
               return (
                 <Link key={item.href} href={item.href} title={item.hint} aria-current={active ? "page" : undefined} className={linkClass(active)}>
                   <item.icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="max-lg:sr-only">{item.label}</span>
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
@@ -212,7 +212,7 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
               onClick={() => setAppTheme(appTheme === "dark" ? "light" : "dark")}
               title={appTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={appTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-hover hover:text-ink max-sm:hidden"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent max-sm:hidden"
             >
               {appTheme === "dark" ? <SunIcon className="h-[18px] w-[18px]" /> : <MoonIcon className="h-[18px] w-[18px]" />}
             </button>

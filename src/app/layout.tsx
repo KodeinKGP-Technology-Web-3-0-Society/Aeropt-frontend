@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -8,6 +8,13 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // the site the generic AI "editorial" look. Plex Mono for formulas and code.
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
@@ -37,7 +44,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
-      <body className={`${plexSans.variable} ${plexMono.variable} font-sans antialiased`}>
+      <body className={`${plexSans.variable} ${plexMono.variable} ${inter.variable} font-sans antialiased`}>
         <ErrorBoundary scope="app-shell">
           <AppProvider>
             {children}

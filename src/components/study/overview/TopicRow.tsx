@@ -1,64 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import type { OverviewConcept } from "@/lib/api/study";
-import { conceptAction, formatRelativeTime, type TabKind } from "@/lib/studyOverview";
+import type { OverviewConcept, SyllabusUnit } from "@/lib/api/study";
+import { conceptAction, displayTitle, formatRelativeTime, subjectForLabel, type TabKind } from "@/lib/studyOverview";
+import { StatusPill, statusFromTone, SubjectMark } from "./studyChrome";
 
-interface TopicRowProps {
+export default function TopicRow({
+  concept,
+  tab,
+  syllabus,
+}: {
   concept: OverviewConcept;
   tab: TabKind;
-}
-
-const TONE_BADGE = {
-  danger: "text-danger bg-danger/10 border-danger/25",
-  warning: "text-warning bg-warning/10 border-warning/25",
-  success: "text-success bg-success/10 border-success/25",
-  muted: "text-muted bg-hover border-line",
-};
-
-export default function TopicRow({ concept, tab }: TopicRowProps) {
+  syllabus: SyllabusUnit[];
+}) {
   const action = conceptAction(concept, tab);
   const relativeTime = formatRelativeTime(concept.last_practised);
+  const subject = subjectForLabel(concept.chapter, syllabus) || subjectForLabel(concept.name, syllabus);
 
   return (
-    <li className="group flex min-h-[52px] sm:min-h-[56px] items-center justify-between gap-3 border-b border-line/60 px-4 py-2.5 transition-colors hover:bg-hover sm:px-6">
-      {/* Left: Concept Name + Chapter */}
-      <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
-        <Link
-          href={action.href}
-          className="truncate text-sm sm:text-base font-medium text-ink transition-colors group-hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          {concept.name}
-        </Link>
-        <span className="hidden truncate text-xs sm:text-sm text-muted sm:inline" title={concept.chapter}>
-          · {concept.chapter}
+    <li>
+      <Link
+        href={action.href}
+        className="group flex min-h-14 items-center gap-3 px-4 py-2 transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-5"
+      >
+        <SubjectMark subject={subject} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] leading-6 font-medium text-ink">{displayTitle(concept.name)}</span>
+          <span className="block truncate text-[13px] leading-5 text-muted">{displayTitle(concept.chapter)}</span>
         </span>
-      </div>
-
-      {/* Middle: Status Badge + Timestamp */}
-      <div className="flex shrink-0 items-center gap-3">
-        <span
-          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium leading-none ${TONE_BADGE[action.tone]}`}
-        >
-          {action.detail}
-        </span>
-
-        {relativeTime && (
-          <span className="hidden text-xs sm:text-sm tabular-nums text-muted md:inline">
-            {relativeTime}
-          </span>
-        )}
-      </div>
-
-      {/* Right: Direct Action Button */}
-      <div className="shrink-0">
-        <Link
-          href={action.href}
-          className="inline-flex min-h-[38px] sm:min-h-[40px] min-w-[76px] sm:min-w-[84px] items-center justify-center rounded-lg border border-line bg-surface px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-ink-2 shadow-2xs transition-colors hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
+        <StatusPill
+          status={statusFromTone(action.tone)}
+          label={tab === "explored" ? "Explored" : undefined}
+        />
+        {relativeTime && <span className="hidden w-24 shrink-0 text-right text-[13px] leading-5 text-muted md:inline">{relativeTime}</span>}
+        <span className="inline-flex min-h-11 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink-2 transition-colors duration-150 group-hover:border-accent group-hover:text-accent">
           {action.label}
-        </Link>
-      </div>
+        </span>
+      </Link>
     </li>
   );
 }

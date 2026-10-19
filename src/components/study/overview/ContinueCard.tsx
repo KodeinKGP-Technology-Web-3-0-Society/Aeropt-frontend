@@ -1,87 +1,120 @@
 "use client";
 
 import Link from "next/link";
-import type { UpNextItem } from "@/lib/api/study";
-import { conceptHref, KIND_LABEL } from "@/lib/studyOverview";
+import type { SyllabusUnit, UpNextItem } from "@/lib/api/study";
+import { conceptHref, displayTitle, formatRelativeTime, KIND_LABEL, subjectForLabel } from "@/lib/studyOverview";
+import { subjectInk, subjectVar, SubjectMark } from "./studyChrome";
 
-interface ContinueCardProps {
-  items: UpNextItem[];
+const STAGES = ["Learn", "Examples", "Practice"] as const;
+
+function stageIndex(phase?: string | null): number {
+  if (phase === "examples") return 1;
+  if (phase === "practice" || phase === "evaluation" || phase === "completed") return 2;
+  return 0;
 }
 
-export default function ContinueCard({ items }: ContinueCardProps) {
-  if (!items || items.length === 0) return null;
+export default function ContinueCard({
+  items,
+  syllabus,
+}: {
+  items: UpNextItem[];
+  syllabus: SyllabusUnit[];
+}) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="rounded-2xl border border-line bg-surface p-6 text-[15px] leading-6 text-muted shadow-[var(--shadow-card)]">
+        Nothing queued yet. Search for a topic below, or open the syllabus and pick a chapter.
+      </div>
+    );
+  }
 
   const [first, ...rest] = items;
-  const isReview = first.kind === "review";
   const kindMeta = KIND_LABEL[first.kind] || { tag: "Up next", cta: "Start" };
+  const subject = subjectForLabel(first.chapter, syllabus) || subjectForLabel(first.name, syllabus);
+  const color = subjectVar(subject);
+  const ink = subjectInk(subject);
+  const stage = stageIndex(first.phase);
+  const when = formatRelativeTime(first.last_practised);
 
   return (
-    <section
-      aria-label="What to study next"
-      className="rounded-2xl border border-line bg-surface p-6 shadow-xs transition-colors sm:p-8 lg:p-9"
-    >
-      <div className="flex flex-col gap-5">
-        {/* Eyebrow tag */}
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2.5 w-2.5 rounded-full ${isReview ? "bg-danger" : "bg-accent"}`}
-            aria-hidden
-          />
-          <span
-            className={`text-xs sm:text-sm font-semibold tracking-wide ${
-              isReview ? "text-danger" : "text-accent"
-            }`}
-          >
-            {kindMeta.tag}
-          </span>
-        </div>
-
-        {/* Title and Context */}
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-ink first-letter:uppercase sm:text-3xl lg:text-4xl">
-            <Link
-              href={conceptHref(first)}
-              className="transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              {first.name}
-            </Link>
-          </h2>
-          <p className="mt-2 max-w-4xl text-sm leading-relaxed text-ink-2 sm:text-base">
-            <span className="font-medium text-muted">{first.chapter}. </span>
-            {first.reason.replace(/—/g, ": ")}
-          </p>
-        </div>
-
-        {/* Primary Action Button */}
-        <div className="pt-1">
-          <Link
-            href={conceptHref(first)}
-            className="inline-flex min-h-[46px] sm:min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm sm:text-base font-semibold text-accent-on transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <span>{kindMeta.cta}</span>
-            <span aria-hidden>→</span>
-          </Link>
-        </div>
-
-        {/* Secondary Queued Topics */}
-        {rest.length > 0 && (
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line/80 pt-4 text-xs sm:text-sm">
-            <span className="font-medium text-muted">Also queued:</span>
-            {rest.map((item, idx) => (
-              <span key={item.concept_id} className="inline-flex items-center gap-2">
-                {idx > 0 && <span className="text-line-strong">·</span>}
-                <Link
-                  href={conceptHref(item)}
-                  className="font-medium text-ink-2 underline decoration-line-strong underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
-                >
-                  {item.name}
-                </Link>
-                <span className="text-muted">({item.chapter})</span>
+    <div className="rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-7">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {subject && (
+              <span
+                className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[13px] leading-5 font-medium"
+                style={{ color: ink, background: `color-mix(in srgb, ${color} 14%, var(--bg-surface))` }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} aria-hidden />
+                {subject}
               </span>
-            ))}
+            )}
+            <span className="text-[13px] leading-5 font-medium text-muted">{kindMeta.tag}</span>
           </div>
-        )}
+          <h3 className="mt-3 text-[28px] leading-9 font-semibold tracking-tight text-ink sm:text-[32px] sm:leading-10">
+            <Link href={conceptHref(first)} className="hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              {displayTitle(first.name)}
+            </Link>
+          </h3>
+          <p className="mt-1 text-[15px] leading-6 text-ink-2">{displayTitle(first.chapter)}</p>
+          <ol className="mt-4 flex flex-wrap items-center gap-2" aria-label="Lesson stages">
+            {STAGES.map((label, index) => {
+              const current = index === stage;
+              const done = index < stage;
+              return (
+                <li key={label} className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[13px] leading-5 font-medium ${
+                      current ? "bg-accent text-accent-on" : done ? "bg-hover text-ink" : "text-muted"
+                    }`}
+                    aria-current={current ? "step" : undefined}
+                  >
+                    {index + 1} {label}
+                  </span>
+                  {index < STAGES.length - 1 && <span className="text-muted" aria-hidden>→</span>}
+                </li>
+              );
+            })}
+          </ol>
+          {when && (
+            <p className="mt-3 text-[13px] leading-5 text-muted">
+              Last studied {when === "Today" ? "today" : when === "Yesterday" ? "yesterday" : when}
+            </p>
+          )}
+        </div>
+        <Link
+          href={conceptHref(first)}
+          className="inline-flex min-h-12 items-center justify-center rounded-xl bg-accent px-6 text-[15px] font-semibold text-accent-on transition-colors duration-150 hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          {kindMeta.cta}
+        </Link>
       </div>
-    </section>
+
+      {rest.length > 0 && (
+        <div className="mt-6 border-t border-line pt-4">
+          <p className="text-[13px] leading-5 font-medium text-muted">Also queued</p>
+          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+            {rest.map((item) => {
+              const itemSubject = subjectForLabel(item.chapter, syllabus) || subjectForLabel(item.name, syllabus);
+              return (
+                <li key={item.concept_id}>
+                  <Link
+                    href={conceptHref(item)}
+                    className="flex min-h-11 items-center gap-3 rounded-xl border border-line px-3 py-2 transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <SubjectMark subject={itemSubject} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[15px] leading-6 font-medium text-ink">{displayTitle(item.name)}</span>
+                      <span className="block truncate text-[13px] leading-5 text-muted">{displayTitle(item.chapter)}</span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
