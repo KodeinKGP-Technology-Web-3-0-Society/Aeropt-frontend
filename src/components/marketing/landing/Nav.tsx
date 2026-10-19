@@ -9,8 +9,9 @@ export default function Nav() {
           <JeePathLogo size={28} textClassName="text-lg" domain />
         </Link>
         <nav className="flex items-center gap-1 text-sm font-medium" aria-label="Main">
-          <a href="#what-you-get" className="hidden min-h-11 items-center rounded-lg px-3 text-ink-2 transition-colors hover:text-ink md:inline-flex">What you get</a>
-          <a href="#subjects" className="hidden min-h-11 items-center rounded-lg px-3 text-ink-2 transition-colors hover:text-ink md:inline-flex">Subjects</a>
+          <a href="#study-studio" className="hidden min-h-11 items-center rounded-lg px-3 text-ink-2 transition-colors hover:text-ink md:inline-flex">Study Studio</a>
+          <a href="#syllabus" className="hidden min-h-11 items-center rounded-lg px-3 text-ink-2 transition-colors hover:text-ink md:inline-flex">Syllabus</a>
+          <a href="#how-it-works" className="hidden min-h-11 items-center rounded-lg px-3 text-ink-2 transition-colors hover:text-ink md:inline-flex">How it works</a>
           <Link href="/auth" className="inline-flex min-h-11 items-center rounded-lg px-3 text-ink-2 transition-colors hover:text-ink">Log in</Link>
           <Link href="/auth?tab=signup" className="landing-btn ml-1 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 font-semibold text-accent-on transition-colors hover:bg-accent-hover">
             Start free

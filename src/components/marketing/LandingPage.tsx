@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Benefits from "./landing/Benefits";
+import ArchitecturePipeline from "./landing/ArchitecturePipeline";
 import Close from "./landing/Close";
 import Hero from "./landing/Hero";
-import HowItWorks from "./landing/HowItWorks";
 import Nav from "./landing/Nav";
 import SocialProof from "./landing/SocialProof";
-import Subjects from "./landing/Subjects";
+import StudyStudio from "./landing/StudyStudio";
+import SyllabusMatrix from "./landing/SyllabusMatrix";
 
 /**
  * Landing. Light paper, navy ink, teal only on the primary action (.impeccable.md).
@@ -15,9 +15,12 @@ import Subjects from "./landing/Subjects";
  * the hero reply plays in the order the tutor works (question, steps, answer), and
  * sections fade up once as they enter. Reduced motion shows everything at rest.
  *
- * New: Lenis smooth scrolling for buttery feel, enhanced GSAP reveals,
- * floating formula pills with parallax, social proof strip, and Mathematics
- * is now featured throughout all sections.
+ * Site-of-the-day caliber landing experience:
+ * - Lenis smooth scrolling for high-end inertia feel
+ * - Staggered GSAP reveals & interactive mockups
+ * - StudyStudio with continuous 3D formula tickers & live interactive practice
+ * - SyllabusMatrix with interactive filter across 1,016 topics across Physics, Chemistry, and Mathematics
+ * - ArchitecturePipeline with clean engineering vector schematics
  */
 export default function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -126,9 +129,9 @@ export default function LandingPage() {
       <main>
         <Hero />
         <SocialProof />
-        <Benefits />
-        <Subjects />
-        <HowItWorks />
+        <StudyStudio />
+        <SyllabusMatrix />
+        <ArchitecturePipeline />
       </main>
       <Close />
     </div>
