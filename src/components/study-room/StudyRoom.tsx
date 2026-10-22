@@ -524,7 +524,23 @@ export default function StudyRoom({
                 <div className="mx-auto w-full max-w-3xl">{conversation}</div>
               </div>
               <div className="px-4 pb-4 pt-2 sm:px-6">
-                <div className="mx-auto w-full max-w-3xl">{composer}</div>
+                <div className="mx-auto w-full max-w-3xl">
+                  {phase === "practice" && !question && !busy && (
+                    // A reopened practice session keeps its old chat, which may point at a question
+                    // that is no longer open. Say so, and offer the direct way to get one (no tutor turn).
+                    <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
+                      <p className="text-sm text-ink-2">No question is open right now.</p>
+                      <button
+                        type="button"
+                        onClick={() => void nextQuestion()}
+                        className="shrink-0 cursor-pointer rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
+                      >
+                        Get a question
+                      </button>
+                    </div>
+                  )}
+                  {composer}
+                </div>
               </div>
             </div>
           </div>
