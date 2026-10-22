@@ -50,6 +50,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["their-shake-probe-knives.trycloudflare.com"],
   skipTrailingSlashRedirect: true,
   experimental: { proxyTimeout: 300_000 },
+  env: {
+    NEXT_PUBLIC_BUILD_TARGET: process.env.BUILD_TARGET || "",
+  },
   ...(isAndroid
     ? {
         output: "export",
