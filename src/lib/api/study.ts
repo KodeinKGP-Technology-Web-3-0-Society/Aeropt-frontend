@@ -1,4 +1,5 @@
 import * as auth from "@/lib/api/auth";
+import { CacheTTL, cacheKey, cachedGet, invalidateCache } from "@/lib/api/apiCache";
 import {
   AGENT_STREAM_STALL_TIMEOUT_MS,
   AGENT_STREAM_TOTAL_TIMEOUT_MS,
@@ -260,6 +261,8 @@ export async function submitStudyChoice(
 ): Promise<ChoiceResult> {
   const userId = auth.getSupabaseUserId();
   if (!userId) throw new Error("User not authenticated.");
+  invalidateCache("study-overview");
+  invalidateCache("plan");
   return auth.apiRequest<ChoiceResult>(`${auth.requireAgentApiBase()}/api/v1/study/answer`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, study_session_id: studySessionId, choice, value }),
@@ -282,6 +285,8 @@ export async function nextStudyQuestion(studySessionId: string): Promise<NextQue
 export async function advanceStudyPhase(studySessionId: string): Promise<StudyAdvanceResponse> {
   const userId = auth.getSupabaseUserId();
   if (!userId) throw new Error("User not authenticated.");
+  invalidateCache("study-overview");
+  invalidateCache("plan");
   return auth.apiRequest<StudyAdvanceResponse>(`${auth.requireAgentApiBase()}/api/v1/study/advance`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, study_session_id: studySessionId }),
@@ -493,7 +498,9 @@ export async function fetchStudyOverview(): Promise<StudyOverview> {
   } catch {
     /* keep the default */
   }
-  return auth.apiRequest<StudyOverview>(
-    `${auth.requireAgentApiBase()}/api/v1/study/overview/${encodeURIComponent(userId)}?tz=${encodeURIComponent(tz)}`,
+  return cachedGet(cacheKey(["study-overview", userId]), CacheTTL.studyOverview, () =>
+    auth.apiRequest<StudyOverview>(
+      `${auth.requireAgentApiBase()}/api/v1/study/overview/${encodeURIComponent(userId)}?tz=${encodeURIComponent(tz)}`,
+    ),
   );
 }

@@ -7,7 +7,7 @@ import { AppPage } from "@/components/AppPage";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
 import {
-  fetchProgress,
+  fetchProgressCached,
   type ConceptStatus,
   type ProgressChapter,
   type ProgressConcept,
@@ -336,7 +336,8 @@ export default function ProgressContent() {
 
   useEffect(() => {
     let live = true;
-    fetchProgress(30)
+    // Retry forces a fresh read; otherwise the cached report (stale-while-revalidate) paints at once.
+    fetchProgressCached(reloadKey > 0)
       .then((r) => live && setReport(r))
       .catch((e: unknown) => live && setError(e instanceof Error ? e.message : "Could not load your progress."));
     return () => {

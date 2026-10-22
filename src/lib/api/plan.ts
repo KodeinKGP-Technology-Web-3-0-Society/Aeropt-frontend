@@ -1,5 +1,5 @@
 import * as auth from "@/lib/api/auth";
-import { invalidateCache } from "@/lib/api/apiCache";
+import { CacheTTL, cacheKey, cachedGet, invalidateCache } from "@/lib/api/apiCache";
 import { fetchMe } from "@/lib/api/onboarding";
 
 /** The agent's exam plan (services/study_plan.py), recomputed from the record on every load. */
@@ -115,7 +115,9 @@ export async function fetchPlan(profile?: PlanProfile): Promise<StudyPlan> {
   const prof = profile ?? (await fetchPlanProfile());
   const qs = new URLSearchParams({ exam: prof.exam, daily_minutes: String(prof.dailyMinutes), tz: timezone() });
   if (prof.targetYear) qs.set("target_year", String(prof.targetYear));
-  return auth.apiRequest<StudyPlan>(`${auth.requireAgentApiBase()}/api/v1/plan/${encodeURIComponent(userId)}?${qs}`);
+  return cachedGet(cacheKey(["plan", userId, qs.toString()]), CacheTTL.plan, () =>
+    auth.apiRequest<StudyPlan>(`${auth.requireAgentApiBase()}/api/v1/plan/${encodeURIComponent(userId)}?${qs}`),
+  );
 }
 
 /**
@@ -147,4 +149,5 @@ export async function savePlanSettings(next: {
     }),
   });
   invalidateCache("me");
+  invalidateCache("plan");
 }

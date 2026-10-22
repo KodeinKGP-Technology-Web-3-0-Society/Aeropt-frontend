@@ -74,6 +74,9 @@ export const CacheTTL = {
   chapters: 600_000,
   chatHistory: 60_000,
   chatHistoryDetail: 300_000,
+  /** Study overview and plan are slow server reads (several database round trips); stale-while-revalidate hides that. */
+  studyOverview: 120_000,
+  plan: 120_000,
 } as const;
 
 /**
@@ -121,6 +124,8 @@ export function invalidateUserProductCache(): void {
   invalidateCache("roadmap");
   invalidateCache("sandbox");
   invalidateCache("classroom");
+  invalidateCache("study-overview");
+  invalidateCache("plan");
   invalidateCache("me");
 }
 
