@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppPage } from "@/components/AppPage";
 import MarkdownMath from "@/components/MarkdownMath";
@@ -48,9 +49,6 @@ function ago(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
-function studyHref(conceptId: string) {
-  return `/study/${encodeURIComponent(conceptId)}`;
-}
 
 function StatTile({ label, value, sub, delta }: { label: string; value: string; sub?: string; delta?: { text: string; good: boolean } | null }) {
   return (

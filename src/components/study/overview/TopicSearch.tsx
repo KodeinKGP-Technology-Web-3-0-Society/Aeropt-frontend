@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { studyHref } from "@/lib/routes";
 
 const SUGGESTIONS = [
   "Projectile motion",
@@ -26,7 +27,7 @@ export default function TopicSearch({ initialMode }: { initialMode: "learn" | "p
   const go = (value: string) => {
     const trimmed = value.trim();
     if (trimmed) {
-      router.push(`/study/${encodeURIComponent(trimmed)}${mode === "practice" ? "?mode=practice" : ""}`);
+      router.push(studyHref(trimmed, { mode: mode === "practice" ? "practice" : "learn" }));
     }
   };
 

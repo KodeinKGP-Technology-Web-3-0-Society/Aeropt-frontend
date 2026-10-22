@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
 import type { ConceptPyq, QuestionSource, StudyLearnerSnapshot, StudyMode, StudyPrerequisite, StudyStartResponse } from "@/lib/api/study";
@@ -207,7 +208,7 @@ export default function StudyWelcome({
             {alternatives.map((alt) => (
               <Link
                 key={alt.concept_id}
-                href={`/study/${encodeURIComponent(alt.concept_id)}`}
+                href={studyHref(alt.concept_id)}
                 className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-accent hover:text-ink"
               >
                 {alt.concept_name}

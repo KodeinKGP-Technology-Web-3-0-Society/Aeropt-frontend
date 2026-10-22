@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import StudySidebar from "@/components/study/StudySidebar";
 import MarkdownMath from "@/components/MarkdownMath";
@@ -469,11 +470,12 @@ export default function StudyRoom({
               busy={busy}
               mode={study.mode ?? requestedMode}
               questionSource={study.question_source ?? requestedSource}
-              modeHref={(m, src) => {
-                const base = `/study/${encodeURIComponent(study.concept_id)}`;
-                if (m !== "practice") return base;
-                return `${base}?mode=practice${src === "pyq" ? "&source=pyq" : ""}`;
-              }}
+              modeHref={(m, src) =>
+                studyHref(study.concept_id, {
+                  mode: m === "practice" ? "practice" : "learn",
+                  source: src === "pyq" ? "pyq" : "any",
+                })
+              }
               pastPapers={pastPapers}
               onStart={() =>
                 void send(

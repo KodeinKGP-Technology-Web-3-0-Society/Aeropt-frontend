@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAccessToken, getApiBaseUrl } from "@/lib/api/auth";
 import Link from "next/link";
+import { lessonHref } from "@/lib/routes";
 
 type CalendarEvent = {
   date: string;
@@ -91,7 +92,7 @@ export default function CalendarContent() {
                           ~{evt.estimated_minutes} min
                         </span>
                         {isToday ? (
-                          <Link href={`/lesson/${evt.concept_id}`} className="rounded bg-surface px-3 py-1.5 text-[11px] font-bold text-ink hover:bg-surface/90 transition-colors">
+                          <Link href={lessonHref(evt.concept_id)} className="rounded bg-surface px-3 py-1.5 text-[11px] font-bold text-ink hover:bg-surface/90 transition-colors">
                             Start
                           </Link>
                         ) : (

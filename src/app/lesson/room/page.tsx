@@ -5,11 +5,8 @@ import ChatWorkspace from "@/components/chat/ChatWorkspace";
 import StudySidebar from "@/components/study/StudySidebar";
 import { ensureClassroomAgentSession } from "@/lib/api/classroom";
 import { ApiError } from "@/lib/api/auth";
-import { Suspense, use, useEffect, useState } from "react";
-
-type PageProps = {
-  params: Promise<{ conceptId: string }>;
-};
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function LessonRoom({ conceptId }: { conceptId: string }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -79,24 +76,31 @@ function LessonRoom({ conceptId }: { conceptId: string }) {
   return <ChatWorkspace sessionId={sessionId} conceptId={conceptId} surface="lesson" />;
 }
 
-export default function LessonPage({ params }: PageProps) {
-  const { conceptId: rawConceptId } = use(params);
-  const conceptId = decodeURIComponent(rawConceptId);
+function LessonRoomContainer() {
+  const searchParams = useSearchParams();
+  const rawConceptId = searchParams.get("concept") || "";
+  const conceptId = rawConceptId ? decodeURIComponent(rawConceptId).trim() : "";
 
   return (
+    <div className="flex h-dvh bg-canvas">
+      <StudySidebar />
+      <LessonRoom conceptId={conceptId} />
+    </div>
+  );
+}
+
+export default function LessonRoomPage() {
+  return (
     <AuthGuard>
-      <div className="flex h-dvh bg-canvas">
-        <StudySidebar />
-        <Suspense
-          fallback={
-            <div className="flex flex-1 items-center justify-center bg-canvas text-ink">
-              Opening lesson…
-            </div>
-          }
-        >
-          <LessonRoom conceptId={conceptId} />
-        </Suspense>
-      </div>
+      <Suspense
+        fallback={
+          <div className="flex h-dvh items-center justify-center bg-canvas text-ink">
+            Opening lesson…
+          </div>
+        }
+      >
+        <LessonRoomContainer />
+      </Suspense>
     </AuthGuard>
   );
 }

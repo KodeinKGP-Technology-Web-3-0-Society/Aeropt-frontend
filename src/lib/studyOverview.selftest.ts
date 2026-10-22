@@ -211,7 +211,7 @@ check("concept-action-resume", resumeAction.tone === "warning" && resumeAction.l
 
 check(
   "concept-href-with-session",
-  conceptHref(earlyConcepts[0]) === "/study/kinematics_1d?session=sess_1",
+  conceptHref(earlyConcepts[0]) === "/study/room?concept=kinematics_1d&session=sess_1",
 );
 
 // Check syllabus calculations
@@ -282,7 +282,7 @@ const todayPick = pickTodaySet(todayPlan, [
 ]);
 check(
   "today-skips-done-and-maths",
-  todayPick?.conceptId === "chem_mole" && todayPick.href === "/study/chem_mole?session=sess_mole",
+  todayPick?.conceptId === "chem_mole" && todayPick.href === "/study/room?concept=chem_mole&session=sess_mole",
 );
 check(
   "today-falls-back-to-maths-when-nothing-else-is-open",
@@ -308,7 +308,7 @@ const redo = unfixedPracticeTarget([
 ]);
 check(
   "redo-names-the-first-unfixed-concept",
-  redo?.href === "/study/torque?mode=practice" && redo.label === "Practise Torque again",
+  redo?.href === "/study/room?concept=torque&mode=practice" && redo.label === "Practise Torque again",
 );
 check(
   "redo-hides-when-every-mistake-is-fixed",

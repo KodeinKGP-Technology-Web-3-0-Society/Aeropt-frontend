@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import { useEffect, useState, type ReactNode } from "react";
 import { useApp } from "@/components/AppContext";
 import type { ClassroomToday } from "@/lib/api/classroom";
@@ -31,9 +32,8 @@ function greeting(): string {
   return "Good evening";
 }
 
-function studyHref(c: { concept_id: string; study_session_id?: string | null }) {
-  const base = `/study/${encodeURIComponent(c.concept_id)}`;
-  return c.study_session_id ? `${base}?session=${c.study_session_id}` : base;
+function getContinueHref(c: { concept_id: string; study_session_id?: string | null }) {
+  return studyHref(c.concept_id, { session: c.study_session_id });
 }
 
 
@@ -126,7 +126,7 @@ function Continue({ items }: { items: UpNextItem[] }) {
   const [first, ...rest] = items;
   return (
     <section aria-label="Continue">
-      <Link href={studyHref(first)} className="group block">
+      <Link href={getContinueHref(first)} className="group block">
         <p className={`text-sm font-medium ${first.kind === "review" ? "text-danger" : "text-accent"}`}>{KIND[first.kind].tag}</p>
         <p className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink first-letter:uppercase sm:text-4xl">{first.name}</p>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-2">
@@ -143,7 +143,7 @@ function Continue({ items }: { items: UpNextItem[] }) {
           <ul className="mt-1 divide-y divide-line border-t border-line">
             {rest.map((item) => (
               <li key={item.concept_id}>
-                <Link href={studyHref(item)} className="group flex items-baseline gap-4 py-3">
+                <Link href={getContinueHref(item)} className="group flex items-baseline gap-4 py-3">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-ink first-letter:uppercase group-hover:text-accent">{item.name}</span>
                     <span className="mt-0.5 line-clamp-1 block text-xs text-muted">{item.reason}</span>
@@ -178,7 +178,7 @@ function TodaysPlan({ plan }: { plan: StudyPlan | null }) {
         <ul className="divide-y divide-line border-y border-line">
           {today.items.map((it, i) => (
             <li key={`${it.concept_id}-${i}`}>
-              <Link href={`/study/${encodeURIComponent(it.concept_id)}`} className="group flex items-baseline gap-3 py-3">
+              <Link href={studyHref(it.concept_id)} className="group flex items-baseline gap-3 py-3">
                 <span className={`w-16 shrink-0 text-xs font-medium ${it.kind === "review" ? "text-danger" : it.kind === "done" ? "text-success" : it.kind === "continue" ? "text-accent" : "text-muted"}`}>
                   {it.kind === "done" ? "✓ " : ""}{label(it.kind)}
                 </span>
@@ -217,7 +217,7 @@ function Attention({ report }: { report: ProgressReport }) {
       <ul className="flex flex-col gap-4">
         {reviews.map((r) => (
           <li key={r.concept_id}>
-            <Link href={`/study/${encodeURIComponent(r.concept_id)}`} className="group block">
+            <Link href={studyHref(r.concept_id)} className="group block">
               <span className="block text-sm font-medium text-ink first-letter:uppercase group-hover:text-accent">Review {r.name}</span>
               <span className={`text-xs ${r.overdue ? "font-medium text-danger" : "text-muted"}`}>
                 {r.overdue ? "Due now" : `Due ${r.due_at ? new Date(r.due_at).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "soon"}`}
@@ -233,7 +233,7 @@ function Attention({ report }: { report: ProgressReport }) {
               {ins.concept_id && ins.action && (
                 <>
                   {" "}
-                  <TextLink href={`/study/${encodeURIComponent(ins.concept_id)}`}>Study it</TextLink>
+                  <TextLink href={studyHref(ins.concept_id)}>Study it</TextLink>
                 </>
               )}
             </span>
@@ -319,7 +319,7 @@ function Welcome({ firstName, today }: { firstName: string; today: ClassroomToda
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
           <Link
-            href={`/study/${encodeURIComponent(firstTopic || "Units and measurement")}`}
+            href={studyHref(firstTopic || "Units and measurement")}
             className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on transition-colors hover:bg-accent-hover"
           >
             Start your first lesson{firstTopic ? `: ${firstTopic}` : ""}
@@ -349,7 +349,7 @@ function Welcome({ firstName, today }: { firstName: string; today: ClassroomToda
         <h2 id="quick-title" className="text-base font-semibold text-ink">Or jump into any topic</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {QUICK_TOPICS.map((t) => (
-            <Link key={t} href={`/study/${encodeURIComponent(t)}`} className="rounded-full border border-line px-3.5 py-1.5 text-sm text-ink-2 transition-colors hover:border-accent hover:text-ink">
+            <Link key={t} href={studyHref(t)} className="rounded-full border border-line px-3.5 py-1.5 text-sm text-ink-2 transition-colors hover:border-accent hover:text-ink">
               {t}
             </Link>
           ))}

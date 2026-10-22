@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { chatHref } from "@/lib/routes";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import MarkdownMath from "@/components/MarkdownMath";
 import MathErrorBoundary from "@/components/MathErrorBoundary";
@@ -203,7 +204,7 @@ export default function PastSessionsPanel() {
 
   function openSession(sessionId: string) {
     setOpen(false);
-    router.push(`/chat/${sessionId}`);
+    router.push(chatHref(sessionId));
   }
 
   async function loadMore() {

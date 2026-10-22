@@ -1,4 +1,5 @@
 import type { OverviewConcept, OverviewGroup, SyllabusUnit, UpNextItem } from "@/lib/api/study";
+import { studyHref } from "./routes.ts";
 
 export type TabKind = "review" | "in_progress" | "explored" | "mastered";
 
@@ -146,8 +147,7 @@ export function getDefaultActiveTab(counts: TabCounts): TabKind {
  * Constructs the canonical link to a study session or topic.
  */
 export function conceptHref(c: { concept_id: string; study_session_id?: string | null }): string {
-  const base = `/study/${encodeURIComponent(c.concept_id)}`;
-  return c.study_session_id ? `${base}?session=${c.study_session_id}` : base;
+  return studyHref(c.concept_id, { session: c.study_session_id });
 }
 
 const MATHS_SUBJECTS = new Set(["mathematics", "maths", "math"]);
@@ -192,7 +192,7 @@ export function pickTodaySet(
     topic: item.topic,
     subject: item.subject,
     unit: item.unit,
-    href: match ? conceptHref(match) : `/study/${encodeURIComponent(item.concept_id)}`,
+    href: match ? conceptHref(match) : studyHref(item.concept_id),
   };
 }
 
@@ -222,7 +222,7 @@ export function unfixedPracticeTarget(notebook: MistakeRow[]): { href: string; l
   if (!first?.concept_id) return null;
   const name = displayTitle(first.concept_name || "this concept");
   return {
-    href: `/study/${encodeURIComponent(first.concept_id)}?mode=practice`,
+    href: studyHref(first.concept_id, { mode: "practice" }),
     label: `Practise ${name} again`,
   };
 }
@@ -258,7 +258,7 @@ export function conceptAction(
   if (tab === "explored") {
     return {
       label: "Practise",
-      href: `/study/${encodeURIComponent(c.concept_id)}?mode=practice`,
+      href: studyHref(c.concept_id, { mode: "practice" }),
       detail: "Explored in chat",
       tone: "muted",
     };
@@ -268,7 +268,7 @@ export function conceptAction(
   const detail = c.proficiency != null ? `${Math.round(c.proficiency * 100)}%` : "Mastered";
   return {
     label: "Practise",
-    href: `/study/${encodeURIComponent(c.concept_id)}?mode=practice`,
+    href: studyHref(c.concept_id, { mode: "practice" }),
     detail,
     tone: "success",
   };

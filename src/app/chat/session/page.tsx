@@ -7,19 +7,22 @@ import {
   fetchClassroomSession,
 } from "@/lib/api/classroom";
 import { ApiError } from "@/lib/api/auth";
-import { Suspense, use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type PageProps = {
-  params: Promise<{ sessionId: string }>;
-};
-
-function ClassroomSessionRedirect({ sessionId }: { sessionId: string }) {
+function ClassroomSessionRedirect() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionId = (searchParams.get("id") || "").trim();
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
+
+    if (!sessionId) {
+      router.replace("/home");
+      return;
+    }
 
     const run = async () => {
       try {
@@ -74,9 +77,7 @@ function ClassroomSessionRedirect({ sessionId }: { sessionId: string }) {
   );
 }
 
-export default function ChatSessionPage({ params }: PageProps) {
-  const { sessionId } = use(params);
-
+export default function ChatSessionRoomPage() {
   return (
     <AuthGuard>
       <Suspense
@@ -86,7 +87,7 @@ export default function ChatSessionPage({ params }: PageProps) {
           </div>
         }
       >
-        <ClassroomSessionRedirect sessionId={sessionId} />
+        <ClassroomSessionRedirect />
       </Suspense>
     </AuthGuard>
   );

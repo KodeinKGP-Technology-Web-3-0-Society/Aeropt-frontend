@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import type { CoverageChapter, StudyOverview, SyllabusUnit } from "@/lib/api/study";
 import { calculateSyllabusStats, displayTitle, groupSyllabusBySubject } from "@/lib/studyOverview";
 import { SegmentBar, StatRing, StatusLegend, StatusPill, subjectVar, ThickBar, type StudyStatus } from "./studyChrome";
@@ -56,7 +57,7 @@ function UnitProgressCard({ chapter }: { chapter: CoverageChapter }) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {first ? (
           <Link
-            href={`/study/${encodeURIComponent(first.concept_id)}`}
+            href={studyHref(first.concept_id)}
             className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Next up: {displayTitle(first.name)}
@@ -82,7 +83,7 @@ function UnitProgressCard({ chapter }: { chapter: CoverageChapter }) {
               {rest.map((item) => (
                 <li key={item.concept_id}>
                   <Link
-                    href={`/study/${encodeURIComponent(item.concept_id)}`}
+                    href={studyHref(item.concept_id)}
                     className="flex min-h-11 items-center text-[15px] leading-6 text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {displayTitle(item.name)}
@@ -212,7 +213,7 @@ function SyllabusBrowser({ units }: { units: SyllabusUnit[] }) {
                         {unit.topics.map((topic) => (
                           <li key={topic.concept_id + topic.topic}>
                             <Link
-                              href={`/study/${encodeURIComponent(topic.concept_id)}`}
+                              href={studyHref(topic.concept_id)}
                               title={topic.tutor_taught ? "No textbook section, taught directly by the tutor" : undefined}
                               className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-6 text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                             >

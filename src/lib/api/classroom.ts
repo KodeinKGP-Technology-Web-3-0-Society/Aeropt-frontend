@@ -1,6 +1,7 @@
 import * as auth from "@/lib/api/auth";
 import { createChatSession } from "@/lib/api/agent";
 import { CacheTTL, cacheKey, cachedGet, primeCache } from "@/lib/api/apiCache";
+import { assessHref, lessonHref } from "@/lib/routes";
 
 export type TodayAction = "lesson" | "revise" | "assess";
 export type ClassroomSurface = "lesson" | "doubt" | "assess";
@@ -74,13 +75,12 @@ export function classroomHomeShouldRefresh(input: {
 
 /** Lesson room for a concept. */
 export function buildLessonUrl(conceptId: string): string {
-  return `/lesson/${encodeURIComponent(conceptId)}`;
+  return lessonHref(conceptId);
 }
 
 /** Assessment room for a concept. */
 export function buildAssessUrl(conceptId: string): string {
-  const params = new URLSearchParams({ concept: conceptId });
-  return `/assess?${params.toString()}`;
+  return assessHref(conceptId);
 }
 
 /** Today / revise → lesson; assess → assess room. Plan and map always open a lesson. */

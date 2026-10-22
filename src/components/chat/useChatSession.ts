@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { chatHref } from "@/lib/routes";
 import {
   AgentChatResponse,
   PlacementContext,
@@ -322,7 +323,7 @@ export function useChatSession(
 
   function selectSession(nextSessionId: string) {
     if (nextSessionId === sessionId || isReplying || isLoadingSession) return;
-    router.push(`/chat/${nextSessionId}`);
+    router.push(chatHref(nextSessionId));
   }
 
   useEffect(() => {

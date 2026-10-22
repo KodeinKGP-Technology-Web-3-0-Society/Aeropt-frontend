@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import { useEffect, useRef, useState } from "react";
 import { fetchStudyHistory, type StudySession } from "@/lib/api/study";
 
@@ -97,7 +98,7 @@ export default function StudyHistory({
                 return (
                   <li key={s.study_session_id}>
                     <Link
-                      href={`/study/${encodeURIComponent(s.concept_id)}?session=${s.study_session_id}`}
+                      href={studyHref(s.concept_id, { session: s.study_session_id })}
                       onClick={onClose}
                       aria-current={current ? "page" : undefined}
                       className={`block rounded-xl px-3 py-2.5 transition-colors ${

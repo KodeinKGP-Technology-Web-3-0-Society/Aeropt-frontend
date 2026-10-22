@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studyHref } from "@/lib/routes";
 import { useCallback, useEffect, useState } from "react";
 import { AppPage } from "@/components/AppPage";
 import {
@@ -52,9 +53,6 @@ function formatMinutes(m: number): string {
   return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
 }
 
-function studyHref(conceptId: string) {
-  return `/study/${encodeURIComponent(conceptId)}`;
-}
 
 /* ── top: countdown, pace, coverage ────────────────────────────────────────── */
 

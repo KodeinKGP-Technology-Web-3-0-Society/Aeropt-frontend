@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { chatHref } from "@/lib/routes";
 import {
   clearRoadmapSessionBind,
   fetchRoadmap,
@@ -56,8 +57,8 @@ export function useRoadmapBinding(sessionId: string, activeSessionId: string | n
     setEntryNonce((n) => n + 1);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("fresh");
-    const qs = params.toString();
-    router.replace(qs ? `/chat/${sessionId}?${qs}` : `/chat/${sessionId}`, { scroll: false });
+    const qs = Object.fromEntries(params.entries());
+    router.replace(chatHref(sessionId, qs), { scroll: false });
   }, [forceFreshStart, router, searchParams, sessionId]);
 
   useEffect(() => {
