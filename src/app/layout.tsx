@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import CapacitorInit from "@/components/CapacitorInit";
 
 // One engineered sans for everything (headings included) — no serif display face, which gave
 // the site the generic AI "editorial" look. Plex Mono for formulas and code.
@@ -27,6 +28,12 @@ export const metadata: Metadata = {
   description: "Knows where you're stuck before you do.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,6 +47,7 @@ export default function RootLayout({
       <body className={`${plexSans.variable} ${plexMono.variable} font-sans antialiased`}>
         <ErrorBoundary scope="app-shell">
           <AppProvider>
+            <CapacitorInit />
             {children}
           </AppProvider>
         </ErrorBoundary>
