@@ -25,7 +25,7 @@ export function AppPage({
   busy?: boolean;
 }) {
   return (
-    <main className="flex-1 overflow-y-auto px-4 pb-16 sm:px-6" aria-busy={busy || undefined}>
+    <main className="flex-1 overflow-y-auto px-4 pb-24 sm:px-6 md:pb-16" aria-busy={busy || undefined}>
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 pt-20">
         <header id={headerId} className="flex flex-wrap items-end justify-between gap-3 scroll-mt-28">
           <div className="min-w-0">

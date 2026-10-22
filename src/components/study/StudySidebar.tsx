@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppContext";
 import PastSessionsPanel from "@/components/study/PastSessionsPanel";
 import { fetchProgressCached } from "@/lib/api/progress";
 import { JeePathMark } from "@/components/JeePathLogo";
+import MobileBottomNav from "@/components/navigation/MobileBottomNav";
 
 export type StudySidebarContext = {
   conceptName?: string | null;
@@ -187,7 +188,8 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
     }`;
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <>
+      <header className="fixed inset-x-0 top-0 z-50">
       <div className="border-b border-line bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/80">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-3 sm:px-5">
           <Logo />
@@ -291,6 +293,8 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
           </div>
         </div>
       ) : null}
-    </header>
+      </header>
+      <MobileBottomNav />
+    </>
   );
 }
