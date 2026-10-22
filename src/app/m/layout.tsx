@@ -1,6 +1,4 @@
 import { notFound } from "next/navigation";
-import { NativeBackHandler } from "@/native/shell/NativeBackHandler";
-import { ToastProvider } from "@/native/ui/NativeToast";
 
 export default function MobileLayout({
   children,
@@ -17,10 +15,5 @@ export default function MobileLayout({
     notFound();
   }
 
-  return (
-    <ToastProvider>
-      <NativeBackHandler />
-      {children}
-    </ToastProvider>
-  );
+  return <>{children}</>;
 }

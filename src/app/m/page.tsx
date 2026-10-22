@@ -12,7 +12,8 @@ export default function MobileRootPage() {
       const firstRunDone = await hasCompletedFirstRun();
       if (firstRunDone) {
         const lastTab = await getLastTab("home");
-        router.replace(`/m/${lastTab}`);
+        const targetRoute = lastTab.startsWith("/") ? lastTab : `/${lastTab}`;
+        router.replace(targetRoute);
       } else {
         router.replace("/m/launch");
       }

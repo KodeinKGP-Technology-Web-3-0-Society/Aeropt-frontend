@@ -26,19 +26,21 @@ export default function LaunchScreen() {
     if (!authLoading && isLoggedIn && animationComplete) {
       void (async () => {
         const lastTab = await getLastTab("home");
-        router.replace(`/m/${lastTab}`);
+        // Ensure clean routing to real tab routes (/home, /study, etc.)
+        const targetRoute = lastTab.startsWith("/") ? lastTab : `/${lastTab}`;
+        router.replace(targetRoute);
       })();
     }
   }, [authLoading, isLoggedIn, animationComplete, router]);
 
   const handleGetStarted = () => {
     void NativeHaptics.impact("medium");
-    router.push("/m/home");
+    router.push("/auth?tab=signup");
   };
 
   const handleSignIn = () => {
     void NativeHaptics.impact("light");
-    router.push("/login");
+    router.push("/auth?tab=login");
   };
 
   return (

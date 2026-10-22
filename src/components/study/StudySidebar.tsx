@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { useEffect, useRef, useState, type SVGProps } from "react";
 import { useApp } from "@/components/AppContext";
 import PastSessionsPanel from "@/components/study/PastSessionsPanel";
 import { fetchProgressCached } from "@/lib/api/progress";
 import { JeePathMark } from "@/components/JeePathLogo";
 import MobileBottomNav from "@/components/navigation/MobileBottomNav";
+import {
+  PRIMARY_NAV_ITEMS as PRIMARY,
+  SECONDARY_NAV_ITEMS as SECONDARY,
+  isRouteActive as isActive,
+} from "@/components/navigation/navItems";
+import { isNative } from "@/native/platform";
+import { NativeHeader } from "@/native/shell/NativeHeader";
+import { TabBar } from "@/native/shell/TabBar";
 
 export type StudySidebarContext = {
   conceptName?: string | null;
@@ -22,64 +30,12 @@ export type StudySidebarContext = {
   journeyType?: string | null;
 };
 
-type NavItem = {
-  label: string;
-  href: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  /** Other routes that belong to this destination (a lesson opened from Plan…). */
-  also?: string[];
-  hint?: string;
-};
-
-// Five destinations, always labelled. Everything else lives in the account menu.
-const PRIMARY: NavItem[] = [
-  { label: "Home", href: "/home", icon: HomeIcon, also: ["/dashboard"] },
-  { label: "Study", href: "/study", icon: StudyIcon },
-  { label: "Chat", href: "/chat", icon: ChatIcon, hint: "Ask the tutor anything, any time" },
-  { label: "Plan", href: "/plan", icon: PlanIcon, also: ["/lesson", "/assess", "/calendar"] },
-  { label: "Progress", href: "/progress", icon: ProgressIcon, also: ["/readiness"] },
-];
-
-const SECONDARY: NavItem[] = [
-  { label: "Doubt solver", href: "/doubt", icon: DoubtIcon, hint: "One question, with your working checked" },
-  { label: "Exam readiness", href: "/readiness", icon: ReadinessIcon },
-  { label: "Settings", href: "/settings", icon: GearIcon },
-];
-
-function isActive(item: NavItem, pathname: string): boolean {
-  return [item.href, ...(item.also ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
 /* ── icons (1.8 stroke, 24 grid) ───────────────────────────────────────────── */
 
 function Svg(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props} />
   );
-}
-function HomeIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="m4 11 8-7 8 7v8.5a.5.5 0 0 1-.5.5H15v-5H9v5H4.5a.5.5 0 0 1-.5-.5V11Z" /></Svg>;
-}
-function StudyIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="M12 6.5C10.5 5.3 8.4 4.75 5 4.75v12.5c3.4 0 5.5.55 7 1.75 1.5-1.2 3.6-1.75 7-1.75V4.75c-3.4 0-5.5.55-7 1.75Z" /><path d="M12 6.5V19" /></Svg>;
-}
-function ChatIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="M5.5 6.5h13a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H11l-4 3v-3H5.5A1.5 1.5 0 0 1 4 15V8a1.5 1.5 0 0 1 1.5-1.5Z" /><path d="M8.5 10.5h7M8.5 13h4.5" /></Svg>;
-}
-function PlanIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="M8 5h10.5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M9.5 9.5h7M9.5 13h7M9.5 16.5h4.5" /></Svg>;
-}
-function ProgressIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="M5 19V13M10 19V9M15 19v-4M20 19V6" /></Svg>;
-}
-function DoubtIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><circle cx="12" cy="12" r="8.5" /><path d="M9.6 9.6a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 16.8h.01" /></Svg>;
-}
-function ReadinessIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="M5 19V9.5L12 5l7 4.5V19" /><path d="M9.5 19v-5h5v5" /></Svg>;
-}
-function GearIcon(p: SVGProps<SVGSVGElement>) {
-  return <Svg {...p}><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" /><path d="M19.4 13.3a1.4 1.4 0 0 0 .3 1.5l.1.1a1.7 1.7 0 0 1-2.4 2.4l-.1-.1a1.4 1.4 0 0 0-1.5-.3 1.4 1.4 0 0 0-.9 1.3v.2a1.7 1.7 0 0 1-3.4 0v-.1a1.4 1.4 0 0 0-.9-1.3 1.4 1.4 0 0 0-1.5.3l-.1.1a1.7 1.7 0 0 1-2.4-2.4l.1-.1a1.4 1.4 0 0 0 .3-1.5 1.4 1.4 0 0 0-1.3-.9h-.2a1.7 1.7 0 0 1 0-3.4h.1a1.4 1.4 0 0 0 1.3-.9 1.4 1.4 0 0 0-.3-1.5l-.1-.1a1.7 1.7 0 0 1 2.4-2.4l.1.1a1.4 1.4 0 0 0 1.5.3h.1a1.4 1.4 0 0 0 .8-1.3v-.2a1.7 1.7 0 0 1 3.4 0v.1a1.4 1.4 0 0 0 .8 1.3 1.4 1.4 0 0 0 1.5-.3l.1-.1a1.7 1.7 0 0 1 2.4 2.4l-.1.1a1.4 1.4 0 0 0-.3 1.5v.1a1.4 1.4 0 0 0 1.3.8h.2a1.7 1.7 0 0 1 0 3.4h-.1a1.4 1.4 0 0 0-1.3.9Z" /></Svg>;
 }
 function SunIcon(p: SVGProps<SVGSVGElement>) {
   return <Svg {...p}><circle cx="12" cy="12" r="4" /><path d="M12 3v1.6M12 19.4V21M4.2 4.2l1.1 1.1M18.7 18.7l1.1 1.1M3 12h1.6M19.4 12H21M4.2 19.8l1.1-1.1M18.7 5.3l1.1-1.1" /></Svg>;
@@ -181,6 +137,31 @@ export default function StudySidebar({ studyContext }: { studyContext?: StudySid
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
+
+  const [streak, setStreak] = useState<{ days: number; today: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetchProgressCached()
+      .then((r) => live && setStreak({ days: r.overview.streak_days, today: r.overview.active_today }))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const isAndroidApp = process.env.NEXT_PUBLIC_BUILD_TARGET === "android" || isNative();
+  if (isAndroidApp) {
+    return (
+      <>
+        <NativeHeader
+          streakDays={streak?.days ?? 0}
+          title={studyContext?.conceptName || undefined}
+          subtitle={contextLabel || undefined}
+        />
+        <TabBar />
+      </>
+    );
+  }
 
   const linkClass = (active: boolean) =>
     `flex h-11 items-center gap-2 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${

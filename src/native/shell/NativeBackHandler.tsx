@@ -31,8 +31,12 @@ export function NativeBackHandler() {
         return;
       }
 
-      // 5. Inside lesson or practice run
-      if (pathname.startsWith("/m/lesson") || pathname.startsWith("/m/practice")) {
+      // 5. Inside lesson or practice run: confirm sheet / handler
+      if (
+        pathname?.startsWith("/study/room") ||
+        pathname?.startsWith("/lesson/room") ||
+        pathname?.startsWith("/assess")
+      ) {
         if (activeOverlayHandler?.confirmExitLesson) {
           const handled = activeOverlayHandler.confirmExitLesson();
           if (handled) return;
@@ -40,7 +44,7 @@ export function NativeBackHandler() {
       }
 
       // 4. On Home tab root: "Press back again to exit" toast within 2s
-      if (pathname === "/m/home" || pathname === "/m/launch") {
+      if (pathname === "/home" || pathname === "/" || pathname === "/m/launch") {
         const now = Date.now();
         if (now - lastBackPressTimeRef.current < 2000) {
           void NativeApp.exitApp();
@@ -51,9 +55,14 @@ export function NativeBackHandler() {
         return;
       }
 
-      // 3. On other tab roots (Path, Doubt, Me): go to Home
-      if (pathname === "/m/path" || pathname === "/m/doubt" || pathname === "/m/me") {
-        router.push("/m/home");
+      // 3. On other tab roots (Study, Chat, Plan, Progress): return to Home
+      if (
+        pathname === "/study" ||
+        pathname === "/chat" ||
+        pathname === "/plan" ||
+        pathname === "/progress"
+      ) {
+        router.push("/home");
         return;
       }
 
@@ -61,7 +70,7 @@ export function NativeBackHandler() {
       if (window.history.length > 1) {
         router.back();
       } else {
-        router.push("/m/home");
+        router.push("/home");
       }
     });
 
