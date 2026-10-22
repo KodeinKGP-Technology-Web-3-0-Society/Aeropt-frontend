@@ -44,6 +44,7 @@ const securityHeaders = [
 ];
 
 const isAndroid = process.env.BUILD_TARGET === "android";
+const isAndroidExport = isAndroid && process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   turbopack: { root: __dirname },
@@ -53,7 +54,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_TARGET: process.env.BUILD_TARGET || "",
   },
-  ...(isAndroid
+  ...(isAndroidExport
     ? {
         output: "export",
         images: { unoptimized: true },
