@@ -169,8 +169,15 @@ function formatApiError(data: Record<string, unknown>, fallback: string): string
   if (typeof data.non_field_errors === "object" && Array.isArray(data.non_field_errors)) {
     return data.non_field_errors.map(String).join(" ");
   }
+  // The API envelope: { success: false, errors: [{ field, message }] }.
+  if (Array.isArray(data.errors)) {
+    const messages = data.errors
+      .map((e) => (e && typeof e === "object" && typeof (e as { message?: unknown }).message === "string" ? (e as { message: string }).message : typeof e === "string" ? e : ""))
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join(" ");
+  }
   for (const value of Object.values(data)) {
-    if (Array.isArray(value) && value.length > 0) return String(value[0]);
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] !== "object") return String(value[0]);
     if (typeof value === "string") return value;
   }
   return fallback;
