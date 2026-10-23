@@ -82,6 +82,16 @@ function DiagramImage({ src, alt }: { src?: string; alt?: string }) {
   );
 }
 
+/**
+ * Links/images in model output are untrusted. Allow web, mail, tel, relative and in-page
+ * URLs plus raster data: images (diagrams); everything else (javascript:, vbscript:, data:text/html, svg data) is dropped.
+ */
+const SAFE_URL = /^(?:(?:https?|mailto|tel):|data:image\/(?:png|jpe?g|gif|webp);base64,|[/#?.]|[^:]*$)/i;
+function safeUrl(url: string): string {
+  const u = url.trim().replace(/[\u0000-\u001f\s]+/g, "");
+  return SAFE_URL.test(u) ? url : "";
+}
+
 export default function MarkdownMath({
   content,
   className = "markdown-math",
@@ -119,7 +129,7 @@ export default function MarkdownMath({
         // rehypeKatexSafe runs after KaTeX and turns any error node into plain code,
         // so a formula the pre-pass mis-split still cannot render as a red blob.
         rehypePlugins={[[rehypeKatex, KATEX_OPTIONS], rehypeKatexSafe]}
-        urlTransform={(url) => url}
+        urlTransform={safeUrl}
         components={{
           img: ({ src, alt }) => (
             <DiagramImage src={typeof src === "string" ? src : undefined} alt={alt} />

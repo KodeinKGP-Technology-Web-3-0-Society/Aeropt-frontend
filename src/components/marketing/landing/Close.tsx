@@ -5,7 +5,7 @@ import JeePathLogo from "@/components/JeePathLogo";
 export default function Close() {
   return (
     <>
-      <section className="border-t border-line">
+      {/* <section className="border-t border-line">
         <div className="mx-auto grid max-w-6xl items-stretch lg:grid-cols-2">
           <img
             src="/landing/books.jpg"
@@ -47,7 +47,7 @@ export default function Close() {
             <Link href="/auth?tab=signup" className="inline-flex min-h-11 items-center px-2 hover:text-ink">Sign up</Link>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </>
   );
 }

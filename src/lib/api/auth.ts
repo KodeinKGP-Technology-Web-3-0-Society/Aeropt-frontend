@@ -137,7 +137,7 @@ export function getRefreshToken(): string | null {
  * thinks they're logged in.
  */
 function renewAuthCookie(): void {
-  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
 
 export function storeTokens(access: string, refresh: string): void {
