@@ -182,7 +182,7 @@ export function startStudySession(
 
   const base = auth.requireAgentApiBase();
   const request = auth
-    .apiRequest<StudyStartResponse>(`${base}/api/v1/study/start`, {
+    .apiRequest<StudyStartResponse>(`${base}/study/start`, {
       method: "POST",
       body: JSON.stringify({
         user_id: userId,
@@ -207,7 +207,7 @@ export async function fetchStudyHistory(): Promise<StudySession[]> {
 
   const base = auth.requireAgentApiBase();
   return auth.apiRequest<StudySession[]>(
-    `${base}/api/v1/study/history/${encodeURIComponent(userId)}`
+    `${base}/study/history/${encodeURIComponent(userId)}`
   );
 }
 
@@ -228,7 +228,7 @@ export async function stopStudyTurn(studySessionId: string): Promise<void> {
   const userId = auth.getSupabaseUserId();
   if (!userId) return;
   await auth
-    .apiRequest(`${auth.requireAgentApiBase()}/api/v1/study/stop`, {
+    .apiRequest(`${auth.requireAgentApiBase()}/study/stop`, {
       method: "POST",
       body: JSON.stringify({ user_id: userId, study_session_id: studySessionId }),
     })
@@ -263,7 +263,7 @@ export async function submitStudyChoice(
   if (!userId) throw new Error("User not authenticated.");
   invalidateCache("study-overview");
   invalidateCache("plan");
-  return auth.apiRequest<ChoiceResult>(`${auth.requireAgentApiBase()}/api/v1/study/answer`, {
+  return auth.apiRequest<ChoiceResult>(`${auth.requireAgentApiBase()}/study/answer`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, study_session_id: studySessionId, choice, value }),
   });
@@ -275,7 +275,7 @@ export type NextQuestionResult = { served: boolean; revisit?: boolean; reason?: 
 export async function nextStudyQuestion(studySessionId: string): Promise<NextQuestionResult> {
   const userId = auth.getSupabaseUserId();
   if (!userId) throw new Error("User not authenticated.");
-  return auth.apiRequest<NextQuestionResult>(`${auth.requireAgentApiBase()}/api/v1/study/next`, {
+  return auth.apiRequest<NextQuestionResult>(`${auth.requireAgentApiBase()}/study/next`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, study_session_id: studySessionId }),
   });
@@ -287,7 +287,7 @@ export async function advanceStudyPhase(studySessionId: string): Promise<StudyAd
   if (!userId) throw new Error("User not authenticated.");
   invalidateCache("study-overview");
   invalidateCache("plan");
-  return auth.apiRequest<StudyAdvanceResponse>(`${auth.requireAgentApiBase()}/api/v1/study/advance`, {
+  return auth.apiRequest<StudyAdvanceResponse>(`${auth.requireAgentApiBase()}/study/advance`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, study_session_id: studySessionId }),
   });
@@ -326,7 +326,7 @@ export async function sendStudyMessage(
     armStall();
     let response: Response;
     try {
-      response = await auth.authedFetch(`${auth.requireAgentApiBase()}/api/v1/study/message`, {
+      response = await auth.authedFetch(`${auth.requireAgentApiBase()}/study/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -484,7 +484,7 @@ export interface ConceptPyq {
 /** JEE Advanced questions linked to this concept. Throws if retrieval is down. */
 export async function fetchConceptPyqs(conceptId: string): Promise<ConceptPyq[]> {
   const data = await auth.apiRequest<{ items: ConceptPyq[] }>(
-    `${auth.requireAgentApiBase()}/api/v1/concepts/${encodeURIComponent(conceptId)}/pyqs`,
+    `${auth.requireAgentApiBase()}/concepts/${encodeURIComponent(conceptId)}/pyqs`,
   );
   return data.items ?? [];
 }
@@ -500,7 +500,7 @@ export async function fetchStudyOverview(): Promise<StudyOverview> {
   }
   return cachedGet(cacheKey(["study-overview", userId]), CacheTTL.studyOverview, () =>
     auth.apiRequest<StudyOverview>(
-      `${auth.requireAgentApiBase()}/api/v1/study/overview/${encodeURIComponent(userId)}?tz=${encodeURIComponent(tz)}`,
+      `${auth.requireAgentApiBase()}/study/overview/${encodeURIComponent(userId)}?tz=${encodeURIComponent(tz)}`,
     ),
   );
 }

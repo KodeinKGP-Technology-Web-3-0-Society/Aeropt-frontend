@@ -116,7 +116,7 @@ export async function fetchPlan(profile?: PlanProfile): Promise<StudyPlan> {
   const qs = new URLSearchParams({ exam: prof.exam, daily_minutes: String(prof.dailyMinutes), tz: timezone() });
   if (prof.targetYear) qs.set("target_year", String(prof.targetYear));
   return cachedGet(cacheKey(["plan", userId, qs.toString()]), CacheTTL.plan, () =>
-    auth.apiRequest<StudyPlan>(`${auth.requireAgentApiBase()}/api/v1/plan/${encodeURIComponent(userId)}?${qs}`),
+    auth.apiRequest<StudyPlan>(`${auth.requireAgentApiBase()}/plan/${encodeURIComponent(userId)}?${qs}`),
   );
 }
 
@@ -139,7 +139,7 @@ export async function savePlanSettings(next: {
     method: "PATCH",
     body: JSON.stringify({ target_exam: next.exam, target_year: next.targetYear, daily_goal_minutes: next.dailyMinutes }),
   });
-  await auth.apiRequest(`${auth.requireAgentApiBase()}/api/v1/plan/settings`, {
+  await auth.apiRequest(`${auth.requireAgentApiBase()}/plan/settings`, {
     method: "PUT",
     body: JSON.stringify({
       user_id: userId,

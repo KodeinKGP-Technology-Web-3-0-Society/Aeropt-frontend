@@ -9,9 +9,10 @@ import type { NextConfig } from "next";
  *
  * Defaults for local work live in `.env.example`:
  *   NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1  (Django)
- *   NEXT_PUBLIC_AGENT_API_BASE=http://127.0.0.1:8001       (agent)
+ * The agent has no public base: the browser reaches it through Django's
+ * `/api/v1/agent/` gateway.
  */
-const REQUIRED_PUBLIC_ENV = ["NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_AGENT_API_BASE"] as const;
+const REQUIRED_PUBLIC_ENV = ["NEXT_PUBLIC_API_BASE_URL"] as const;
 
 const missingEnv = REQUIRED_PUBLIC_ENV.filter((key) => !process.env[key]);
 if (missingEnv.length > 0) {
@@ -78,11 +79,9 @@ const nextConfig: NextConfig = {
     : {
         async rewrites() {
           const django = process.env.DJANGO_ORIGIN || "http://127.0.0.1:8000";
-          const agent = process.env.AGENT_ORIGIN || "http://127.0.0.1:8001";
           return [
             { source: "/api/v1/:path*/", destination: `${django}/api/v1/:path*/` },
             { source: "/api/v1/:path*", destination: `${django}/api/v1/:path*/` },
-            { source: "/agent-api/:path*", destination: `${agent}/:path*` },
           ];
         },
         async redirects() {

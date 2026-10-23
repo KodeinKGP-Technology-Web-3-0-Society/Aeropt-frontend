@@ -282,7 +282,7 @@ export function useChatSession(
     if (!userId) return;
     endingBeaconSentRef.current = true;
     const body = JSON.stringify({ user_id: userId, session_id: sessId });
-    const url = `${agentBaseUrl}/api/v1/chat/end-session`;
+    const url = `${agentBaseUrl}/chat/end-session`;
     try {
       // Not sendBeacon: it cannot carry the Authorization header the agent requires.
       void fetch(url, {
@@ -305,7 +305,7 @@ export function useChatSession(
     setError("");
     endingBeaconSentRef.current = true;
     try {
-      await authedFetch(`${agentBaseUrl}/api/v1/chat/end-session`, {
+      await authedFetch(`${agentBaseUrl}/chat/end-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, session_id: activeSessionId }),

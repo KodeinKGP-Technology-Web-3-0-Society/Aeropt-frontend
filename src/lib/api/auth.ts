@@ -7,10 +7,12 @@ if (!API_BASE) {
   console.error("CRITICAL ERROR: NEXT_PUBLIC_API_BASE_URL is unset. API calls will fail.");
 }
 
-export const AGENT_API_BASE = process.env.NEXT_PUBLIC_AGENT_API_BASE?.replace(/\/+$/, "") || "";
-if (!AGENT_API_BASE) {
-  console.error("CRITICAL ERROR: NEXT_PUBLIC_AGENT_API_BASE is unset. Agent calls will fail.");
-}
+/**
+ * The tutor agent is reached only through Django's gateway (`/api/v1/agent/<path>` →
+ * agent `/api/v1/<path>`), which authenticates, pins the learner and streams replies.
+ * The browser never talks to the agent service directly.
+ */
+export const AGENT_API_BASE = API_BASE ? `${API_BASE}/agent` : "";
 
 /**
  * An unset base used to resolve to `""`, so every call became a same-origin
@@ -105,7 +107,7 @@ export function requireApiBaseUrl(): string {
 }
 
 export function requireAgentApiBase(): string {
-  return assertBase(AGENT_API_BASE, "NEXT_PUBLIC_AGENT_API_BASE");
+  return assertBase(AGENT_API_BASE, "NEXT_PUBLIC_API_BASE_URL");
 }
 
 export function getSupabaseUserId(): string | null {

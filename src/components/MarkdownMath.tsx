@@ -18,7 +18,7 @@ function resolveDiagramSrc(src: string): { url: string; tikz: boolean } {
   const m = /^diagram:([0-9a-f]{20})$/.exec(src);
   if (!m) return { url: src, tikz: false };
   try {
-    return { url: `${requireAgentApiBase()}/api/v1/diagrams/${m[1]}.svg`, tikz: true };
+    return { url: `${requireAgentApiBase()}/diagrams/${m[1]}.svg`, tikz: true };
   } catch {
     return { url: "", tikz: true };
   }

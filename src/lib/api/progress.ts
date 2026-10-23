@@ -129,7 +129,7 @@ export async function fetchProgress(days = 30): Promise<ProgressReport> {
   }
   const qs = new URLSearchParams({ tz, days: String(days) });
   return auth.apiRequest<ProgressReport>(
-    `${auth.requireAgentApiBase()}/api/v1/progress/${encodeURIComponent(userId)}?${qs}`,
+    `${auth.requireAgentApiBase()}/progress/${encodeURIComponent(userId)}?${qs}`,
   );
 }
 

@@ -32,7 +32,7 @@ const audioCache = new Map<string, string>();
  */
 export async function getVoiceSpeakers(): Promise<VoiceSpeakersResponse> {
   const base = requireAgentApiBase();
-  const res = await fetch(`${base}/api/v1/voice/speakers`, {
+  const res = await fetch(`${base}/voice/speakers`, {
     headers: {
       Accept: "application/json",
     },
@@ -70,7 +70,7 @@ export async function transcribeAudio(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${base}/api/v1/voice/transcribe`, {
+  const res = await fetch(`${base}/voice/transcribe`, {
     method: "POST",
     headers,
     body: formData,
@@ -113,7 +113,7 @@ export async function synthesizeSpeech(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${base}/api/v1/voice/synthesize`, {
+  const res = await fetch(`${base}/voice/synthesize`, {
     method: "POST",
     headers,
     body: JSON.stringify({

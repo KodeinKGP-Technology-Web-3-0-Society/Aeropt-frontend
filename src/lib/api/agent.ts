@@ -228,7 +228,7 @@ function sessionApiError(response: Response, data: { detail?: string; error?: st
  * Every non-streaming agent call goes through this. A bare `fetch` rejects with
  * `TypeError: Failed to fetch` when the agent service is down, which used to
  * surface to the student verbatim; this turns it into something actionable and
- * names a missing `NEXT_PUBLIC_AGENT_API_BASE` instead of fetching a relative
+ * names a missing `NEXT_PUBLIC_API_BASE_URL` instead of fetching a relative
  * URL against the Next.js server.
  */
 async function agentFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -247,7 +247,7 @@ export async function fetchChatSessions(
 ): Promise<ChatSessionSummary[]> {
   const params = new URLSearchParams({ user_id: userId, limit: String(limit) });
   if (kind) params.set("kind", kind);
-  const response = await agentFetch(`/api/v1/chat/sessions?${params}`);
+  const response = await agentFetch(`/chat/sessions?${params}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
     throw new Error(sessionApiError(response, data));
@@ -257,7 +257,7 @@ export async function fetchChatSessions(
 }
 
 export async function createChatSession(userId: string, kind?: ChatSessionKind): Promise<string> {
-  const response = await agentFetch(`/api/v1/chat/sessions`, {
+  const response = await agentFetch(`/chat/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(kind ? { user_id: userId, kind } : { user_id: userId }),
@@ -279,7 +279,7 @@ export async function renameChatSession(
   sessionId: string,
   title: string,
 ): Promise<string | null> {
-  const response = await agentFetch(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}`, {
+  const response = await agentFetch(`/chat/sessions/${encodeURIComponent(sessionId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_id: userId, title }),
@@ -291,7 +291,7 @@ export async function renameChatSession(
 
 export async function deleteChatSession(userId: string, sessionId: string): Promise<void> {
   const params = new URLSearchParams({ user_id: userId });
-  const response = await agentFetch(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}?${params}`, {
+  const response = await agentFetch(`/chat/sessions/${encodeURIComponent(sessionId)}?${params}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -305,7 +305,7 @@ export async function fetchChatSessionDetail(
   sessionId: string,
 ): Promise<ChatSessionDetail> {
   const params = new URLSearchParams({ user_id: userId });
-  const response = await agentFetch(`/api/v1/chat/sessions/${sessionId}?${params}`);
+  const response = await agentFetch(`/chat/sessions/${sessionId}?${params}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
     throw new Error(sessionApiError(response, data));
@@ -327,7 +327,7 @@ export async function fetchConceptProficiency(
 ): Promise<ConceptProficiency | null> {
   const params = new URLSearchParams({ user_id: userId });
   const response = await agentFetch(
-    `/api/v1/concepts/${encodeURIComponent(conceptId)}/proficiency?${params}`,
+    `/concepts/${encodeURIComponent(conceptId)}/proficiency?${params}`,
   );
   if (!response.ok) return null;
   return (await response.json()) as ConceptProficiency;
@@ -358,7 +358,7 @@ export type AssessGradeResponse = {
 };
 
 export async function buildClassroomAssess(conceptId: string): Promise<AssessBuildResponse> {
-  const response = await agentFetch(`/api/v1/classroom/assess/build`, {
+  const response = await agentFetch(`/classroom/assess/build`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ concept_id: conceptId }),
@@ -377,7 +377,7 @@ export async function gradeClassroomAssess(input: {
   userId?: string | null;
   sessionId?: string | null;
 }): Promise<AssessGradeResponse> {
-  const response = await agentFetch(`/api/v1/classroom/assess/grade`, {
+  const response = await agentFetch(`/classroom/assess/grade`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -461,7 +461,7 @@ export async function sendChatMessage(payload: {
   let response: Response;
   armStallTimer();
   try {
-    response = await authedFetch(`${base}/api/v1/chat/message`, {
+    response = await authedFetch(`${base}/chat/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -593,7 +593,7 @@ export async function executeSandboxAction(payload: {
   proficiencyPct?: number;
   placement?: PlacementContext;
 }): Promise<AgentChatResponse> {
-  const response = await agentFetch(`/api/v1/sandbox/execute`, {
+  const response = await agentFetch(`/sandbox/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -634,7 +634,7 @@ export async function fetchAgentStatus(params: {
   if (params.activeAgent) qs.set("active_agent", params.activeAgent);
   if (params.focusChapters?.length) qs.set("focus_chapters", params.focusChapters.join(","));
 
-  const response = await agentFetch(`/api/v1/agents/status?${qs}`);
+  const response = await agentFetch(`/agents/status?${qs}`);
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
     throw new Error(data.detail || data.error || `Agent status failed (${response.status}).`);
