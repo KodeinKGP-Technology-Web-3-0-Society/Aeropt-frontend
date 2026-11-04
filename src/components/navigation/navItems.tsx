@@ -75,6 +75,16 @@ export function DoubtIcon(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function MockTestIcon(p: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...p}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h4" />
+      <path d="M15.5 14.5l1.5 1.5 2.5-2.5" />
+    </Svg>
+  );
+}
+
 export function ReadinessIcon(p: SVGProps<SVGSVGElement>) {
   return (
     <Svg {...p}>
@@ -93,11 +103,12 @@ export function GearIcon(p: SVGProps<SVGSVGElement>) {
   );
 }
 
-// Five primary destinations, mirrored identically in web header and app bottom nav
+// Primary destinations, mirrored in web navbar and mobile nav
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/home", icon: HomeIcon, also: ["/dashboard"] },
   { label: "Study", href: "/study", icon: StudyIcon, also: ["/study/room"] },
   { label: "Chat", href: "/chat", icon: ChatIcon, also: ["/chat/session"], hint: "Ask the tutor anything, any time" },
+  { label: "Mock Test", href: "/mock", icon: MockTestIcon, also: ["/mock/exam", "/mock/result"], hint: "Timed full-syllabus mock exam with PYQs" },
   { label: "Plan", href: "/plan", icon: PlanIcon, also: ["/lesson", "/assess", "/calendar"] },
   { label: "Progress", href: "/progress", icon: ProgressIcon, also: ["/readiness"] },
 ];

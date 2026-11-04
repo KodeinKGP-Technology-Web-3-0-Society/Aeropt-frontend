@@ -263,6 +263,8 @@ export default function StudyRoom({
     reload,
   } = useStudySession(conceptId, sessionId, requestedMode, requestedSource);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Phones show one pane at a time (question or chat); from lg up both sit side by side.
+  const [pane, setPane] = useState<"question" | "chat">("question");
   const [pastPapers, setPastPapers] = useState<{
     status: "empty" | "unavailable" | "ready";
     items: ConceptPyq[];
@@ -490,8 +492,22 @@ export default function StudyRoom({
           </div>
         ) : question ? (
           <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-            {/* Question on the right on wide screens (order-last), on top on phones. */}
-            <div className="overflow-y-auto border-line px-4 py-5 sm:px-6 lg:order-last lg:border-l max-lg:max-h-[48vh] max-lg:border-b">
+            <div role="tablist" className="flex shrink-0 gap-1 border-b border-line px-4 py-2 lg:hidden">
+              {(["question", "chat"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  role="tab"
+                  aria-selected={pane === p}
+                  onClick={() => setPane(p)}
+                  className={`flex-1 rounded-full px-3 py-1.5 text-sm font-semibold capitalize ${pane === p ? "bg-ink text-ink-on" : "text-muted"}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            {/* Question on the right on wide screens (order-last); a tab on phones. */}
+            <div className={`min-h-0 flex-1 overflow-y-auto border-line px-4 py-5 sm:px-6 lg:order-last lg:block lg:border-l ${pane === "question" ? "" : "max-lg:hidden"}`}>
               <PracticePane
                 key={question.content_id /* a new question starts with an empty answer box */}
                 question={question}
@@ -503,11 +519,11 @@ export default function StudyRoom({
                 result={showingResult ? answered : null}
                 onSubmit={(a) => void answerValue(a, question)}
                 onChoose={(labels, positionOf) => void answerChoice(labels, question, positionOf)}
-                onAsk={(t) => void send(t)}
+                onAsk={(t) => { setPane("chat"); void send(t); }}
                 onNext={() => void nextQuestion()}
               />
             </div>
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div className={`min-h-0 flex-1 flex-col lg:flex ${pane === "chat" ? "flex" : "max-lg:hidden"}`}>
               <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">{conversation}</div>
               <div className="px-4 pb-4 pt-2 sm:px-6">{composer}</div>
             </div>

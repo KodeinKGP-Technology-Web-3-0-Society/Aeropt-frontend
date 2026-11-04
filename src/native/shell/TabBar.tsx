@@ -15,7 +15,8 @@ export function TabBar({ className = "" }: { className?: string }) {
     pathname?.startsWith("/study/room") ||
     pathname?.startsWith("/lesson/room") ||
     pathname?.startsWith("/assess") ||
-    pathname?.startsWith("/chat/session");
+    pathname?.startsWith("/chat/session") ||
+    pathname?.startsWith("/mock/exam");
 
   if (isFullScreen) {
     return null;
@@ -32,7 +33,10 @@ export function TabBar({ className = "" }: { className?: string }) {
       aria-label="Native Bottom Navigation"
       className={`fixed bottom-0 left-0 right-0 z-40 bg-white/95 border-t border-[#e2e8f0] pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] backdrop-blur-md ${className}`}
     >
-      <div className="max-w-md mx-auto grid grid-cols-5 h-15 px-1 items-center">
+      <div
+        className="max-w-md mx-auto grid h-15 px-1 items-center"
+        style={{ gridTemplateColumns: `repeat(${PRIMARY_NAV_ITEMS.length}, minmax(0, 1fr))` }}
+      >
         {PRIMARY_NAV_ITEMS.map((tab) => {
           const isActive = isRouteActive(tab, pathname || "");
           const Icon = tab.icon;
