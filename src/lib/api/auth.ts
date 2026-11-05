@@ -194,7 +194,12 @@ export async function login(email: string, password: string): Promise<void> {
 
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    throw new Error(formatApiError(data, "Invalid email or password."));
+    // 5xx responses are crash pages, not a rejected password.
+    const fallback =
+      response.status >= 500
+        ? "Sign-in failed because the server had an error. Please try again."
+        : "Invalid email or password.";
+    throw new Error(formatApiError(data, fallback));
   }
 
   const data = (await response.json()) as {
