@@ -259,9 +259,11 @@ export async function fetchMockResult(
   mockTestId: string,
   userId: string,
   includeDebrief: boolean = false,
+  regenerateDebrief: boolean = false,
 ): Promise<MockTestResult> {
   const params = new URLSearchParams({ user_id: userId });
   if (includeDebrief) params.set("include_debrief", "true");
+  if (regenerateDebrief) params.set("regenerate", "true");
   return auth.apiRequest<MockTestResult>(
     `${agentBase()}/mock/result/${encodeURIComponent(mockTestId)}?${params}`,
   );

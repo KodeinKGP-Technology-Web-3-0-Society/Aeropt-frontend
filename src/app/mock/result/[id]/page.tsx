@@ -7,6 +7,7 @@ import { AppPage, AppShell } from "@/components/AppPage";
 import StudySidebar from "@/components/study/StudySidebar";
 import * as auth from "@/lib/api/auth";
 import Link from "next/link";
+import MarkdownMath from "@/components/MarkdownMath";
 import {
   fetchMockResult,
   mockUserId,
@@ -116,13 +117,24 @@ function QuestionRow({ q, idx }: { q: GradedQuestion; idx: number }) {
 
   return (
     <div className="rounded-xl border border-line bg-surface">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
         onClick={() => setExpanded((p) => !p)}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((p) => !p);
+          }
+        }}
+        className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left"
       >
         <span className="mt-0.5 shrink-0 text-[11px] font-bold text-muted">Q{idx + 1}</span>
-        <span className="flex-1 text-[13px] leading-5 text-ink line-clamp-2">{q.stem}</span>
+        <MarkdownMath
+          content={q.stem || ""}
+          className="markdown-math markdown-math--card min-w-0 flex-1 text-[13px] leading-5 text-ink line-clamp-2"
+        />
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${statusStyle}`}>
           {STATUS_LABEL[status] ?? status}
         </span>
@@ -131,10 +143,13 @@ function QuestionRow({ q, idx }: { q: GradedQuestion; idx: number }) {
             {q.question_score > 0 ? "+" : ""}{q.question_score}
           </span>
         )}
-      </button>
+      </div>
       {expanded && (
         <div className="border-t border-line px-4 pb-4 pt-3">
-          <p className="mb-3 text-[13px] leading-6 text-ink whitespace-pre-wrap">{q.stem}</p>
+          <MarkdownMath
+            content={q.stem || ""}
+            className="markdown-math mb-3 text-[15px] leading-7 text-ink"
+          />
           {q.options && q.options.length > 0 && (
             <div className="mb-3 flex flex-col gap-1.5">
               {q.options.map((opt) => {
@@ -149,7 +164,7 @@ function QuestionRow({ q, idx }: { q: GradedQuestion; idx: number }) {
                     ].join(" ")}
                   >
                     <span className="font-bold text-muted">{opt.label}.</span>
-                    <span className="flex-1">{opt.text}</span>
+                    <MarkdownMath content={opt.text || ""} className="markdown-math markdown-math--card min-w-0 flex-1 text-[13px] text-ink" />
                     {isCorrect && <span className="shrink-0 text-[10px] font-bold uppercase text-success">Answer</span>}
                     {isStudentAnswer && !isCorrect && <span className="shrink-0 text-[10px] font-bold uppercase text-danger">Your pick</span>}
                   </div>
@@ -157,14 +172,14 @@ function QuestionRow({ q, idx }: { q: GradedQuestion; idx: number }) {
               })}
             </div>
           )}
-          <div className="flex flex-wrap gap-4 text-[12px] text-muted">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-[12px] text-muted">
             <span>Chapter: <strong className="text-ink">{q.chapter_title}</strong></span>
             <span>Concept: <strong className="text-ink">{q.concept_name}</strong></span>
             {q.student_answer && (
-              <span>Your answer: <strong className="text-ink">{q.student_answer}</strong></span>
+              <span className="inline-flex items-baseline gap-1">Your answer: <MarkdownMath content={q.student_answer} className="markdown-math markdown-math--card text-[13px] text-ink" /></span>
             )}
             {q.answer_text && (
-              <span>Correct: <strong className="text-success">{q.answer_text}</strong></span>
+              <span className="inline-flex items-baseline gap-1">Correct: <MarkdownMath content={q.answer_text} className="markdown-math markdown-math--card text-[13px] text-success" /></span>
             )}
           </div>
         </div>
@@ -205,14 +220,14 @@ function ResultsContent({ mockTestId }: { mockTestId: string }) {
     return () => { live = false; };
   }, [mockTestId, userId]);
 
-  async function handleLoadDebrief() {
+  async function handleLoadDebrief(regenerate = false) {
     if (!userId || !result) return;
     setLoadingDebrief(true);
     try {
-      const r = await fetchMockResult(mockTestId, userId, true);
-      setDebriefText(r.debrief);
+      const r = await fetchMockResult(mockTestId, userId, true, regenerate);
+      if (r.debrief) setDebriefText(r.debrief);
     } catch {
-      // silent
+      // Keep the previous text. The button returns so they can try again.
     } finally {
       setLoadingDebrief(false);
     }
@@ -329,31 +344,30 @@ function ResultsContent({ mockTestId }: { mockTestId: string }) {
           <h2 id="debrief-heading" className="text-xl font-semibold leading-7 text-ink">
             AI debrief
           </h2>
-          {!debriefText && !result.debrief && (
-            <button
-              type="button"
-              onClick={handleLoadDebrief}
-              disabled={loadingDebrief}
-              className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-[13px] font-medium text-ink hover:bg-hover disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              {loadingDebrief ? (
-                <>
-                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="60" strokeDashoffset="20" />
-                  </svg>
-                  Generating…
-                </>
-              ) : (
-                "Generate debrief"
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => handleLoadDebrief(Boolean(debriefText ?? result.debrief))}
+            disabled={loadingDebrief}
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-[13px] font-medium text-ink hover:bg-hover disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {loadingDebrief ? (
+              <>
+                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="60" strokeDashoffset="20" />
+                </svg>
+                {debriefText ?? result.debrief ? "Rewriting…" : "Generating…"}
+              </>
+            ) : (
+              (debriefText ?? result.debrief) ? "Rewrite debrief" : "Generate debrief"
+            )}
+          </button>
         </div>
         {(debriefText ?? result.debrief) ? (
           <div className="rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
-            <p className="text-[14px] leading-7 text-ink whitespace-pre-wrap">
-              {debriefText ?? result.debrief}
-            </p>
+            <MarkdownMath
+              content={debriefText ?? result.debrief ?? ""}
+              className="markdown-math text-[15px] leading-7 text-ink"
+            />
           </div>
         ) : !loadingDebrief ? (
           <p className="text-[14px] text-muted">
